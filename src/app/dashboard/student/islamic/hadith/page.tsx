@@ -1,231 +1,415 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import Link from 'next/link'
-import AnimatedCard from '@/components/ui/AnimatedCard'
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import AnalysisPanel from '@/components/ui/AnalysisPanel';
+import type { AnalysisResult } from '@/lib/groq';
 
-const hadiths = [
-    {
-        id: 1,
-        arabic: 'إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ',
-        bangla: 'নিশ্চয়ই সকল কাজ নিয়তের উপর নির্ভরশীল।',
-        source: 'বুখারী ও মুসলিম',
-        narrator: 'উমর ইবনুল খাত্তাব (রা.)',
-        topic: 'নিয়ত',
-        explanation: 'এই হাদিসটি ইসলামের অন্যতম মূলনীতি। যেকোনো ইবাদত বা কাজে নিয়ত বা উদ্দেশ্য সঠিক হওয়া জরুরি। আল্লাহর সন্তুষ্টির জন্য কাজ করলে সওয়াব পাওয়া যায়।',
-        difficulty: 'সহজ',
-    },
-    {
-        id: 2,
-        arabic: 'الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ',
-        bangla: 'মুসলিম সেই ব্যক্তি যার জিহ্বা ও হাত থেকে অন্য মুসলিমরা নিরাপদ।',
-        source: 'বুখারী',
-        narrator: 'আবদুল্লাহ ইবন আমর (রা.)',
-        topic: 'চরিত্র',
-        explanation: 'একজন প্রকৃত মুসলিম অন্যদের কথা ও কাজে কষ্ট দেয় না। ভালো চরিত্র ইসলামের অন্যতম গুরুত্বপূর্ণ বিষয়।',
-        difficulty: 'সহজ',
-    },
-    {
-        id: 3,
-        arabic: 'طَلَبُ الْعِلْمِ فَرِيضَةٌ عَلَى كُلِّ مُسْلِمٍ',
-        bangla: 'জ্ঞান অর্জন করা প্রতিটি মুসলিমের উপর ফরয।',
-        source: 'ইবন মাজাহ',
-        narrator: 'আনাস ইবন মালিক (রা.)',
-        topic: 'জ্ঞান',
-        explanation: 'ইসলাম জ্ঞান অর্জনকে অত্যন্ত গুরুত্ব দেয়। দ্বীনি ও দুনিয়াবি উভয় জ্ঞান অর্জন করা প্রত্যেক মুসলিমের দায়িত্ব।',
-        difficulty: 'সহজ',
-    },
-    {
-        id: 4,
-        arabic: 'لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ',
-        bangla: 'তোমাদের কেউ প্রকৃত মুমিন হবে না যতক্ষণ না সে তার ভাইয়ের জন্য তাই পছন্দ করে যা নিজের জন্য পছন্দ করে।',
-        source: 'বুখারী ও মুসলিম',
-        narrator: 'আনাস ইবন মালিক (রা.)',
-        topic: 'ভ্রাতৃত্ব',
-        explanation: 'মুসলিমদের মধ্যে ভ্রাতৃত্ব ও পারস্পরিক ভালোবাসা ইমানের অংশ। অন্যের জন্য ভালো চাওয়া ইসলামের মূল শিক্ষা।',
-        difficulty: 'মাধ্যমিক',
-    },
-    {
-        id: 5,
-        arabic: 'الدِّينُ النَّصِيحَةُ',
-        bangla: 'দ্বীন হলো কল্যাণ কামনা।',
-        source: 'মুসলিম',
-        narrator: 'তামিম আদ-দারি (রা.)',
-        topic: 'দ্বীন',
-        explanation: 'ইসলাম ধর্মের মূল বিষয় হলো আল্লাহ, তাঁর রাসূল, মুসলিম নেতা এবং সাধারণ মুসলিমদের জন্য কল্যাণ কামনা করা।',
-        difficulty: 'মাধ্যমিক',
-    },
-]
-
-const topicColors: Record<string, string> = {
-    নিয়ত: 'bg-green-100 text-green-700',
-    চরিত্র: 'bg-blue-100 text-blue-700',
-    জ্ঞান: 'bg-purple-100 text-purple-700',
-    ভ্রাতৃত্ব: 'bg-amber-100 text-amber-700',
-    দ্বীন: 'bg-rose-100 text-rose-700',
+interface Category {
+    id: string;
+    title: string;
+    hadeeths_count: string;
+    parent_id: string | null;
 }
 
+interface Hadith {
+    id: string;
+    title: string;
+}
+
+interface Meta {
+    current_page: string;
+    last_page: number;
+    total_items: number;
+    per_page: string;
+}
+
+const mainCategories = [
+    { id: '3', name: 'আকীদা', icon: '☝️', color: 'from-violet-500 to-purple-500', count: '৩৯২' },
+    { id: '4', name: 'ফিকহ ও উসূলে ফিকহ', icon: '⚖️', color: 'from-blue-500 to-indigo-500', count: '৮৯৬' },
+    { id: '5', name: 'ফযীলত ও শিষ্টাচার', icon: '🌟', color: 'from-amber-500 to-yellow-500', count: '৬৭৬' },
+    { id: '6', name: 'দাওয়াহ ও হিসবাহ', icon: '📢', color: 'from-emerald-500 to-teal-500', count: '৮৬' },
+    { id: '7', name: 'জীবনী ও ইতিহাস', icon: '📜', color: 'from-rose-500 to-pink-500', count: '১৪৬' },
+    { id: '1', name: 'আল-কুরআন সংক্রান্ত', icon: '📖', color: 'from-cyan-500 to-sky-500', count: '৫৮' },
+    { id: '2', name: 'হাদিস সংক্রান্ত বিদ্যা', icon: '📚', color: 'from-orange-500 to-red-500', count: '৮' },
+];
+
 export default function HadithPage() {
-    const [selectedHadith, setSelectedHadith] = useState<typeof hadiths[0] | null>(null)
-    const [memorized, setMemorized] = useState<number[]>([])
+    const [selectedCategory, setSelectedCategory] = useState<typeof mainCategories[0] | null>(null);
+    const [hadiths, setHadiths] = useState<Hadith[]>([]);
+    const [meta, setMeta] = useState<Meta | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [expandedHadith, setExpandedHadith] = useState<string | null>(null);
+    const [subCategories, setSubCategories] = useState<Category[]>([]);
+    const [selectedSubCat, setSelectedSubCat] = useState<Category | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    // Sub categories fetch
+    useEffect(() => {
+        if (!selectedCategory) return;
+        const fetchSubCats = async () => {
+            try {
+                const res = await fetch(
+                    `https://hadeethenc.com/api/v1/categories/list/?language=bn`
+                );
+                const data: Category[] = await res.json();
+                const subs = data.filter(c => c.parent_id === selectedCategory.id);
+                setSubCategories(subs);
+            } catch {
+                setSubCategories([]);
+            }
+        };
+        fetchSubCats();
+    }, [selectedCategory]);
+
+    // Hadiths fetch
+    const fetchHadiths = async (categoryId: string, page: number) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `https://hadeethenc.com/api/v1/hadeeths/list/?language=bn&category_id=${categoryId}&page=${page}&per_page=10`
+            );
+            const data = await res.json();
+            setHadiths(data.data || []);
+            setMeta(data.meta || null);
+            setCurrentPage(page);
+        } catch {
+            setError('হাদিস লোড হয়নি। আবার চেষ্টা করুন।');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCategorySelect = (cat: typeof mainCategories[0]) => {
+        setSelectedCategory(cat);
+        setSelectedSubCat(null);
+        setHadiths([]);
+        setExpandedHadith(null);
+        fetchHadiths(cat.id, 1);
+    };
+
+    const handleSubCatSelect = (sub: Category) => {
+        setSelectedSubCat(sub);
+        setHadiths([]);
+        setExpandedHadith(null);
+        fetchHadiths(sub.id, 1);
+    };
+
+    const handlePageChange = (page: number) => {
+        const id = selectedSubCat?.id || selectedCategory?.id;
+        if (id) fetchHadiths(id, page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const getAnalysisContent = () =>
+        hadiths.map((h, i) => `হাদিস ${i + 1}: ${h.title}`).join('\n');
 
     return (
-        <main className="min-h-screen bg-gray-50">
-            {/* Navbar */}
-            <nav className="glass fixed top-0 left-0 right-0 z-50 border-b border-white/50 px-6 py-4">
-                <div className="max-w-6xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link href="/dashboard/student/islamic" className="text-gray-400 hover:text-gray-600">←</Link>
-                        <div className="text-lg font-bold text-gradient-primary">হাদিস শিক্ষা</div>
-                    </div>
-                    <div className="text-sm text-gray-500">{memorized.length}/{hadiths.length} মুখস্থ</div>
-                </div>
-            </nav>
-
-            <div className="max-w-6xl mx-auto px-6 pt-24 pb-12">
-
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-8 text-white mb-8 relative overflow-hidden"
+        <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
+            {/* Header */}
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+                <Link
+                    href="/dashboard/student/islamic"
+                    className="text-purple-400 hover:text-purple-300 text-sm mb-4 inline-flex items-center gap-2 transition-colors"
                 >
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
-                    <div className="relative z-10">
-                        <div className="text-5xl mb-4">📜</div>
-                        <h1 className="text-2xl font-bold mb-2">হাদিস শিক্ষা</h1>
-                        <p className="text-amber-100 text-sm mb-1">
-                            قَالَ رَسُولُ اللَّهِ ﷺ — রাসূলুল্লাহ ﷺ বলেছেন
-                        </p>
-                        <p className="text-amber-100/80 text-sm">
-                            সহীহ বুখারী, মুসলিম সহ বিভিন্ন হাদিস গ্রন্থ থেকে গুরুত্বপূর্ণ হাদিস শিখো
-                        </p>
+                    ← ইসলামিক স্টাডিতে ফিরে যাও
+                </Link>
+                <div className="flex items-center gap-4 mt-2">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-3xl shadow-lg">
+                        📜
                     </div>
-                </motion.div>
-
-                <div className="grid lg:grid-cols-3 gap-6">
-                    {/* Hadith list */}
-                    <div className="lg:col-span-2 space-y-4">
-                        <h2 className="font-bold text-gray-900 mb-4">হাদিস সংকলন</h2>
-                        {hadiths.map((hadith, i) => (
-                            <motion.div
-                                key={hadith.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.08 }}
-                                onClick={() => setSelectedHadith(hadith)}
-                                className={`bg-white rounded-2xl border p-5 cursor-pointer transition-all hover:shadow-md ${selectedHadith?.id === hadith.id
-                                        ? 'border-amber-300 shadow-md shadow-amber-100'
-                                        : 'border-gray-100'
-                                    }`}
-                            >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                        <p className="text-xl font-arabic text-gray-800 mb-2 leading-loose text-right" dir="rtl">
-                                            {hadith.arabic}
-                                        </p>
-                                        <p className="text-sm text-gray-600 leading-relaxed mb-3">
-                                            {hadith.bangla}
-                                        </p>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${topicColors[hadith.topic] || 'bg-gray-100 text-gray-700'}`}>
-                                                {hadith.topic}
-                                            </span>
-                                            <span className="text-xs text-gray-400">📚 {hadith.source}</span>
-                                            {memorized.includes(hadith.id) && (
-                                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                                                    ✓ মুখস্থ
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                    <div>
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">
+                            হাদিস শরীফ
+                        </h1>
+                        <p className="text-gray-400 mt-1">বিষয়ভিত্তিক হাদিস • AI বিশ্লেষণ</p>
                     </div>
+                </div>
+            </motion.div>
 
-                    {/* Hadith detail */}
-                    <div className="lg:col-span-1">
-                        <AnimatePresence mode="wait">
-                            {selectedHadith ? (
-                                <motion.div
-                                    key={selectedHadith.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    className="sticky top-24"
+            {error && (
+                <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-red-400 text-sm flex justify-between">
+                    <span>⚠️ {error}</span>
+                    <button onClick={() => setError(null)}>✕</button>
+                </div>
+            )}
+
+            {/* Category Grid */}
+            {!selectedCategory && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {mainCategories.map((cat, i) => (
+                        <motion.div
+                            key={cat.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.08 }}
+                            onClick={() => handleCategorySelect(cat)}
+                            className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 p-5 transition-all group"
+                        >
+                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-3xl mb-4 shadow-md`}>
+                                {cat.icon}
+                            </div>
+                            <h3 className="font-bold text-lg text-white group-hover:text-amber-400 transition-colors mb-1">
+                                {cat.name}
+                            </h3>
+                            <p className="text-amber-400 text-sm">{cat.count}টি হাদিস</p>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+
+            {/* Sub Categories + Hadith List */}
+            {selectedCategory && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    {/* Breadcrumb */}
+                    <div className="flex items-center gap-2 text-sm mb-6 flex-wrap">
+                        <button
+                            onClick={() => { setSelectedCategory(null); setHadiths([]); setSubCategories([]); }}
+                            className="text-amber-400 hover:text-amber-300 transition-colors"
+                        >
+                            ← বিষয় তালিকা
+                        </button>
+                        {selectedSubCat && (
+                            <>
+                                <span className="text-gray-600">/</span>
+                                <button
+                                    onClick={() => { setSelectedSubCat(null); fetchHadiths(selectedCategory.id, 1); }}
+                                    className="text-amber-400 hover:text-amber-300 transition-colors"
                                 >
-                                    <AnimatedCard className="p-6" hover={false}>
-                                        {/* Arabic */}
-                                        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 mb-5 border border-amber-100 text-center">
-                                            <p className="text-2xl font-arabic text-gray-800 leading-loose mb-2" dir="rtl">
-                                                {selectedHadith.arabic}
-                                            </p>
-                                        </div>
+                                    {selectedCategory.name}
+                                </button>
+                                <span className="text-gray-600">/</span>
+                                <span className="text-gray-300">{selectedSubCat.title}</span>
+                            </>
+                        )}
+                        {!selectedSubCat && (
+                            <>
+                                <span className="text-gray-600">/</span>
+                                <span className="text-gray-300">{selectedCategory.name}</span>
+                            </>
+                        )}
+                    </div>
 
-                                        {/* Bangla */}
-                                        <p className="text-sm text-gray-700 leading-relaxed mb-4 font-medium">
-                                            {selectedHadith.bangla}
-                                        </p>
+                    {/* Category Header */}
+                    <div className={`rounded-2xl bg-gradient-to-r ${selectedCategory.color} p-px mb-6`}>
+                        <div className="rounded-2xl bg-[#0f0f2a] p-5 flex items-center gap-4">
+                            <span className="text-4xl">{selectedCategory.icon}</span>
+                            <div>
+                                <h2 className="text-2xl font-bold text-white">
+                                    {selectedSubCat ? selectedSubCat.title : selectedCategory.name}
+                                </h2>
+                                <p className="text-gray-400 text-sm">
+                                    {meta ? `মোট ${meta.total_items}টি হাদিস` : selectedCategory.count + 'টি হাদিস'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
-                                        {/* Source */}
-                                        <div className="bg-gray-50 rounded-xl p-3 mb-4 text-xs text-gray-500 space-y-1">
-                                            <div>📚 <span className="font-medium">সূত্র:</span> {selectedHadith.source}</div>
-                                            <div>👤 <span className="font-medium">বর্ণনাকারী:</span> {selectedHadith.narrator}</div>
-                                            <div>🏷️ <span className="font-medium">বিষয়:</span> {selectedHadith.topic}</div>
-                                        </div>
+                    {/* Sub Categories */}
+                    {subCategories.length > 0 && !selectedSubCat && (
+                        <div className="mb-6">
+                            <p className="text-gray-400 text-sm mb-3">উপ-বিষয়সমূহ:</p>
+                            <div className="flex flex-wrap gap-2">
+                                {subCategories.map(sub => (
+                                    <button
+                                        key={sub.id}
+                                        onClick={() => handleSubCatSelect(sub)}
+                                        className="text-sm px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-amber-500/20 hover:border-amber-500/30 text-gray-300 hover:text-amber-300 transition-all"
+                                    >
+                                        {sub.title}
+                                        <span className="text-gray-500 ml-1">({sub.hadeeths_count})</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                                        {/* Explanation */}
-                                        <div className="mb-5">
-                                            <h4 className="font-semibold text-gray-900 text-sm mb-2">ব্যাখ্যা</h4>
-                                            <p className="text-xs text-gray-600 leading-relaxed">
-                                                {selectedHadith.explanation}
-                                            </p>
-                                        </div>
+                    {/* Loading */}
+                    {loading && (
+                        <div className="space-y-3">
+                            {[...Array(5)].map((_, i) => (
+                                <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-5 animate-pulse h-24" />
+                            ))}
+                        </div>
+                    )}
 
-                                        {/* Actions */}
-                                        <div className="space-y-2">
-                                            <motion.button
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => {
-                                                    if (memorized.includes(selectedHadith.id)) {
-                                                        setMemorized(memorized.filter(id => id !== selectedHadith.id))
-                                                    } else {
-                                                        setMemorized([...memorized, selectedHadith.id])
-                                                    }
+                    {/* Hadith List */}
+                    {!loading && hadiths.length > 0 && (
+                        <>
+                            <div className="space-y-3">
+                                {hadiths.map((hadith, i) => (
+                                    <div key={hadith.id}>
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.05 }}
+                                            onClick={() => setExpandedHadith(expandedHadith === hadith.id ? null : hadith.id)}
+                                            className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                {/* Number */}
+                                                <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs font-bold flex-shrink-0 mt-0.5">
+                                                    {(currentPage - 1) * 10 + i + 1}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-gray-200 text-sm leading-relaxed">
+                                                        {hadith.title}
+                                                    </p>
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <span className="text-xs text-amber-400/70">
+                                                            হাদিস ID: #{hadith.id}
+                                                        </span>
+                                                        <span className="text-gray-600 text-xs">
+                                                            {expandedHadith === hadith.id ? '▲ লুকাও' : '▼ বিস্তারিত'}
+                                                        </span>
+                                                    </div>
+
+                                                    <AnimatePresence>
+                                                        {expandedHadith === hadith.id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto' }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                className="mt-3 pt-3 border-t border-white/10 space-y-2"
+                                                            >
+                                                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                                                                    <p className="text-xs text-amber-400 font-semibold mb-1">💡 শিক্ষা</p>
+                                                                    <p className="text-gray-300 text-xs leading-relaxed">
+                                                                        এই হাদিসটি আমাদের দৈনন্দিন জীবনে গুরুত্বপূর্ণ শিক্ষা দেয়। AI বিশ্লেষণ বাটনে ক্লিক করে বিস্তারিত জানুন।
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">
+                                                                        ✓ প্রামাণিক
+                                                                    </span>
+                                                                    <span className="text-xs bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                                                                        📚 hadeethenc.com
+                                                                    </span>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+
+                                        {/* প্রতি ৫ হাদিস পর Analysis */}
+                                        {(i + 1) % 5 === 0 && (
+                                            <AnalysisPanel
+                                                label={`হাদিস ${(currentPage - 1) * 10 + i - 3} - ${(currentPage - 1) * 10 + i + 1} এর গভীর বিশ্লেষণ`}
+                                                context="মূল শিক্ষা • রাসূল ﷺ এর আদর্শ • বিজ্ঞান • জীবনে প্রয়োগ"
+                                                onAnalyze={async (): Promise<AnalysisResult | null> => {
+                                                    const chunk = hadiths.slice(i - 4, i + 1);
+                                                    const res = await fetch('/api/content-analysis', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            subject: 'হাদিস',
+                                                            topic: selectedSubCat?.title || selectedCategory.name,
+                                                            content: chunk.map((h, j) => `হাদিস ${j + 1}: ${h.title}`).join('\n'),
+                                                            sector: 'islamic',
+                                                            level: 'intermediate',
+                                                        }),
+                                                    });
+                                                    const data = await res.json();
+                                                    return data.analysis || null;
                                                 }}
-                                                className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${memorized.includes(selectedHadith.id)
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                        : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200'
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* শেষ হাদিস Analysis */}
+                                {hadiths.length % 5 !== 0 && (
+                                    <AnalysisPanel
+                                        label={`এই পেজের সমস্ত হাদিসের বিশ্লেষণ`}
+                                        context="মূল শিক্ষা • রাসূল ﷺ এর আদর্শ • বিজ্ঞান • জীবনে প্রয়োগ"
+                                        onAnalyze={async (): Promise<AnalysisResult | null> => {
+                                            const res = await fetch('/api/content-analysis', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    subject: 'হাদিস',
+                                                    topic: selectedSubCat?.title || selectedCategory.name,
+                                                    content: getAnalysisContent(),
+                                                    sector: 'islamic',
+                                                    level: 'intermediate',
+                                                }),
+                                            });
+                                            const data = await res.json();
+                                            return data.analysis || null;
+                                        }}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Pagination */}
+                            {meta && meta.last_page > 1 && (
+                                <div className="mt-8 flex items-center justify-center gap-2 flex-wrap">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm"
+                                    >
+                                        ← আগের
+                                    </button>
+
+                                    {/* Page numbers */}
+                                    {Array.from({ length: Math.min(5, meta.last_page) }, (_, i) => {
+                                        let page;
+                                        if (meta.last_page <= 5) {
+                                            page = i + 1;
+                                        } else if (currentPage <= 3) {
+                                            page = i + 1;
+                                        } else if (currentPage >= meta.last_page - 2) {
+                                            page = meta.last_page - 4 + i;
+                                        } else {
+                                            page = currentPage - 2 + i;
+                                        }
+                                        return (
+                                            <button
+                                                key={page}
+                                                onClick={() => handlePageChange(page)}
+                                                className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${currentPage === page
+                                                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+                                                        : 'border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
                                                     }`}
                                             >
-                                                {memorized.includes(selectedHadith.id) ? '✓ মুখস্থ হয়েছে' : 'মুখস্থ করেছি ✓'}
-                                            </motion.button>
-                                            <Link
-                                                href={`/dashboard/student/ai-tutor?topic=hadith&q=${encodeURIComponent(selectedHadith.bangla)}`}
-                                                className="block w-full text-center border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                                            >
-                                                AI কে প্রশ্ন করো
-                                            </Link>
-                                        </div>
-                                    </AnimatedCard>
-                                </motion.div>
-                            ) : (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="sticky top-24 bg-white rounded-2xl border border-gray-100 p-8 text-center"
-                                >
-                                    <div className="text-5xl mb-4">📜</div>
-                                    <p className="text-gray-500 text-sm">একটি হাদিস select করো</p>
-                                </motion.div>
+                                                {page}
+                                            </button>
+                                        );
+                                    })}
+
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === meta.last_page}
+                                        className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm"
+                                    >
+                                        পরের →
+                                    </button>
+                                </div>
                             )}
-                        </AnimatePresence>
-                    </div>
-                </div>
-            </div>
-        </main>
-    )
+
+                            {meta && (
+                                <p className="text-center text-gray-600 text-xs mt-3">
+                                    পেজ {currentPage} / {meta.last_page} • মোট {meta.total_items}টি হাদিস
+                                </p>
+                            )}
+                        </>
+                    )}
+
+                    {/* Empty */}
+                    {!loading && hadiths.length === 0 && (
+                        <div className="text-center py-16 text-gray-500">
+                            <p className="text-4xl mb-3">📭</p>
+                            <p>কোনো হাদিস পাওয়া যায়নি।</p>
+                        </div>
+                    )}
+                </motion.div>
+            )}
+        </div>
+    );
 }

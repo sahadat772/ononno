@@ -1,232 +1,240 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import Link from 'next/link'
-import AnimatedCard from '@/components/ui/AnimatedCard'
+import { motion } from 'framer-motion';
+import Link from 'next/link';
 
-const modules = [
+const islamicModules = [
     {
-        id: 'quran',
-        title: 'কুরআন তিলাওয়াত',
-        subtitle: 'নূরানী পদ্ধতিতে শিখো',
+        title: 'কুরআন শরীফ',
+        description: 'তিলাওয়াত, অর্থ ও তাজবিদ শিক্ষা',
         icon: '📖',
-        gradient: 'from-green-500 to-emerald-600',
-        bg: 'from-green-50 to-emerald-50',
-        shadow: 'shadow-green-200',
-        lessons: 30,
-        completed: 0,
-        description: 'আলিফ থেকে শুরু করে সম্পূর্ণ কুরআন তিলাওয়াত। AI দিয়ে তোমার উচ্চারণ check হবে।',
+        color: 'from-emerald-500 to-teal-500',
+        borderColor: 'hover:border-emerald-500/50',
+        glowColor: 'hover:shadow-emerald-500/20',
         href: '/dashboard/student/islamic/quran',
+        available: true,
+        badge: null,
     },
     {
-        id: 'hadith',
-        title: 'হাদিস শিক্ষা',
-        subtitle: 'সহীহ হাদিস সংকলন',
+        title: 'হাদিস শরীফ',
+        description: 'সহিহ হাদিস সংকলন ও ব্যাখ্যা',
         icon: '📜',
-        gradient: 'from-amber-500 to-orange-600',
-        bg: 'from-amber-50 to-orange-50',
-        shadow: 'shadow-amber-200',
-        lessons: 20,
-        completed: 0,
-        description: 'বুখারী, মুসলিম সহ বিভিন্ন হাদিস গ্রন্থ থেকে গুরুত্বপূর্ণ হাদিস শিখো।',
+        color: 'from-amber-500 to-yellow-500',
+        borderColor: 'hover:border-amber-500/50',
+        glowColor: 'hover:shadow-amber-500/20',
         href: '/dashboard/student/islamic/hadith',
+        available: true,
+        badge: null,
     },
     {
-        id: 'fiqh',
-        title: 'ফিকহ ও আমল',
-        subtitle: 'ইসলামী বিধিবিধান',
-        icon: '☪️',
-        gradient: 'from-blue-500 to-indigo-600',
-        bg: 'from-blue-50 to-indigo-50',
-        shadow: 'shadow-blue-200',
-        lessons: 15,
-        completed: 0,
-        description: 'নামাজ, রোজা, যাকাত সহ দৈনন্দিন জীবনের ইসলামী বিধান শিখো।',
+        title: 'ফিকহ',
+        description: 'ইসলামি আইন ও বিধিবিধান',
+        icon: '⚖️',
+        color: 'from-blue-500 to-indigo-500',
+        borderColor: 'hover:border-blue-500/50',
+        glowColor: 'hover:shadow-blue-500/20',
         href: '/dashboard/student/islamic/fiqh',
+        available: true,
+        badge: 'নতুন',
     },
     {
-        id: 'tafsir',
         title: 'তাফসির',
-        subtitle: 'কুরআনের ব্যাখ্যা',
-        icon: '🌙',
-        gradient: 'from-purple-500 to-violet-600',
-        bg: 'from-purple-50 to-violet-50',
-        shadow: 'shadow-purple-200',
-        lessons: 10,
-        completed: 0,
-        description: 'কুরআনের আয়াতের অর্থ ও ব্যাখ্যা সহজ বাংলায় বোঝো।',
+        description: 'কুরআনের আয়াতের ব্যাখ্যা ও বিশ্লেষণ',
+        icon: '🔍',
+        color: 'from-orange-500 to-amber-500',
+        borderColor: 'hover:border-orange-500/50',
+        glowColor: 'hover:shadow-orange-500/20',
         href: '/dashboard/student/islamic/tafsir',
+        available: true,
+        badge: 'নতুন',
     },
     {
-        id: 'sirah',
-        title: 'সীরাতুন নবী ﷺ',
-        subtitle: 'নবীজির জীবনী',
-        icon: '⭐',
-        gradient: 'from-rose-500 to-pink-600',
-        bg: 'from-rose-50 to-pink-50',
-        shadow: 'shadow-rose-200',
-        lessons: 25,
-        completed: 0,
-        description: 'রাসূলুল্লাহ ﷺ এর জীবন, চরিত্র ও আদর্শ থেকে শিখো।',
+        title: 'সিরাতুন নবী ﷺ',
+        description: 'মহানবীর জীবনী ও ইতিহাস',
+        icon: '🌙',
+        color: 'from-violet-500 to-purple-500',
+        borderColor: 'hover:border-violet-500/50',
+        glowColor: 'hover:shadow-violet-500/20',
         href: '/dashboard/student/islamic/sirah',
+        available: true,
+        badge: 'নতুন',
     },
     {
-        id: 'dua',
-        title: 'দোয়া ও যিকর',
-        subtitle: 'দৈনন্দিন দোয়া',
+        title: 'দোয়া সমূহ',
+        description: 'কুরআন ও হাদিস থেকে প্রামাণিক দোয়া',
         icon: '🤲',
-        gradient: 'from-teal-500 to-cyan-600',
-        bg: 'from-teal-50 to-cyan-50',
-        shadow: 'shadow-teal-200',
-        lessons: 12,
-        completed: 0,
-        description: 'সকাল-সন্ধ্যার দোয়া, খাওয়ার দোয়া সহ গুরুত্বপূর্ণ দোয়া মুখস্থ করো।',
+        color: 'from-rose-500 to-pink-500',
+        borderColor: 'hover:border-rose-500/50',
+        glowColor: 'hover:shadow-rose-500/20',
         href: '/dashboard/student/islamic/dua',
+        available: true,
+        badge: 'নতুন',
     },
-]
+    {
+        title: 'আকিদা',
+        description: 'ইসলামের মূল বিশ্বাস ও আদর্শ',
+        icon: '☝️',
+        color: 'from-cyan-500 to-sky-500',
+        borderColor: 'hover:border-cyan-500/50',
+        glowColor: 'hover:shadow-cyan-500/20',
+        href: '#',
+        available: false,
+        badge: 'শীঘ্রই',
+    },
+    {
+        title: 'ইসলামিক ইতিহাস',
+        description: 'খুলাফায়ে রাশেদিন ও ইসলামের ইতিহাস',
+        icon: '🏛️',
+        color: 'from-teal-500 to-emerald-500',
+        borderColor: 'hover:border-teal-500/50',
+        glowColor: 'hover:shadow-teal-500/20',
+        href: '#',
+        available: false,
+        badge: 'শীঘ্রই',
+    },
+];
 
-export default function IslamicStudyPage() {
-    const totalLessons = modules.reduce((acc, m) => acc + m.lessons, 0)
-    const totalCompleted = modules.reduce((acc, m) => acc + m.completed, 0)
-    const overallProgress = Math.round((totalCompleted / totalLessons) * 100)
+const stats = [
+    { label: 'সূরা', value: '১১৪', icon: '📖' },
+    { label: 'হাদিস গ্রন্থ', value: '৬+', icon: '📜' },
+    { label: 'দোয়া', value: '৫০+', icon: '🤲' },
+    { label: 'বিষয়', value: '৮টি', icon: '📚' },
+];
 
+export default function IslamicPage() {
     return (
-        <main className="min-h-screen bg-gray-50">
-            {/* Navbar */}
-            <nav className="glass fixed top-0 left-0 right-0 z-50 border-b border-white/50 px-6 py-4">
-                <div className="max-w-6xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/dashboard/student"
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                            ←
-                        </Link>
-                        <div className="text-lg font-bold text-gradient-primary">ইসলামিক শিক্ষা</div>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                        {totalCompleted}/{totalLessons} সম্পন্ন
-                    </div>
-                </div>
-            </nav>
-
-            <div className="max-w-6xl mx-auto px-6 pt-24 pb-12">
-
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
+        <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
+            {/* Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
+            >
+                <Link
+                    href="/dashboard/student"
+                    className="text-purple-400 hover:text-purple-300 text-sm mb-4 inline-flex items-center gap-2 transition-colors"
                 >
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-3xl p-8 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
-                        <div className="relative z-10">
-                            <div className="text-4xl mb-3">🕌</div>
-                            <h1 className="text-2xl font-bold mb-2">ইসলামিক শিক্ষা</h1>
-                            <p className="text-green-100 text-sm mb-6">
-                                بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم — আল্লাহর নামে শুরু করি
-                            </p>
-                            <div className="bg-white/20 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">সামগ্রিক অগ্রগতি</span>
-                                    <span className="text-sm font-bold">{overallProgress}%</span>
-                                </div>
-                                <div className="w-full bg-white/30 rounded-full h-2">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${overallProgress}%` }}
-                                        transition={{ duration: 1, delay: 0.5 }}
-                                        className="bg-white h-2 rounded-full"
-                                    />
-                                </div>
-                            </div>
+                    ← ড্যাশবোর্ডে ফিরে যাও
+                </Link>
+
+                {/* Hero */}
+                <div className="mt-4 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border border-emerald-500/20 p-6 md:p-8">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-4xl shadow-lg shadow-emerald-500/30">
+                            🕌
+                        </div>
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                                ইসলামিক স্টাডি
+                            </h1>
+                            <p className="text-gray-400 mt-1">সম্পূর্ণ ইসলামিক শিক্ষার প্ল্যাটফর্ম</p>
                         </div>
                     </div>
-                </motion.div>
 
-                {/* Daily reminder */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-8 flex items-center gap-4"
-                >
-                    <div className="text-3xl">⏰</div>
-                    <div>
-                        <div className="font-semibold text-amber-800 text-sm">আজকের লক্ষ্য</div>
-                        <div className="text-amber-600 text-sm">কুরআন তিলাওয়াত ১ পৃষ্ঠা + ১টি হাদিস পড়ো</div>
+                    {/* Arabic */}
+                    <div className="text-center py-4 border-y border-emerald-500/20 my-4">
+                        <p className="text-2xl text-emerald-300 leading-loose">
+                            اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ
+                        </p>
+                        <p className="text-gray-400 text-sm mt-2">
+                            পড়ো তোমার রবের নামে যিনি সৃষ্টি করেছেন। — সূরা আলাক: ১
+                        </p>
                     </div>
-                    <div className="ml-auto">
-                        <div className="w-10 h-10 bg-amber-200 rounded-full flex items-center justify-center text-lg">🎯</div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        {stats.map((stat, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.1 }}
+                                className="bg-white/5 rounded-xl p-3 text-center"
+                            >
+                                <div className="text-2xl mb-1">{stat.icon}</div>
+                                <div className="text-xl font-bold text-emerald-400">{stat.value}</div>
+                                <div className="text-xs text-gray-400">{stat.label}</div>
+                            </motion.div>
+                        ))}
                     </div>
-                </motion.div>
+                </div>
+            </motion.div>
 
-                {/* Modules */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {modules.map((module, i) => (
-                        <AnimatedCard key={module.id} delay={i * 0.08} className="overflow-hidden">
-                            <Link href={module.href}>
-                                <div className={`bg-gradient-to-br ${module.bg} p-6 h-full`}>
-                                    {/* Icon & title */}
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className={`w-14 h-14 bg-gradient-to-br ${module.gradient} rounded-2xl flex items-center justify-center text-3xl shadow-lg ${module.shadow}`}>
-                                            {module.icon}
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xs text-gray-500">{module.completed}/{module.lessons}</div>
-                                            <div className="text-xs text-gray-400">লেসন</div>
-                                        </div>
+            {/* Modules Grid */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+            >
+                <h2 className="text-xl font-bold text-white mb-4">📚 সকল বিভাগ</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {islamicModules.map((module, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.08 }}
+                        >
+                            {module.available ? (
+                                <Link href={module.href}>
+                                    <div className={`group rounded-2xl border border-white/10 bg-white/5 ${module.borderColor} ${module.glowColor} hover:shadow-xl p-5 transition-all duration-300 cursor-pointer h-full`}>
+                                        <ModuleCard module={module} />
                                     </div>
-
-                                    <h3 className="font-bold text-gray-900 text-lg mb-1">{module.title}</h3>
-                                    <p className="text-xs text-gray-500 mb-3">{module.subtitle}</p>
-                                    <p className="text-sm text-gray-600 leading-relaxed mb-4">{module.description}</p>
-
-                                    {/* Progress bar */}
-                                    <div className="w-full bg-white/60 rounded-full h-1.5 mb-4">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${(module.completed / module.lessons) * 100}%` }}
-                                            transition={{ duration: 0.8, delay: i * 0.1 }}
-                                            className={`bg-gradient-to-r ${module.gradient} h-1.5 rounded-full`}
-                                        />
-                                    </div>
-
-                                    <div className={`w-full text-center bg-gradient-to-r ${module.gradient} text-white py-2.5 rounded-xl text-sm font-semibold shadow-md ${module.shadow}`}>
-                                        শুরু করো →
-                                    </div>
+                                </Link>
+                            ) : (
+                                <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 opacity-60 cursor-not-allowed h-full">
+                                    <ModuleCard module={module} />
                                 </div>
-                            </Link>
-                        </AnimatedCard>
+                            )}
+                        </motion.div>
                     ))}
                 </div>
+            </motion.div>
 
-                {/* AI Islamic tutor */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 text-white relative overflow-hidden"
-                >
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl" />
-                    <div className="relative z-10 flex items-center justify-between flex-wrap gap-6">
-                        <div>
-                            <div className="text-3xl mb-3">🤖</div>
-                            <h3 className="text-xl font-bold mb-2">Islamic AI শিক্ষক</h3>
-                            <p className="text-gray-400 text-sm max-w-md">
-                                কুরআন, হাদিস, ফিকহ — যেকোনো ইসলামিক প্রশ্ন করো। AI কুরআন ও সহীহ হাদিসের আলোকে উত্তর দেবে।
-                            </p>
-                        </div>
-                        <Link
-                            href="/dashboard/student/ai-tutor?topic=islamic"
-                            className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg shadow-green-900/30"
-                        >
-                            প্রশ্ন করো →
-                        </Link>
-                    </div>
-                </motion.div>
+            {/* Daily Reminder */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="mt-8 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5 text-center"
+            >
+                <p className="text-amber-300 text-lg mb-1">💡 আজকের অনুপ্রেরণা</p>
+                <p className="text-2xl text-white leading-loose">
+                    طَلَبُ الْعِلْمِ فَرِيضَةٌ عَلَى كُلِّ مُسْلِمٍ
+                </p>
+                <p className="text-gray-400 text-sm mt-2">
+                    জ্ঞান অর্জন করা প্রতিটি মুসলিমের উপর ফরজ। — ইবনে মাজাহ
+                </p>
+            </motion.div>
+        </div>
+    );
+}
 
+function ModuleCard({ module }: { module: typeof islamicModules[0] }) {
+    return (
+        <>
+            <div className="flex items-start justify-between mb-3">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${module.color} flex items-center justify-center text-2xl shadow-md`}>
+                    {module.icon}
+                </div>
+                {module.badge && (
+                    <span className={`text-xs px-2 py-1 rounded-full ${module.badge === 'শীঘ্রই'
+                            ? 'bg-gray-500/20 text-gray-400'
+                            : 'bg-emerald-500/20 text-emerald-400'
+                        }`}>
+                        {module.badge}
+                    </span>
+                )}
             </div>
-        </main>
-    )
+            <h3 className="font-bold text-lg text-white group-hover:text-emerald-400 transition-colors mb-1">
+                {module.title}
+            </h3>
+            <p className="text-gray-400 text-sm leading-relaxed">{module.description}</p>
+            {module.available && (
+                <div className="mt-3 text-emerald-400 text-sm flex items-center gap-1">
+                    শুরু করো <span>→</span>
+                </div>
+            )}
+        </>
+    );
 }

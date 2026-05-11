@@ -28,18 +28,17 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
+  // Login না থাকলে dashboard এ যেতে দেবে না
   if (
-    (pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/student') ||
-    pathname.startsWith('/parent') ||
-    pathname.startsWith('/admin')) &&
+    pathname.startsWith('/dashboard') &&
     !user
   ) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Login/Register এ থাকলে role-redirect page এ পাঠাও
   if ((pathname === '/login' || pathname === '/register') && user) {
-    return NextResponse.redirect(new URL('/dashboard/student', request.url))
+    return NextResponse.redirect(new URL('/auth/redirect', request.url))
   }
 
   return supabaseResponse

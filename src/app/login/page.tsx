@@ -29,7 +29,7 @@ export default function LoginPage() {
                 return
             }
 
-            router.push('/dashboard/student')
+            router.push('/auth/redirect')
             router.refresh()
         } catch {
             setError('কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করো।')

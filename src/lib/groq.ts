@@ -135,3 +135,123 @@ export function getIslamicStudyPrompt(
 - শিক্ষার্থীর সাইকোলজি বুঝে উত্তর দাও, তাকে উৎসাহিত করো, কখনোই হতাশ করো না
 শুরুতে সালাম দিয়ে শুরু করো।`
 }
+
+// ============================================
+// Universal Content Analysis System
+// ============================================
+
+export interface AnalysisResult {
+    mainLessons: string[]
+    prophetExample: string
+    scientificInsights: string
+    lifeImpact: string
+    sectorApplications: Record<string, string>
+    researchFindings: string
+    practicalSteps: string[]
+}
+
+// Quran Ayah Analysis
+export function getQuranAnalysisPrompt(
+    surahName: string,
+    surahNumber: number,
+    ayahStart: number,
+    ayahEnd: number,
+    ayahTexts: string[],
+    translations: string[]
+): string {
+    return `তুমি Ononno প্ল্যাটফর্মের Quran Analysis AI। তুমি একজন বিশেষজ্ঞ ইসলামিক স্কলার এবং আধুনিক বিজ্ঞানী।
+
+বিশ্লেষণ করো — সূরা ${surahName} (${surahNumber}), আয়াত ${ayahStart}-${ayahEnd}:
+
+আয়াতসমূহ:
+${ayahTexts.map((text, i) => `আয়াত ${ayahStart + i}: ${text}`).join('\n')}
+
+বাংলা অর্থ:
+${translations.map((t, i) => `আয়াত ${ayahStart + i}: ${t}`).join('\n')}
+
+নিচের format এ JSON দাও (শুধু JSON, আর কিছু না):
+{
+  "mainLessons": ["শিক্ষা ১", "শিক্ষা ২", "শিক্ষা ৩"],
+  "prophetExample": "রাসূল ﷺ এই আয়াতগুলো কীভাবে বাস্তবে প্রয়োগ করেছিলেন...",
+  "scientificInsights": "আধুনিক বিজ্ঞান এই আয়াতগুলোর সাথে কীভাবে সম্পর্কিত, কোন ভুল ধারণা দূর হয়...",
+  "lifeImpact": "আমাদের দৈনন্দিন জীবনে এই আয়াতগুলোর প্রভাব...",
+  "sectorApplications": {
+    "education": "শিক্ষা খাতে প্রয়োগ",
+    "medical": "চিকিৎসা খাতে প্রয়োগ",
+    "business": "ব্যবসায় প্রয়োগ",
+    "technology": "প্রযুক্তি খাতে প্রয়োগ",
+    "family": "পারিবারিক জীবনে প্রয়োগ",
+    "social": "সামাজিক জীবনে প্রয়োগ"
+  },
+  "researchFindings": "এই আয়াতগুলো নিয়ে গবেষণায় যা পাওয়া গেছে...",
+  "practicalSteps": ["বাস্তব পদক্ষেপ ১", "বাস্তব পদক্ষেপ ২", "বাস্তব পদক্ষেপ ৩"]
+}`
+}
+
+// Universal Content Analysis (সব subject এর জন্য)
+export function getContentAnalysisPrompt(
+    subject: string,
+    topic: string,
+    content: string,
+    sector: string,
+    level: string
+): string {
+    return `তুমি Ononno প্ল্যাটফর্মের Universal Analysis AI।
+
+বিষয়: ${subject}
+টপিক: ${topic}
+স্তর: ${level}
+Sector: ${sector}
+
+Content:
+${content}
+
+নিচের format এ JSON দাও (শুধু JSON, আর কিছু না):
+{
+  "mainLessons": ["মূল শিক্ষা ১", "মূল শিক্ষা ২", "মূল শিক্ষা ৩"],
+  "prophetExample": "ইসলামিক দৃষ্টিকোণ থেকে এই বিষয়ের শিক্ষা ও রাসূল ﷺ এর আদর্শ...",
+  "scientificInsights": "বৈজ্ঞানিক বিশ্লেষণ ও গবেষণা লব্ধ তথ্য...",
+  "lifeImpact": "জীবনে এই বিষয়ের প্রভাব ও গুরুত্ব...",
+  "sectorApplications": {
+    "education": "শিক্ষা খাতে প্রয়োগ",
+    "medical": "চিকিৎসা খাতে প্রয়োগ",
+    "business": "ব্যবসায় প্রয়োগ",
+    "technology": "প্রযুক্তি খাতে প্রয়োগ",
+    "family": "পারিবারিক জীবনে প্রয়োগ",
+    "social": "সামাজিক জীবনে প্রয়োগ"
+  },
+  "researchFindings": "এই বিষয়ে সাম্প্রতিক গবেষণা ও আবিষ্কার...",
+  "practicalSteps": ["বাস্তব পদক্ষেপ ১", "বাস্তব পদক্ষেপ ২", "বাস্তব পদক্ষেপ ৩"]
+}`
+}
+
+// Analysis করার main function
+export async function analyzeContent(
+    prompt: string
+): Promise<AnalysisResult | null> {
+    try {
+        const response = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'তুমি একজন বিশেষজ্ঞ বিশ্লেষক। সবসময় valid JSON দাও, আর কিছু না।',
+                },
+                {
+                    role: 'user',
+                    content: prompt,
+                },
+            ],
+            temperature: 0.7,
+            max_tokens: 2048,
+        })
+
+        const content = response.choices[0]?.message?.content || ''
+        const jsonMatch = content.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) return null
+
+        return JSON.parse(jsonMatch[0]) as AnalysisResult
+    } catch {
+        return null
+    }
+}

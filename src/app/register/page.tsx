@@ -72,9 +72,18 @@ export default function RegisterPage() {
                         gender: formData.gender || null,
                     })
                 }
+
+                // parent profile তৈরি
+                if (formData.role === 'parent') {
+                    await supabase.from('parent_profiles').insert({
+                        user_id: data.user.id,
+                        class_level: formData.class_level,
+                        gender: formData.gender || null,
+                    })
+                }
             }
 
-            router.push('/dashboard/student')
+            router.push('/auth/redirect')
             router.refresh()
 
         } catch {
@@ -188,8 +197,11 @@ export default function RegisterPage() {
                         {step === 2 && (
                             <>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">তুমি কে?</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="role">
+                                        তুমি কে?
+                                    </label>
                                     <select
+                                        id="role"
                                         name="role"
                                         value={formData.role}
                                         onChange={handleChange}
@@ -205,8 +217,11 @@ export default function RegisterPage() {
 
                                 {formData.role === 'student' && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">শ্রেণী</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="class_level">
+                                            শ্রেণী
+                                        </label>
                                         <select
+                                            id='class_level'
                                             name="class_level"
                                             value={formData.class_level}
                                             onChange={handleChange}
@@ -232,8 +247,11 @@ export default function RegisterPage() {
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">ধর্ম</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor='religion'>
+                                        ধর্ম
+                                    </label>
                                     <select
+                                        id='religion'
                                         name="religion"
                                         value={formData.religion}
                                         onChange={handleChange}
@@ -248,8 +266,9 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">লিঙ্গ</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor='gender'>লিঙ্গ</label>
                                     <select
+                                        id='gender'
                                         name="gender"
                                         value={formData.gender}
                                         onChange={handleChange}
