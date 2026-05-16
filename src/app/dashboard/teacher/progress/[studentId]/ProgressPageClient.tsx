@@ -26,7 +26,7 @@ interface Session {
 
 interface ProgressPageClientProps {
     student: Student
-    teacherId: string
+    teacherId?: string
 }
 
 export default function ProgressPageClient({

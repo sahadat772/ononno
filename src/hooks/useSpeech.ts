@@ -1,27 +1,35 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 
-// ── Pre-defined letter pronunciations ─────────────────────────────────────────
-// Browser voice না থাকলে এই text দিয়ে Groq TTS call করবো
+// ── Google Translate TTS (Free, No API Key) ───────────────────────────────────
 
-const BANGLA_VOICE_TEXT: Record<string, string> = {
-    'অ': 'অ - অজগর', 'আ': 'আ - আম', 'ই': 'ই - ইলিশ',
-    'ঈ': 'ঈ - ঈগল', 'উ': 'উ - উট', 'ঊ': 'ঊ - ঊষা',
-    'ঋ': 'ঋ - ঋষি', 'এ': 'এ - একতারা', 'ঐ': 'ঐ - ঐরাবত',
-    'ও': 'ও - ওল', 'ঔ': 'ঔ - ঔষধ',
-    'ক': 'ক - কলা', 'খ': 'খ - খরগোশ', 'গ': 'গ - গরু',
-    'ঘ': 'ঘ - ঘড়ি', 'ঙ': 'ঙ - বাঙ', 'চ': 'চ - চাঁদ',
-    'ছ': 'ছ - ছাগল', 'জ': 'জ - জাম', 'ঝ': 'ঝ - ঝড়',
-    'ট': 'ট - টমেটো', 'ড': 'ড - ডাব', 'ণ': 'ণ - মণি',
-    'ত': 'ত - তরমুজ', 'দ': 'দ - দাঁত', 'ন': 'ন - নৌকা',
-    'প': 'প - পাখি', 'ফ': 'ফ - ফুল', 'ব': 'ব - বাঘ',
-    'ভ': 'ভ - ভালুক', 'ম': 'ম - মাছ', 'য': 'য - যাত্রী',
-    'র': 'র - রকেট', 'ল': 'ল - লাল', 'শ': 'শ - শাপলা',
-    'স': 'স - সাপ', 'হ': 'হ - হাতি',
-    '১': 'এক', '২': 'দুই', '৩': 'তিন', '৪': 'চার', '৫': 'পাঁচ',
-    '৬': 'ছয়', '৭': 'সাত', '৮': 'আট', '৯': 'নয়', '১০': 'দশ',
+function googleTTS(text: string, lang: string): HTMLAudioElement {
+    const encoded = encodeURIComponent(text)
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${lang}&client=tw-ob`
+    return new Audio(url)
 }
 
-const ARABIC_VOICE_TEXT: Record<string, string> = {
+// ── Letter pronunciation map ──────────────────────────────────────────────────
+
+const BANGLA_PRONUNCIATION: Record<string, string> = {
+    'অ': 'অ দিয়ে অজগর', 'আ': 'আ দিয়ে আম', 'ই': 'ই দিয়ে ইলিশ',
+    'ঈ': 'ঈ দিয়ে ঈগল', 'উ': 'উ দিয়ে উট', 'ঊ': 'ঊ দিয়ে ঊষা',
+    'ঋ': 'ঋ দিয়ে ঋষি', 'এ': 'এ দিয়ে একতারা', 'ঐ': 'ঐ দিয়ে ঐরাবত',
+    'ও': 'ও দিয়ে ওল', 'ঔ': 'ঔ দিয়ে ঔষধ',
+    'ক': 'ক দিয়ে কলা', 'খ': 'খ দিয়ে খরগোশ', 'গ': 'গ দিয়ে গরু',
+    'ঘ': 'ঘ দিয়ে ঘড়ি', 'ঙ': 'ঙ দিয়ে বাঙ', 'চ': 'চ দিয়ে চাঁদ',
+    'ছ': 'ছ দিয়ে ছাগল', 'জ': 'জ দিয়ে জাম', 'ঝ': 'ঝ দিয়ে ঝড়',
+    'ট': 'ট দিয়ে টমেটো', 'ড': 'ড দিয়ে ডাব', 'ণ': 'ণ দিয়ে মণি',
+    'ত': 'ত দিয়ে তরমুজ', 'দ': 'দ দিয়ে দাঁত', 'ন': 'ন দিয়ে নৌকা',
+    'প': 'প দিয়ে পাখি', 'ফ': 'ফ দিয়ে ফুল', 'ব': 'ব দিয়ে বাঘ',
+    'ভ': 'ভ দিয়ে ভালুক', 'ম': 'ম দিয়ে মাছ', 'য': 'য দিয়ে যাত্রী',
+    'র': 'র দিয়ে রকেট', 'ল': 'ল দিয়ে লাল', 'শ': 'শ দিয়ে শাপলা',
+    'স': 'স দিয়ে সাপ', 'হ': 'হ দিয়ে হাতি',
+    '১': 'এক', '২': 'দুই', '৩': 'তিন', '৪': 'চার', '৫': 'পাঁচ',
+    '৬': 'ছয়', '৭': 'সাত', '৮': 'আট', '৯': 'নয়', '১০': 'দশ',
+    'এক': 'এক', 'দুই': 'দুই', 'তিন': 'তিন', 'চার': 'চার', 'পাঁচ': 'পাঁচ',
+}
+
+const ARABIC_PRONUNCIATION: Record<string, string> = {
     'ا': 'ألف', 'ب': 'باء', 'ت': 'تاء', 'ث': 'ثاء',
     'ج': 'جيم', 'ح': 'حاء', 'خ': 'خاء', 'د': 'دال',
     'ذ': 'ذال', 'ر': 'راء', 'ز': 'زاي', 'س': 'سين',
@@ -34,112 +42,67 @@ const ARABIC_VOICE_TEXT: Record<string, string> = {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useSpeech() {
-    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
     const [isSpeaking, setIsSpeaking] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return
-        const load = () => setVoices(window.speechSynthesis.getVoices())
-        load()
-        window.speechSynthesis.onvoiceschanged = load
-    }, [])
-
-    // ── Browser TTS (English এর জন্য) ─────────────────────────────────────────
-    const speakWithBrowser = useCallback((text: string, lang: string) => {
-        if (typeof window === 'undefined') return false
-
-        const voice = voices.find(v => v.lang === lang)
-            || voices.find(v => v.lang.startsWith(lang.split('-')[0]))
-
-        if (!voice && lang !== 'en-US') return false
-
-        window.speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(text)
-        if (voice) utterance.voice = voice
-        utterance.lang = lang
-        utterance.rate = 0.8
-        utterance.pitch = 1.1
-
-        utterance.onstart = () => setIsSpeaking(true)
-        utterance.onend = () => setIsSpeaking(false)
-        utterance.onerror = () => setIsSpeaking(false)
-
-        window.speechSynthesis.speak(utterance)
-        return true
-    }, [voices])
-
-    // ── Groq TTS (বাংলা ও Arabic এর জন্য) ────────────────────────────────────
-    const speakWithGroq = useCallback(async (text: string, lang: 'bn-BD' | 'ar-SA') => {
-        setIsLoading(true)
-        setIsSpeaking(true)
-
-        try {
-            const response = await fetch('/api/tts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, lang }),
-            })
-
-            if (!response.ok) throw new Error('TTS failed')
-
-            const audioBlob = await response.blob()
-            const audioUrl = URL.createObjectURL(audioBlob)
-            const audio = new Audio(audioUrl)
-
-            audio.onended = () => {
-                setIsSpeaking(false)
-                URL.revokeObjectURL(audioUrl)
-            }
-            audio.onerror = () => setIsSpeaking(false)
-
-            await audio.play()
-        } catch {
-            // Fallback — browser TTS দিয়ে try করো
-            speakWithBrowser(text, lang)
-            setIsSpeaking(false)
-        } finally {
-            setIsLoading(false)
-        }
-    }, [speakWithBrowser])
-
-    // ── Main speak function ───────────────────────────────────────────────────
     const speak = useCallback((
         text: string,
         lang: 'bn-BD' | 'en-US' | 'ar-SA' = 'bn-BD'
     ) => {
         if (typeof window === 'undefined') return
 
-        // English → browser TTS (সবসময় কাজ করে)
-        if (lang === 'en-US') {
-            speakWithBrowser(text, 'en-US')
-            return
+        // Text map থেকে pronunciation নাও
+        let speakText = text
+        if (lang === 'bn-BD') {
+            speakText = BANGLA_PRONUNCIATION[text] || text
+        } else if (lang === 'ar-SA') {
+            speakText = ARABIC_PRONUNCIATION[text] || text
         }
 
-        // বাংলা → letter pronunciation map check করো
-        const banglaText = BANGLA_VOICE_TEXT[text] || text
-        const arabicText = ARABIC_VOICE_TEXT[text] || text
+        // Google TTS lang code
+        const ttsLang = lang === 'bn-BD' ? 'bn' : lang === 'ar-SA' ? 'ar' : 'en'
 
-        // আগে browser এ try করো
-        const browserWorked = speakWithBrowser(
-            lang === 'bn-BD' ? banglaText : arabicText,
-            lang
-        )
+        setIsLoading(true)
+        setIsSpeaking(true)
 
-        // Browser কাজ না করলে Groq TTS use করো
-        if (!browserWorked) {
-            speakWithGroq(
-                lang === 'bn-BD' ? banglaText : arabicText,
-                lang
-            )
+        const audio = googleTTS(speakText, ttsLang)
+
+        audio.oncanplaythrough = () => {
+            setIsLoading(false)
+            audio.play().catch(() => {
+                // Autoplay blocked — browser TTS fallback
+                fallbackBrowserTTS(speakText, lang)
+                setIsSpeaking(false)
+            })
         }
-    }, [speakWithBrowser, speakWithGroq])
+
+        audio.onended = () => setIsSpeaking(false)
+
+        audio.onerror = () => {
+            setIsLoading(false)
+            setIsSpeaking(false)
+            // Fallback to browser TTS
+            fallbackBrowserTTS(speakText, lang)
+        }
+
+        audio.load()
+    }, [])
 
     const stop = useCallback(() => {
-        if (typeof window === 'undefined') return
-        window.speechSynthesis.cancel()
         setIsSpeaking(false)
     }, [])
 
     return { speak, stop, isSpeaking, isLoading }
+}
+
+// ── Browser TTS Fallback ──────────────────────────────────────────────────────
+
+function fallbackBrowserTTS(text: string, lang: string) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = lang
+    utterance.rate = 0.8
+    utterance.pitch = 1.1
+    window.speechSynthesis.speak(utterance)
 }
