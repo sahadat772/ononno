@@ -1,9 +1,12 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createServerSupabaseClient()
+        const adminSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
         const body = await req.json()
         const {
             teacher_id,
@@ -22,7 +25,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Supabase Auth এ নতুন user বানাও
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
             email,
             password,
             email_confirm: true,
@@ -33,24 +36,28 @@ export async function POST(req: NextRequest) {
         })
 
         if (authError || !authData.user) {
+            const message = authError?.message?.includes('already been registered')
+                ? 'এই email এ আগে থেকেই account আছে। অন্য email ব্যবহার করো।'
+                : authError?.message || 'User creation failed'
             return NextResponse.json(
-                { error: authError?.message || 'User creation failed' },
-                { status: 500 }
+                { error: message },
+                { status: 400 }
             )
         }
 
         const newUserId = authData.user.id
 
-        // profiles table এ insert
-        const { error: profileError } = await supabase
+        // এটা দিয়ে replace করো
+        // profiles table এ upsert (আগে থেকে থাকলেও update হবে)
+        const { error: profileError } = await adminSupabase
             .from('profiles')
-            .insert({
+            .upsert({
                 id: newUserId,
                 full_name,
                 email,
                 phone: phone || null,
                 role: 'student',
-            })
+            }, { onConflict: 'id' })
 
         if (profileError) {
             return NextResponse.json(
@@ -60,7 +67,7 @@ export async function POST(req: NextRequest) {
         }
 
         // student_profiles table এ insert
-        const { error: studentProfileError } = await supabase
+        const { error: studentProfileError } = await adminSupabase
             .from('student_profiles')
             .insert({
                 user_id: newUserId,
@@ -75,7 +82,7 @@ export async function POST(req: NextRequest) {
         }
 
         // teacher_students relation add
-        const { error: relationError } = await supabase
+        const { error: relationError } = await adminSupabase
             .from('teacher_students')
             .insert({
                 teacher_id,
@@ -89,13 +96,23 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // Welcome notification
-        await supabase.from('notifications').insert({
+        // Welcome notification child কে
+        await adminSupabase.from('notifications').insert({
             recipient_id: newUserId,
             sender_id: teacher_id,
             type: 'welcome',
             title: 'স্বাগতম!',
             body: `${full_name}, তোমার account তৈরি হয়েছে। শেখা শুরু করো!`,
+            is_read: false,
+        })
+
+        // Parent কেও notification
+        await adminSupabase.from('notifications').insert({
+            recipient_id: teacher_id,
+            sender_id: newUserId,
+            type: 'child_created',
+            title: 'Child Account তৈরি হয়েছে',
+            body: `${full_name} এর account সফলভাবে তৈরি হয়েছে।`,
             is_read: false,
         })
 

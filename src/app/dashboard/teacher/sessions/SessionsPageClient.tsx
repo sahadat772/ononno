@@ -86,7 +86,7 @@ export default function SessionsPageClient({
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => router.push('/dashboard/teacher')}
+                        onClick={() => router.back()}
                         className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition"
                     >
                         ←

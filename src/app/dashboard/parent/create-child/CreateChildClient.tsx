@@ -15,8 +15,9 @@ export default function CreateChildClient({
 }: CreateChildClientProps) {
     const router = useRouter()
 
-    const handleSuccess = (childId: string) => {
-        router.push(`/dashboard/parent/child/${childId}/progress`)
+    const handleSuccess = () => {
+        router.push('/dashboard/parent')
+        router.refresh()
     }
 
     return (
@@ -43,7 +44,7 @@ export default function CreateChildClient({
                 <CreateAccountForm
                     role="parent"
                     creatorId={parentId}
-                    onSuccess={handleSuccess}
+                    onSuccess={() => handleSuccess()}
                 />
             </div>
         </div>

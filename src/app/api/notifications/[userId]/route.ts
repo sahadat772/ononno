@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
     try {
         const supabase = await createServerSupabaseClient()
-        const { userId } = params
+        const { userId } = await params
 
         if (!userId) {
             return NextResponse.json(
@@ -71,11 +71,11 @@ export async function GET(
 // Mark as read
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
     try {
         const supabase = await createServerSupabaseClient()
-        const { userId } = params
+        const { userId } = await params
         const body = await req.json()
         const { notification_id, mark_all } = body
 

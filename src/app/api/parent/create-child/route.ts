@@ -1,9 +1,14 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
     try {
-        const supabase =await createServerSupabaseClient()
+        const supabase = await createServerSupabaseClient()
+        const adminSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
         const body = await req.json()
         const {
             parent_id,
@@ -22,7 +27,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Supabase Auth এ নতুন user বানাও
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
             email,
             password,
             email_confirm: true,
@@ -33,24 +38,28 @@ export async function POST(req: NextRequest) {
         })
 
         if (authError || !authData.user) {
+            const message = authError?.message?.includes('already been registered')
+                ? 'এই email এ আগে থেকেই account আছে। অন্য email ব্যবহার করো।'
+                : authError?.message || 'User creation failed'
             return NextResponse.json(
-                { error: authError?.message || 'User creation failed' },
-                { status: 500 }
+                { error: message },
+                { status: 400 }
             )
         }
 
         const newUserId = authData.user.id
 
         // profiles table এ insert
-        const { error: profileError } = await supabase
+        // profiles table এ upsert (আগে থেকে থাকলেও update হবে)
+        const { error: profileError } = await adminSupabase
             .from('profiles')
-            .insert({
+            .upsert({
                 id: newUserId,
                 full_name,
                 email,
                 phone: phone || null,
                 role: 'student',
-            })
+            }, { onConflict: 'id' })
 
         if (profileError) {
             return NextResponse.json(

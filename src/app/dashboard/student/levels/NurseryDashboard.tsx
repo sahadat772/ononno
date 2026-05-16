@@ -121,7 +121,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
     const firstName = profile?.full_name?.split(' ')[0] || 'বন্ধু'
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#0a0a1a] via-[#0d1a2e] to-[#0a0a1a] p-4 md:p-6">
+        <div className="min-h-screen bg-linear-to-b from-[#0a0a1a] via-[#0d1a2e] to-[#0a0a1a] p-4 md:p-6">
 
             {/* Celebration Modal */}
             <AnimatePresence>
@@ -137,7 +137,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                             initial={{ scale: 0.5, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.5, opacity: 0 }}
-                            className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl"
+                            className="bg-linear-to-br from-yellow-400 to-orange-500 rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl"
                             onClick={e => e.stopPropagation()}
                         >
                             <motion.div
@@ -168,7 +168,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6"
             >
-                <div className="rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-6 relative overflow-hidden">
+                <div className="rounded-3xl bg-linear-to-r from-violet-600 via-purple-600 to-indigo-600 p-6 relative overflow-hidden">
                     {/* Decorative circles */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -218,7 +218,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: '0%' }}
-                                className="bg-gradient-to-r from-yellow-400 to-orange-400 h-3 rounded-full"
+                                className="bg-linear-to-r from-yellow-400 to-orange-400 h-3 rounded-full"
                             />
                         </div>
                     </div>
@@ -248,7 +248,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                         >
                             {stat.icon}
                         </motion.div>
-                        <div className={`text-lg font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                        <div className={`text-lg font-bold bg-linear-to-r ${stat.color} bg-clip-text text-transparent`}>
                             {stat.value}
                         </div>
                         <div className="text-xs text-gray-400">{stat.label}</div>
@@ -266,7 +266,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                     <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="rounded-3xl bg-gradient-to-r from-violet-600 to-purple-700 p-5 relative overflow-hidden cursor-pointer"
+                        className="rounded-3xl bg-linear-to-r from-violet-600 to-purple-700 p-5 relative overflow-hidden cursor-pointer"
                     >
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
                             <motion.div
@@ -307,7 +307,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                         <motion.div
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 relative overflow-hidden cursor-pointer"
+                            className="rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 p-5 relative overflow-hidden cursor-pointer"
                         >
                             <div className="absolute top-0 right-0 text-6xl opacity-20">📖</div>
                             <div className="relative">
@@ -331,7 +331,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-4 cursor-pointer h-full"
+                                className="rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 p-4 cursor-pointer h-full"
                             >
                                 <div className="text-3xl mb-2">🤲</div>
                                 <h3 className="text-white font-bold">দোয়া শিখি</h3>
@@ -342,7 +342,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 p-4 cursor-pointer h-full"
+                                className="rounded-2xl bg-linear-to-br from-purple-500 to-violet-600 p-4 cursor-pointer h-full"
                             >
                                 <div className="text-3xl mb-2">🕌</div>
                                 <h3 className="text-white font-bold">নামাজ শিখি</h3>
@@ -376,7 +376,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                             whileTap={{ scale: 0.95 }}
                         >
                             <Link href={subject.href}>
-                                <div className={`rounded-2xl bg-gradient-to-br ${subject.color} p-5 cursor-pointer relative overflow-hidden`}>
+                                <div className={`rounded-2xl bg-linear-to-br ${subject.color} p-5 cursor-pointer relative overflow-hidden`}>
                                     {/* Background decoration */}
                                     <div className="absolute top-0 right-0 text-5xl opacity-20 -translate-y-1/4 translate-x-1/4">
                                         {subject.icon}
@@ -422,7 +422,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                     <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="rounded-3xl bg-gradient-to-r from-violet-600 to-purple-700 p-6 relative overflow-hidden cursor-pointer"
+                        className="rounded-3xl bg-linear-to-r from-violet-600 to-purple-700 p-6 relative overflow-hidden cursor-pointer"
                     >
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
                             <motion.div
@@ -489,7 +489,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4 text-center"
+                className="rounded-2xl bg-linear-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-4 text-center"
             >
                 <p className="text-amber-300 text-sm font-semibold mb-1">💡 আজকের কথা</p>
                 <p className="text-white text-lg">

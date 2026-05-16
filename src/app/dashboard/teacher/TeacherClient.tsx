@@ -51,122 +51,115 @@ export default function TeacherClient({ teacher }: TeacherClientProps) {
         avgDuration: 0,
     })
     const [isLoading, setIsLoading] = useState(true)
-    const [showCreateForm, setShowCreateForm] = useState(false)
     const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'create'>('overview')
-
-    const fetchStudents = async () => {
-        setIsLoading(true)
-
-        // Teacher এর students fetch করো
-        const { data: teacherStudents } = await supabase
-            .from('teacher_students')
-            .select(`
-        student_id,
-        profiles!teacher_students_student_id_fkey (
-          id,
-          full_name,
-          email,
-          avatar_url
-        )
-      `)
-            .eq('teacher_id', teacher.id)
-
-        if (!teacherStudents) {
-            setIsLoading(false)
-            return
-        }
-
-        // প্রতিটি student এর last session এবং progress fetch করো
-        const studentsWithData = await Promise.all(
-            teacherStudents.map(async (ts: { student_id: string; profiles: { id: string; full_name: string; email: string; avatar_url: string | null }[] }) => {
-                const profile = ts.profiles[0]
-
-                // Last session
-                const { data: lastSession } = await supabase
-                    .from('user_sessions')
-                    .select('login_at, duration_minutes')
-                    .eq('user_id', profile.id)
-                    .order('login_at', { ascending: false })
-                    .limit(1)
-                    .single()
-
-                // Student profile (class level)
-                const { data: studentProfile } = await supabase
-                    .from('student_profiles')
-                    .select('class_level')
-                    .eq('user_id', profile.id)
-                    .single()
-
-                // Progress count
-                const { count: completedCount } = await supabase
-                    .from('learning_progress')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', profile.id)
-                    .eq('status', 'completed')
-
-                const { count: totalCount } = await supabase
-                    .from('learning_progress')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', profile.id)
-
-                return {
-                    id: profile.id,
-                    full_name: profile.full_name,
-                    email: profile.email,
-                    avatar_url: profile.avatar_url,
-                    class_level: studentProfile?.class_level || 'Unknown',
-                    lastSession: lastSession || null,
-                    completedLessons: completedCount || 0,
-                    totalLessons: totalCount || 0,
-                }
-            })
-        )
-
-        setStudents(studentsWithData)
-
-        // Stats calculate করো
-        const todayStart = new Date()
-        todayStart.setHours(0, 0, 0, 0)
-
-        let activeToday = 0
-        let totalCompleted = 0
-        let totalDuration = 0
-        let durationCount = 0
-
-        studentsWithData.forEach((s) => {
-            if (
-                s.lastSession &&
-                new Date(s.lastSession.login_at) >= todayStart
-            ) {
-                activeToday++
-            }
-            totalCompleted += s.completedLessons || 0
-            if (s.lastSession?.duration_minutes) {
-                totalDuration += s.lastSession.duration_minutes
-                durationCount++
-            }
-        })
-
-        setStats({
-            totalStudents: studentsWithData.length,
-            activeToday,
-            totalLessonsCompleted: totalCompleted,
-            avgDuration: durationCount > 0 ? Math.round(totalDuration / durationCount) : 0,
-        })
-
-        setIsLoading(false)
-    }
 
     useEffect(() => {
         const loadStudents = async () => {
-            await fetchStudents()
-        }
-        void loadStudents()
-    }, [teacher.id])
+            setIsLoading(true)
 
-    const handleStudentCreated = (studentId: string) => {
-        void fetchStudents()
+            // Step 1: student_id গুলো আনো
+            const { data: teacherStudents } = await supabase
+                .from('teacher_students')
+                .select('student_id')
+                .eq('teacher_id', teacher.id)
+
+            if (!teacherStudents || teacherStudents.length === 0) {
+                setIsLoading(false)
+                return
+            }
+
+            const studentIds = teacherStudents.map((ts) => ts.student_id)
+
+            // Step 2: profiles fetch
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, avatar_url')
+                .in('id', studentIds)
+
+            if (!profilesData || profilesData.length === 0) {
+                setIsLoading(false)
+                return
+            }
+
+            // Step 3: প্রতিটি student এর data fetch
+            const studentsWithData = await Promise.all(
+                profilesData.map(async (profile) => {
+                    const { data: lastSession } = await supabase
+                        .from('user_sessions')
+                        .select('login_at, duration_minutes')
+                        .eq('user_id', profile.id)
+                        .order('login_at', { ascending: false })
+                        .limit(1)
+                        .single()
+
+                    const { data: studentProfile } = await supabase
+                        .from('student_profiles')
+                        .select('class_level')
+                        .eq('user_id', profile.id)
+                        .single()
+
+                    const { count: completedCount } = await supabase
+                        .from('learning_progress')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', profile.id)
+                        .eq('status', 'completed')
+
+                    const { count: totalCount } = await supabase
+                        .from('learning_progress')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', profile.id)
+
+                    return {
+                        id: profile.id,
+                        full_name: profile.full_name,
+                        email: profile.email,
+                        avatar_url: profile.avatar_url,
+                        class_level: studentProfile?.class_level || 'Unknown',
+                        lastSession: lastSession || null,
+                        completedLessons: completedCount || 0,
+                        totalLessons: totalCount || 0,
+                    }
+                })
+            )
+
+            setStudents(studentsWithData)
+
+            // Stats calculate
+            const todayStart = new Date()
+            todayStart.setHours(0, 0, 0, 0)
+
+            let activeToday = 0
+            let totalCompleted = 0
+            let totalDuration = 0
+            let durationCount = 0
+
+            studentsWithData.forEach((s) => {
+                if (s.lastSession && new Date(s.lastSession.login_at) >= todayStart) {
+                    activeToday++
+                }
+                totalCompleted += s.completedLessons || 0
+                if (s.lastSession?.duration_minutes) {
+                    totalDuration += s.lastSession.duration_minutes
+                    durationCount++
+                }
+            })
+
+            setStats({
+                totalStudents: studentsWithData.length,
+                activeToday,
+                totalLessonsCompleted: totalCompleted,
+                avgDuration: durationCount > 0 ? Math.round(totalDuration / durationCount) : 0,
+            })
+
+            setIsLoading(false)
+        }
+
+        void loadStudents()
+    }, [teacher.id, supabase])
+
+    const handleStudentCreated = () => {
         setActiveTab('students')
+        router.refresh()
     }
 
     const statCards = [
@@ -210,7 +203,17 @@ export default function TeacherClient({ teacher }: TeacherClientProps) {
                             <p className="text-white/40 text-xs">Teacher Dashboard</p>
                         </div>
                     </div>
-                    <NotificationBell userId={teacher.id} />
+                    <div className="flex items-center gap-2">
+                        <NotificationBell userId={teacher.id} />
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => router.push('/dashboard/teacher/profile')}
+                            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"
+                        >
+                            👤
+                        </motion.button>
+                    </div>
                 </div>
             </div>
 
@@ -247,8 +250,8 @@ export default function TeacherClient({ teacher }: TeacherClientProps) {
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key as typeof activeTab)}
                             className={`flex-1 py-2 rounded-xl text-sm font-medium transition ${activeTab === tab.key
-                                ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white'
-                                : 'text-white/50 hover:text-white'
+                                    ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white'
+                                    : 'text-white/50 hover:text-white'
                                 }`}
                         >
                             {tab.label}

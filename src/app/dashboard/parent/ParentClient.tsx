@@ -31,8 +31,8 @@ interface Child {
         logout_at: string | null
         duration_minutes: number | null
     } | null
-    completedLessons?: number
-    totalLessons?: number
+    completedLessons: number
+    totalLessons: number
 }
 
 interface Props {
@@ -135,6 +135,12 @@ export default function ParentClient({ profile, childrenData }: Props) {
                         {profile?.id && (
                             <NotificationBell userId={profile.id} />
                         )}
+                        <Link
+                            href="/dashboard/parent/profile"
+                            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"
+                        >
+                            👤
+                        </Link>
 
                         <button
                             onClick={() => setShowProfile(!showProfile)}
@@ -379,8 +385,8 @@ export default function ParentClient({ profile, childrenData }: Props) {
                                                         <p className="text-gray-400 text-sm">{child.class_level}</p>
                                                     </div>
                                                     <span className={`text-xs px-2 py-1 rounded-full border ${isOnlineToday
-                                                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                                            : 'bg-white/10 text-white/40 border-white/10'
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                                        : 'bg-white/10 text-white/40 border-white/10'
                                                         }`}>
                                                         {isOnlineToday ? '🟢 আজ Active' : '⚫ Offline'}
                                                     </span>

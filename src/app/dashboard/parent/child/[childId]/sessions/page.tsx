@@ -5,9 +5,10 @@ import SessionsPageClient from '@/app/dashboard/teacher/sessions/SessionsPageCli
 export default async function ParentChildSessionsPage({
     params,
 }: {
-    params: { childId: string }
+    params: Promise<{ childId: string }>
 }) {
     const supabase = await createServerSupabaseClient()
+    const { childId } = await params
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
@@ -26,7 +27,7 @@ export default async function ParentChildSessionsPage({
         .from('parent_children')
         .select('id')
         .eq('parent_id', user.id)
-        .eq('child_id', params.childId)
+        .eq('child_id', childId)
         .single()
 
     if (!relation) redirect('/dashboard/parent')
@@ -35,7 +36,7 @@ export default async function ParentChildSessionsPage({
     const { data: child } = await supabase
         .from('profiles')
         .select('id, full_name, email, avatar_url')
-        .eq('id', params.childId)
+        .eq('id', childId)
         .single()
 
     if (!child) redirect('/dashboard/parent')
@@ -44,7 +45,7 @@ export default async function ParentChildSessionsPage({
     const { data: studentProfile } = await supabase
         .from('student_profiles')
         .select('class_level')
-        .eq('user_id', params.childId)
+        .eq('user_id', childId)
         .single()
 
     const selectedStudent = {

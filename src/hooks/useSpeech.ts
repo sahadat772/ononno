@@ -1,32 +1,38 @@
 import { useCallback, useState } from 'react'
 
-// ── Google Translate TTS (Free, No API Key) ───────────────────────────────────
-
-function googleTTS(text: string, lang: string): HTMLAudioElement {
-    const encoded = encodeURIComponent(text)
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${lang}&client=tw-ob`
-    return new Audio(url)
-}
-
-// ── Letter pronunciation map ──────────────────────────────────────────────────
-
 const BANGLA_PRONUNCIATION: Record<string, string> = {
     'অ': 'অ দিয়ে অজগর', 'আ': 'আ দিয়ে আম', 'ই': 'ই দিয়ে ইলিশ',
     'ঈ': 'ঈ দিয়ে ঈগল', 'উ': 'উ দিয়ে উট', 'ঊ': 'ঊ দিয়ে ঊষা',
     'ঋ': 'ঋ দিয়ে ঋষি', 'এ': 'এ দিয়ে একতারা', 'ঐ': 'ঐ দিয়ে ঐরাবত',
     'ও': 'ও দিয়ে ওল', 'ঔ': 'ঔ দিয়ে ঔষধ',
     'ক': 'ক দিয়ে কলা', 'খ': 'খ দিয়ে খরগোশ', 'গ': 'গ দিয়ে গরু',
-    'ঘ': 'ঘ দিয়ে ঘড়ি', 'ঙ': 'ঙ দিয়ে বাঙ', 'চ': 'চ দিয়ে চাঁদ',
-    'ছ': 'ছ দিয়ে ছাগল', 'জ': 'জ দিয়ে জাম', 'ঝ': 'ঝ দিয়ে ঝড়',
-    'ট': 'ট দিয়ে টমেটো', 'ড': 'ড দিয়ে ডাব', 'ণ': 'ণ দিয়ে মণি',
-    'ত': 'ত দিয়ে তরমুজ', 'দ': 'দ দিয়ে দাঁত', 'ন': 'ন দিয়ে নৌকা',
-    'প': 'প দিয়ে পাখি', 'ফ': 'ফ দিয়ে ফুল', 'ব': 'ব দিয়ে বাঘ',
-    'ভ': 'ভ দিয়ে ভালুক', 'ম': 'ম দিয়ে মাছ', 'য': 'য দিয়ে যাত্রী',
-    'র': 'র দিয়ে রকেট', 'ল': 'ল দিয়ে লাল', 'শ': 'শ দিয়ে শাপলা',
-    'স': 'স দিয়ে সাপ', 'হ': 'হ দিয়ে হাতি',
+    'ঘ': 'ঘ দিয়ে ঘড়ি', 'চ': 'চ দিয়ে চাঁদ', 'ছ': 'ছ দিয়ে ছাগল',
+    'জ': 'জ দিয়ে জাম', 'ঝ': 'ঝ দিয়ে ঝড়', 'ট': 'ট দিয়ে টমেটো',
+    'ড': 'ড দিয়ে ডাব', 'ণ': 'ণ দিয়ে মণি', 'ত': 'ত দিয়ে তরমুজ',
+    'দ': 'দ দিয়ে দাঁত', 'ন': 'ন দিয়ে নৌকা', 'প': 'প দিয়ে পাখি',
+    'ফ': 'ফ দিয়ে ফুল', 'ব': 'ব দিয়ে বাঘ', 'ভ': 'ভ দিয়ে ভালুক',
+    'ম': 'ম দিয়ে মাছ', 'য': 'য দিয়ে যাত্রী', 'র': 'র দিয়ে রকেট',
+    'ল': 'ল দিয়ে লাল', 'শ': 'শ দিয়ে শাপলা', 'স': 'স দিয়ে সাপ',
+    'হ': 'হ দিয়ে হাতি',
     '১': 'এক', '২': 'দুই', '৩': 'তিন', '৪': 'চার', '৫': 'পাঁচ',
     '৬': 'ছয়', '৭': 'সাত', '৮': 'আট', '৯': 'নয়', '১০': 'দশ',
     'এক': 'এক', 'দুই': 'দুই', 'তিন': 'তিন', 'চার': 'চার', 'পাঁচ': 'পাঁচ',
+    'ছয়': 'ছয়', 'সাত': 'সাত', 'আট': 'আট', 'নয়': 'নয়', 'দশ': 'দশ',
+    'এগারো': 'এগারো', 'বারো': 'বারো', 'তেরো': 'তেরো', 'চৌদ্দ': 'চৌদ্দ',
+    'পনেরো': 'পনেরো', 'ষোলো': 'ষোলো', 'সতেরো': 'সতেরো', 'আঠারো': 'আঠারো',
+    'উনিশ': 'উনিশ', 'বিশ': 'বিশ', 'ত্রিশ': 'ত্রিশ', 'চল্লিশ': 'চল্লিশ',
+    'পঞ্চাশ': 'পঞ্চাশ',
+    '১১': 'এগারো', '১২': 'বারো', '১৩': 'তেরো', '১৪': 'চৌদ্দ',
+    '১৫': 'পনেরো', '২০': 'বিশ', '৩০': 'ত্রিশ', '৪০': 'চল্লিশ', '৫০': 'পঞ্চাশ',
+    '১+১': 'এক যোগ এক সমান দুই',
+    '২+২': 'দুই যোগ দুই সমান চার',
+    '৩+৩': 'তিন যোগ তিন সমান ছয়',
+    '৪+৪': 'চার যোগ চার সমান আট',
+    '৫+৫': 'পাঁচ যোগ পাঁচ সমান দশ',
+    '৫-১': 'পাঁচ বিয়োগ এক সমান চার',
+    '৬-২': 'ছয় বিয়োগ দুই সমান চার',
+    '৮-৩': 'আট বিয়োগ তিন সমান পাঁচ',
+    '১০-৫': 'দশ বিয়োগ পাঁচ সমান পাঁচ',
 }
 
 const ARABIC_PRONUNCIATION: Record<string, string> = {
@@ -39,7 +45,6 @@ const ARABIC_PRONUNCIATION: Record<string, string> = {
     'ن': 'نون', 'ه': 'هاء', 'و': 'واو', 'ي': 'ياء',
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useSpeech() {
     const [isSpeaking, setIsSpeaking] = useState(false)
@@ -51,7 +56,7 @@ export function useSpeech() {
     ) => {
         if (typeof window === 'undefined') return
 
-        // Text map থেকে pronunciation নাও
+        // Text pronunciation map
         let speakText = text
         if (lang === 'bn-BD') {
             speakText = BANGLA_PRONUNCIATION[text] || text
@@ -59,50 +64,51 @@ export function useSpeech() {
             speakText = ARABIC_PRONUNCIATION[text] || text
         }
 
-        // Google TTS lang code
-        const ttsLang = lang === 'bn-BD' ? 'bn' : lang === 'ar-SA' ? 'ar' : 'en'
+        // English — browser TTS (সবসময় কাজ করে)
+        if (lang === 'en-US') {
+            window.speechSynthesis.cancel()
+            const utterance = new SpeechSynthesisUtterance(speakText)
+            utterance.lang = 'en-US'
+            utterance.rate = 0.8
+            utterance.pitch = 1.1
+            utterance.onstart = () => setIsSpeaking(true)
+            utterance.onend = () => setIsSpeaking(false)
+            window.speechSynthesis.speak(utterance)
+            return
+        }
+
+        // বাংলা ও Arabic — API route দিয়ে Google TTS
+        const ttsLang = lang === 'bn-BD' ? 'bn' : 'ar'
+        const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
 
         setIsLoading(true)
         setIsSpeaking(true)
 
-        const audio = googleTTS(speakText, ttsLang)
+        const audio = new Audio(apiUrl)
 
         audio.oncanplaythrough = () => {
             setIsLoading(false)
             audio.play().catch(() => {
-                // Autoplay blocked — browser TTS fallback
-                fallbackBrowserTTS(speakText, lang)
                 setIsSpeaking(false)
+                setIsLoading(false)
             })
         }
 
         audio.onended = () => setIsSpeaking(false)
-
         audio.onerror = () => {
-            setIsLoading(false)
             setIsSpeaking(false)
-            // Fallback to browser TTS
-            fallbackBrowserTTS(speakText, lang)
+            setIsLoading(false)
         }
 
         audio.load()
     }, [])
 
     const stop = useCallback(() => {
+        if (typeof window === 'undefined') return
+        window.speechSynthesis.cancel()
         setIsSpeaking(false)
     }, [])
 
     return { speak, stop, isSpeaking, isLoading }
 }
 
-// ── Browser TTS Fallback ──────────────────────────────────────────────────────
-
-function fallbackBrowserTTS(text: string, lang: string) {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = lang
-    utterance.rate = 0.8
-    utterance.pitch = 1.1
-    window.speechSynthesis.speak(utterance)
-}

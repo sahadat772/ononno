@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useSpeech } from '@/hooks/useSpeech'
@@ -8,7 +8,18 @@ import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ExerciseType = 'intro' | 'listen-repeat' | 'tap-correct' | 'bubble-pop' | 'letter-puzzle' | 'trace' | 'quiz'
+export type ExerciseType =
+    | 'intro'
+    | 'listen-repeat'
+    | 'tap-correct'
+    | 'bubble-pop'
+    | 'letter-puzzle'
+    | 'trace'
+    | 'quiz'
+    | 'pronounce'
+    | 'archery-target'
+    | 'word-builder'
+    | 'matching'
 
 export type Exercise = {
     id: string
@@ -165,6 +176,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
         setHasDrawn(false)
     }
+
 
     // ── Result Screen ─────────────────────────────────────────────────────────
 
@@ -331,30 +343,48 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}
                                 className={`w-32 h-32 rounded-3xl bg-linear-to-br ${lesson.color} flex items-center justify-center text-6xl font-bold text-white shadow-xl mx-auto mb-3`}
                             >{currentEx.content}</motion.div>
-                            <p className="text-2xl font-bold text-white mb-5">{lesson.word}</p>
+                            <p className="text-2xl font-bold text-white mb-2">{lesson.word}</p>
 
-                            {listenState === 'correct' && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-5xl mb-4">🌟</motion.div>}
+                            {/* আবার শুনি button */}
+                            <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
+                                className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-6 mx-auto flex items-center gap-2`}
+                            >🔊 আবার শুনি</button>
+
+                            {listenState === 'correct' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-5xl mb-4">🌟</motion.div>
+                            )}
                             {listenState === 'wrong' && (
                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                                     className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 mb-4 text-red-400 text-sm"
                                 >আবার চেষ্টা করো! 💪</motion.div>
                             )}
 
-                            <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
-                                className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-4 mx-auto flex items-center gap-2`}
-                            >🔊 আবার শুনি</button>
-
                             {listenState === 'idle' && (
-                                <>
-                                    <motion.button whileTap={{ scale: 0.95 }}
-                                        onClick={() => startListening(lesson.lang)}
-                                        disabled={isListening}
-                                        className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg flex items-center justify-center gap-2 ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 border-2 border-white/20 text-white'}`}
-                                    >{isListening ? '🎤 শুনছি...' : '🎤 এখন বলো!'}</motion.button>
-                                    {!supported && (
-                                        <button onClick={nextEx} className="mt-3 text-gray-500 text-sm hover:text-gray-300">মাইক নেই? এড়িয়ে যাও →</button>
+                                <div className="space-y-3">
+                                    {/* Mic button — supported হলে দেখাবে */}
+                                    {supported && (
+                                        <motion.button whileTap={{ scale: 0.95 }}
+                                            onClick={() => startListening(lesson.lang)}
+                                            disabled={isListening}
+                                            className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg flex items-center justify-center gap-2 ${isListening
+                                                ? 'bg-red-500 text-white animate-pulse'
+                                                : 'bg-white/10 border-2 border-white/20 text-white hover:bg-white/20'
+                                                }`}
+                                        >{isListening ? '🎤 শুনছি...' : '🎤 এখন বলো!'}</motion.button>
                                     )}
-                                </>
+
+                                    {/* সবসময় এই button থাকবে */}
+                                    <motion.button whileTap={{ scale: 0.97 }}
+                                        onClick={() => {
+                                            speak(currentEx.voiceText, lesson.lang)
+                                            setTimeout(() => {
+                                                setXp(x => x + 3)
+                                                nextEx()
+                                            }, 1500)
+                                        }}
+                                        className="w-full py-3 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-semibold text-sm"
+                                    >✅ শুনলাম! পরের ধাপে যাই →</motion.button>
+                                </div>
                             )}
                         </motion.div>
                     )}
@@ -401,8 +431,8 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                         whileTap={{ scale: 2.5, opacity: 0, transition: { duration: 0.2 } }}
                                         onClick={() => handleSelect(opt)}
                                         className={`absolute w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold border-2 shadow-lg backdrop-blur-sm ${selected === opt
-                                                ? opt === currentEx.correctAnswer ? 'bg-emerald-400 border-emerald-300 text-white' : 'bg-red-400 border-red-300 text-white'
-                                                : 'bg-white/20 border-white/40 text-white'
+                                            ? opt === currentEx.correctAnswer ? 'bg-emerald-400 border-emerald-300 text-white' : 'bg-red-400 border-red-300 text-white'
+                                            : 'bg-white/20 border-white/40 text-white'
                                             }`}
                                         style={{ left: `${15 + i * 20}%`, top: `${20 + (i % 2) * 30}%` }}
                                     >
@@ -454,7 +484,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         >
                             <p className="text-xl font-bold text-white mb-2">✍️ আঙুল দিয়ে লিখি!</p>
                             <p className="text-gray-400 text-sm mb-4">{currentEx.content} লেখো</p>
-                            <div className="relative mx-auto mb-4" style={{ width: 280, height: 280 }}>
+                            <div className="relative mx-auto mb-4 width: 280px; height: 280px;">
                                 <div className="absolute inset-0 flex items-center justify-center text-9xl font-bold text-white/8 select-none pointer-events-none">
                                     {currentEx.content}
                                 </div>
@@ -474,6 +504,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             </div>
                         </motion.div>
                     )}
+
 
                     {/* QUIZ */}
                     {currentEx?.type === 'quiz' && (
@@ -505,8 +536,298 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         </motion.div>
                     )}
 
+                    {/* PRONOUNCE */}
+                    {currentEx?.type === 'pronounce' && (
+                        <motion.div key={`pronounce-${exIdx}`}
+                            initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}
+                            className="text-center max-w-sm w-full"
+                        >
+                            <p className="text-xl font-bold text-white mb-3">🗣️ জোরে বলো!</p>
+
+                            {/* Big word display */}
+                            <motion.div
+                                animate={{ scale: [1, 1.05, 1] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                onClick={() => speak(currentEx.voiceText, lesson.lang)}
+                                className={`w-full py-8 rounded-3xl bg-linear-to-br ${lesson.color} flex flex-col items-center justify-center gap-3 shadow-2xl mx-auto mb-6 cursor-pointer`}
+                            >
+                                <span className="text-7xl font-bold text-white">{currentEx.content}</span>
+                                <span className="text-2xl text-white/80">{lesson.word}</span>
+                                <span className="text-sm text-white/60 flex items-center gap-1">
+                                    🔊 tap করলে শুনবে
+                                </span>
+                            </motion.div>
+
+                            {/* Pronunciation guide */}
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
+                                <p className="text-gray-400 text-xs mb-1">উচ্চারণ গাইড</p>
+                                <p className="text-white font-semibold">{currentEx.voiceText}</p>
+                            </div>
+
+                            {listenState === 'correct' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-3xl mb-1">🌟</p>
+                                    <p className="text-emerald-400 font-bold">শাবাশ! চমৎকার উচ্চারণ!</p>
+                                </motion.div>
+                            )}
+                            {listenState === 'wrong' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-red-400 font-semibold">আবার চেষ্টা করো! 💪</p>
+                                    <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
+                                        className="mt-2 text-sm text-red-300 underline"
+                                    >আবার শুনি</button>
+                                </motion.div>
+                            )}
+
+                            {listenState === 'idle' && (
+                                <div className="space-y-3">
+                                    {supported && (
+                                        <motion.button whileTap={{ scale: 0.95 }}
+                                            onClick={() => startListening(lesson.lang)}
+                                            disabled={isListening}
+                                            className={`w-full py-5 rounded-2xl text-xl font-bold shadow-lg flex items-center justify-center gap-3 ${isListening
+                                                ? 'bg-red-500 text-white animate-pulse'
+                                                : `bg-linear-to-r ${lesson.color} text-white`
+                                                }`}
+                                        >
+                                            {isListening ? (
+                                                <>
+                                                    <motion.span
+                                                        animate={{ scale: [1, 1.3, 1] }}
+                                                        transition={{ repeat: Infinity, duration: 0.5 }}
+                                                    >🎤</motion.span>
+                                                    শুনছি...
+                                                </>
+                                            ) : (
+                                                <>🎤 এখন বলো!</>
+                                            )}
+                                        </motion.button>
+                                    )}
+
+                                    <motion.button whileTap={{ scale: 0.97 }}
+                                        onClick={() => {
+                                            speak(currentEx.voiceText, lesson.lang)
+                                            setTimeout(() => {
+                                                setXp(x => x + 3)
+                                                nextEx()
+                                            }, 1500)
+                                        }}
+                                        className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm"
+                                    >✅ বললাম! পরের ধাপে যাই →</motion.button>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* ARCHERY TARGET */}
+                    {currentEx?.type === 'archery-target' && (
+                        <motion.div key={`archery-${exIdx}`}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="text-center max-w-sm w-full"
+                        >
+                            <p className="text-xl font-bold text-white mb-2">🏹 সঠিক লক্ষ্যে আঘাত করো!</p>
+                            <p className="text-gray-400 text-sm mb-6">
+                                {lesson.word} কোন বর্ণ দিয়ে শুরু?
+                            </p>
+
+                            {/* Targets */}
+                            <div className="relative w-full h-72 bg-linear-to-b from-emerald-500/10 to-teal-500/5 rounded-3xl border border-white/10 overflow-hidden mb-4">
+
+                                {/* Background grass */}
+                                <div className="absolute bottom-0 left-0 right-0 h-12 bg-emerald-500/10" />
+
+                                {currentEx.options?.map((opt, i) => (
+                                    <motion.button key={i}
+                                        animate={{
+                                            y: [0, i % 2 === 0 ? -40 : 40, 0],
+                                            x: [0, i % 3 === 0 ? 20 : -20, 0],
+                                        }}
+                                        transition={{
+                                            duration: 2.5 + i * 0.8,
+                                            repeat: Infinity,
+                                            ease: 'easeInOut',
+                                            delay: i * 0.6,
+                                        }}
+                                        whileTap={{ scale: 0.1, opacity: 0, transition: { duration: 0.15 } }}
+                                        onClick={() => handleSelect(opt)}
+                                        className="absolute flex items-center justify-center"
+                                        style={{
+                                            left: `${10 + i * 22}%`,
+                                            top: `${15 + (i % 2) * 35}%`,
+                                            width: 80,
+                                            height: 80,
+                                        }}
+                                    >
+                                        {/* Target rings */}
+                                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center ${selected === opt
+                                            ? opt === currentEx.correctAnswer
+                                                ? 'ring-4 ring-emerald-400'
+                                                : 'ring-4 ring-red-400'
+                                            : ''
+                                            }`}>
+                                            {/* Outer ring */}
+                                            <div className="absolute inset-0 rounded-full border-4 border-red-500/40" />
+                                            {/* Middle ring */}
+                                            <div className="absolute inset-2 rounded-full border-4 border-blue-500/40" />
+                                            {/* Inner ring */}
+                                            <div className="absolute inset-4 rounded-full border-4 border-red-500/40" />
+                                            {/* Center */}
+                                            <div className={`absolute inset-6 rounded-full ${selected === opt && opt === currentEx.correctAnswer
+                                                ? 'bg-emerald-500'
+                                                : selected === opt
+                                                    ? 'bg-red-500'
+                                                    : 'bg-amber-400'
+                                                }`} />
+                                            {/* Letter */}
+                                            <span className="relative z-10 text-2xl font-bold text-white drop-shadow-lg">
+                                                {opt}
+                                            </span>
+                                        </div>
+
+                                        {/* Arrow indicator — correct answer এ */}
+                                        {selected === opt && opt === currentEx.correctAnswer && (
+                                            <motion.div
+                                                initial={{ scale: 0 }}
+                                                animate={{ scale: 1 }}
+                                                className="absolute -top-8 text-2xl"
+                                            >🏹</motion.div>
+                                        )}
+                                    </motion.button>
+                                ))}
+
+                                {/* Bow at bottom */}
+                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-3xl">
+                                    🏹
+                                </div>
+                            </div>
+
+                            {/* Feedback */}
+                            {selected && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`rounded-2xl p-3 text-sm font-semibold ${isCorrect
+                                        ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
+                                        : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                                        }`}
+                                >
+                                    {isCorrect ? '🎯 শাবাশ! সঠিক লক্ষ্য!' : `❌ সঠিক উত্তর: ${currentEx.correctAnswer}`}
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* WORD BUILDER */}
+                    {currentEx?.type === 'word-builder' && (
+                        <motion.div key={`word-builder-${exIdx}`}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="text-center max-w-sm w-full"
+                        >
+                            <p className="text-xl font-bold text-white mb-2">🔤 অক্ষর সাজাও!</p>
+                            <p className="text-gray-400 text-sm mb-4">
+                                {lesson.emoji} {lesson.word} বানাও
+                            </p>
+
+                            {/* Target word display — blank boxes */}
+                            <div className="flex justify-center gap-2 mb-8">
+                                {lesson.word.split('').map((char, i) => {
+                                    const builtWord = (selected || '')
+                                    const isPlaced = builtWord[i] !== undefined
+                                    return (
+                                        <motion.div
+                                            key={i}
+                                            animate={isPlaced ? { scale: [1, 1.2, 1] } : {}}
+                                            className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${isPlaced
+                                                ? `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg`
+                                                : 'bg-white/5 border-dashed border-white/30 text-gray-600'
+                                                }`}
+                                        >
+                                            {isPlaced ? builtWord[i] : '_'}
+                                        </motion.div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* Shuffled letter buttons */}
+                            <div className="flex flex-wrap justify-center gap-3 mb-6">
+                                {currentEx.options?.map((opt, i) => {
+                                    const builtWord = selected || ''
+                                    const isUsed = builtWord.includes(opt) &&
+                                        builtWord.split('').filter(c => c === opt).length >=
+                                        (currentEx.options?.filter(c => c === opt).length || 1)
+
+                                    return (
+                                        <motion.button key={i}
+                                            whileHover={!isUsed ? { scale: 1.1, y: -4 } : {}}
+                                            whileTap={!isUsed ? { scale: 0.9 } : {}}
+                                            onClick={() => {
+                                                if (isUsed || selected === lesson.word) return
+                                                const newWord = (selected || '') + opt
+                                                setSelected(newWord)
+
+                                                // সঠিক word হলে
+                                                if (newWord === lesson.word) {
+                                                    setIsCorrect(true)
+                                                    celebrate()
+                                                    setXp(x => x + 15)
+                                                    setTimeout(() => nextEx(), 1500)
+                                                }
+                                                // ভুল হলে — reset
+                                                else if (newWord.length >= lesson.word.length) {
+                                                    setIsCorrect(false)
+                                                    setHearts(h => Math.max(0, h - 1))
+                                                    setTimeout(() => setSelected(null), 800)
+                                                }
+                                            }}
+                                            className={`w-14 h-14 rounded-2xl text-2xl font-bold border-2 transition-all shadow-md ${isUsed
+                                                ? 'bg-white/5 border-white/10 text-gray-600 cursor-not-allowed'
+                                                : `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg`
+                                                }`}
+                                        >
+                                            {opt}
+                                        </motion.button>
+                                    )
+                                })}
+                            </div>
+
+                            {/* Clear button */}
+                            {selected && selected.length > 0 && isCorrect === null && (
+                                <motion.button
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => setSelected(null)}
+                                    className="px-6 py-2 rounded-xl bg-white/10 border border-white/20 text-gray-400 text-sm font-medium mb-4"
+                                >
+                                    🗑 মুছি
+                                </motion.button>
+                            )}
+
+                            {/* Feedback */}
+                            {isCorrect === true && (
+                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-3 text-emerald-400 font-bold"
+                                >
+                                    🌟 শাবাশ! সঠিক word বানিয়েছো!
+                                </motion.div>
+                            )}
+                            {isCorrect === false && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 text-red-400 text-sm"
+                                >
+                                    ❌ ভুল! আবার চেষ্টা করো
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+
+
+
                 </AnimatePresence>
             </div>
         </div>
     )
 }
+

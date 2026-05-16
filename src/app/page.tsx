@@ -30,7 +30,7 @@ export default function Home() {
                 <div className="max-w-6xl mx-auto flex items-center justify-between">
                     <motion.div
                         whileHover={{ scale: 1.05 }}
-                        className="text-xl font-bold text-gradient-primary"
+                        className="text-xl font-bold text-linear-primary"
                     >
                         Ononno
                     </motion.div>
@@ -44,7 +44,7 @@ export default function Home() {
                         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                             <Link
                                 href="/register"
-                                className="text-sm gradient-primary text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-green-200 hover:shadow-green-300 transition-shadow"
+                                className="text-sm linear-primary text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-green-200 hover:shadow-green-300 transition-shadow"
                             >
                                 শুরু করো →
                             </Link>
@@ -54,7 +54,7 @@ export default function Home() {
             </motion.nav>
 
             {/* Hero */}
-            <section className="gradient-hero min-h-screen flex items-center pt-20 relative overflow-hidden">
+            <section className="linear-hero min-h-screen flex items-center pt-20 relative overflow-hidden">
                 {/* Background blobs */}
                 <div className="absolute top-20 left-10 w-72 h-72 bg-green-200/30 rounded-full blur-3xl animate-pulse-slow" />
                 <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
@@ -77,7 +77,7 @@ export default function Home() {
                         className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight tracking-tight"
                     >
                         শিক্ষায়{' '}
-                        <span className="text-gradient-primary">অনন্য</span>
+                        <span className="text-linear-primary">অনন্য</span>
                         <br />
                         <span className="text-4xl md:text-5xl font-semibold text-gray-600">
                             <TypewriterText
@@ -87,7 +87,7 @@ export default function Home() {
                                     'কুরআন শিখো',
                                     'দক্ষ হও',
                                 ]}
-                                className="text-gradient-secondary"
+                                className="text-linear-secondary"
                             />
                         </span>
                     </motion.h1>
@@ -109,7 +109,7 @@ export default function Home() {
                         <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                             <Link
                                 href="/register"
-                                className="inline-flex items-center gap-2 gradient-primary text-white px-8 py-4 rounded-2xl text-base font-semibold shadow-xl shadow-green-200 hover:shadow-green-300 transition-all"
+                                className="inline-flex items-center gap-2 linear-primary text-white px-8 py-4 rounded-2xl text-base font-semibold shadow-xl shadow-green-200 hover:shadow-green-300 transition-all"
                             >
                                 বিনামূল্যে শুরু করো
                                 <span className="text-lg">→</span>
@@ -144,7 +144,7 @@ export default function Home() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.6 + i * 0.1 }}
                                 whileHover={{ y: -6, scale: 1.03 }}
-                                className={`bg-gradient-to-br ${item.color} rounded-2xl p-4 border border-white shadow-sm cursor-pointer`}
+                                className={`bg-linear-to-br ${item.color} rounded-2xl p-4 border border-white shadow-sm cursor-pointer`}
                             >
                                 <div className="text-3xl mb-2">{item.icon}</div>
                                 <div className="text-xs font-medium text-gray-700">{item.text}</div>
@@ -165,10 +165,10 @@ export default function Home() {
                         className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
                     >
                         {[
-                            { value: 4, suffix: '+', label: 'বছর বয়স থেকে', color: 'text-gradient-primary' },
-                            { value: 6, suffix: '', label: 'ML ইঞ্জিন', color: 'text-gradient-secondary' },
-                            { value: 12, suffix: '+', label: 'ট্রেনিং মডিউল', color: 'text-gradient-warm' },
-                            { value: 0, prefix: '৳', suffix: '', label: 'শুরুতে খরচ', color: 'text-gradient-primary' },
+                            { value: 4, suffix: '+', label: 'বছর বয়স থেকে', color: 'text-linear-primary' },
+                            { value: 6, suffix: '', label: 'ML ইঞ্জিন', color: 'text-linear-secondary' },
+                            { value: 12, suffix: '+', label: 'ট্রেনিং মডিউল', color: 'text-linear-warm' },
+                            { value: 0, prefix: '৳', suffix: '', label: 'শুরুতে খরচ', color: 'text-linear-primary' },
                         ].map((stat, i) => (
                             <motion.div
                                 key={stat.label}
@@ -203,7 +203,7 @@ export default function Home() {
                         </div>
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                             একটি platform,{' '}
-                            <span className="text-gradient-primary">সব সমাধান</span>
+                            <span className="text-linear-primary">সব সমাধান</span>
                         </h2>
                         <p className="text-gray-500 max-w-xl mx-auto">
                             শিশু থেকে বয়স্ক, ছাত্র থেকে উদ্যোক্তা — সবার জন্য আলাদা learning path
@@ -216,7 +216,7 @@ export default function Home() {
                                 icon: '🕌',
                                 title: 'ইসলামিক শিক্ষা',
                                 desc: 'কুরআন তিলাওয়াত AI, হাদিস, ফিকহ — সকল মুসলিম শিক্ষার্থীর জন্য বাধ্যতামূলক।',
-                                gradient: 'from-green-500 to-emerald-600',
+                                linear: 'from-green-500 to-emerald-600',
                                 bg: 'from-green-50 to-emerald-50',
                                 delay: 0,
                             },
@@ -224,7 +224,7 @@ export default function Home() {
                                 icon: '🎓',
                                 title: 'একাডেমিক শিক্ষা',
                                 desc: 'Nursery থেকে Masters পর্যন্ত বাংলাদেশ কারিকুলাম অনুযায়ী সম্পূর্ণ পাঠ্যক্রম।',
-                                gradient: 'from-blue-500 to-cyan-600',
+                                linear: 'from-blue-500 to-cyan-600',
                                 bg: 'from-blue-50 to-cyan-50',
                                 delay: 0.1,
                             },
@@ -232,7 +232,7 @@ export default function Home() {
                                 icon: '🧠',
                                 title: 'AI ক্যারিয়ার গাইড',
                                 desc: 'ML দিয়ে তোমার psychology বিশ্লেষণ করে সেরা career path suggest করবে।',
-                                gradient: 'from-purple-500 to-violet-600',
+                                linear: 'from-purple-500 to-violet-600',
                                 bg: 'from-purple-50 to-violet-50',
                                 delay: 0.2,
                             },
@@ -240,7 +240,7 @@ export default function Home() {
                                 icon: '💹',
                                 title: 'Stock Market Training',
                                 desc: 'শেয়ার বাজার থেকে হালাল বিনিয়োগ — সম্পূর্ণ practical training।',
-                                gradient: 'from-amber-500 to-orange-600',
+                                linear: 'from-amber-500 to-orange-600',
                                 bg: 'from-amber-50 to-orange-50',
                                 delay: 0.3,
                             },
@@ -248,7 +248,7 @@ export default function Home() {
                                 icon: '💻',
                                 title: 'Skill Development',
                                 desc: 'Web, App, AI development, Marketing, Business — সব training এক জায়গায়।',
-                                gradient: 'from-cyan-500 to-blue-600',
+                                linear: 'from-cyan-500 to-blue-600',
                                 bg: 'from-cyan-50 to-blue-50',
                                 delay: 0.4,
                             },
@@ -256,7 +256,7 @@ export default function Home() {
                                 icon: '👨‍👩‍👧',
                                 title: 'Parent Dashboard',
                                 desc: 'সন্তানের Islamic ও academic progress real-time এ দেখুন।',
-                                gradient: 'from-rose-500 to-pink-600',
+                                linear: 'from-rose-500 to-pink-600',
                                 bg: 'from-rose-50 to-pink-50',
                                 delay: 0.5,
                             },
@@ -264,9 +264,9 @@ export default function Home() {
                             <AnimatedCard
                                 key={feature.title}
                                 delay={feature.delay}
-                                className={`bg-gradient-to-br ${feature.bg} border-0 p-6`}
+                                className={`bg-linear-to-br ${feature.bg} border-0 p-6`}
                             >
-                                <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-lg`}>
+                                <div className={`w-12 h-12 bg-linear-to-br ${feature.linear} rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-lg`}>
                                     {feature.icon}
                                 </div>
                                 <h3 className="font-bold text-gray-900 mb-2 text-lg">{feature.title}</h3>
@@ -279,7 +279,7 @@ export default function Home() {
 
             {/* CTA */}
             <section className="py-24 relative overflow-hidden">
-                <div className="absolute inset-0 gradient-primary opacity-95" />
+                <div className="absolute inset-0 linear-primary opacity-95" />
                 <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
                 <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
 
@@ -312,7 +312,7 @@ export default function Home() {
 
             {/* Footer */}
             <footer className="py-10 bg-gray-900 text-center">
-                <div className="text-gradient-primary font-bold text-xl mb-2">Ononno</div>
+                <div className="text-linear-primary font-bold text-xl mb-2">Ononno</div>
                 <p className="text-gray-500 text-sm">© 2026 Ononno · শিক্ষায় অনন্য</p>
             </footer>
         </main>
