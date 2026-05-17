@@ -12,6 +12,7 @@ const plans = [
         features: ['সব subject', 'AI Tutor', 'Progress tracking'],
         color: 'from-blue-500/20 to-blue-600/20',
         border: 'border-blue-500/30',
+        btnColor: 'bg-blue-500 hover:bg-blue-600',
     },
     {
         id: 'yearly',
@@ -21,6 +22,7 @@ const plans = [
         features: ['সব subject', 'AI Tutor', 'Priority support', '৩০% ছাড়'],
         color: 'from-emerald-500/20 to-emerald-600/20',
         border: 'border-emerald-500/30',
+        btnColor: 'bg-emerald-500 hover:bg-emerald-600',
         popular: true,
     },
     {
@@ -31,40 +33,17 @@ const plans = [
         features: ['৫ জন student', 'সব feature', 'Parent dashboard', '৪০% ছাড়'],
         color: 'from-purple-500/20 to-purple-600/20',
         border: 'border-purple-500/30',
+        btnColor: 'bg-purple-500 hover:bg-purple-600',
     },
 ]
 
 export default function SubscriptionPage() {
     const router = useRouter()
-    const [loading, setLoading] = useState<string | null>(null)
-    const [error, setError] = useState<string | null>(null)
+    const [selected, setSelected] = useState<string | null>(null)
 
-    async function handleSSLCommerz(planId: string) {
-        setLoading(planId)
-        setError(null)
-
-        try {
-            const res = await fetch('/api/payment/sslcommerz/init', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId }),
-            })
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                setError(data.error || 'কিছু একটা সমস্যা হয়েছে')
-                return
-            }
-
-            // SSLCommerz payment page এ redirect করো
-            router.push(data.url)
-
-        } catch {
-            setError('Server এ সমস্যা হয়েছে, আবার চেষ্টা করো')
-        } finally {
-            setLoading(null)
-        }
+    function handleSelect(planId: string) {
+        setSelected(planId)
+        router.push(`/dashboard/student/subscription/payment?plan=${planId}`)
     }
 
     return (
@@ -80,13 +59,6 @@ export default function SubscriptionPage() {
                         তোমার জন্য সেরা প্ল্যানটি বেছে নাও
                     </p>
                 </div>
-
-                {/* Error */}
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center">
-                        {error}
-                    </div>
-                )}
 
                 {/* Plans */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -127,13 +99,13 @@ export default function SubscriptionPage() {
                                 ))}
                             </ul>
 
-                            {/* SSLCommerz Button */}
+                            {/* Button */}
                             <button
-                                onClick={() => handleSSLCommerz(plan.id)}
-                                disabled={loading === plan.id}
-                                className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => handleSelect(plan.id)}
+                                disabled={selected === plan.id}
+                                className={`w-full py-3 ${plan.btnColor} rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
-                                {loading === plan.id ? 'Loading...' : 'Card দিয়ে Pay করো'}
+                                {selected === plan.id ? 'Loading...' : 'এই প্ল্যান নাও'}
                             </button>
                         </div>
                     ))}

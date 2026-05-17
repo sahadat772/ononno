@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useSpeech } from '@/hooks/useSpeech'
@@ -43,7 +43,7 @@ export type LessonConfig = {
     exercises: Exercise[]
 }
 
-// ── Static positions ──────────────────────────────────────────────────────────
+// ── Static celebration positions ──────────────────────────────────────────────
 
 const CELEBRATION = [
     { y: -320, x: -80 }, { y: -280, x: 120 },
@@ -51,7 +51,171 @@ const CELEBRATION = [
     { y: -300, x: 100 },
 ]
 
-// ── Main Engine ───────────────────────────────────────────────────────────────
+// ── Pure shuffle function ─────────────────────────────────────────────────────
+function shuffleArray<T>(arr: T[]): T[] {
+    const result = [...arr]
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]]
+    }
+    return result
+}
+
+// ── Matching Exercise Component ───────────────────────────────────────────────
+
+function MatchingExercise({
+    currentEx,
+    lesson,
+    speak,
+    onComplete,
+}: {
+    currentEx: Exercise
+    lesson: LessonConfig
+    speak: (text: string, lang: 'bn-BD' | 'en-US' | 'ar-SA') => void
+    onComplete: (correct: boolean) => void
+}) {
+    const [leftSelected, setLeftSelected] = useState<string | null>(null)
+    const [matched, setMatched] = useState<Record<string, string>>({})
+    const [wrongPair, setWrongPair] = useState<string | null>(null)
+    const [completed, setCompleted] = useState(false)
+
+    const pairs = useMemo(() =>
+        currentEx.options?.map(opt => {
+            const [letter, word] = opt.split('-')
+            return { letter, word }
+        }) || []
+        , [currentEx.options])
+
+    const letters = useMemo(() => pairs.map(p => p.letter), [pairs])
+
+    const words = useMemo(() =>
+        shuffleArray(pairs.map(p => p.word))
+        , [pairs])
+
+    function handleLeftClick(letter: string) {
+        if (matched[letter]) return
+        speak(letter, lesson.lang)
+        setLeftSelected(letter)
+    }
+
+    function handleRightClick(word: string) {
+        if (!leftSelected) return
+        if (Object.values(matched).includes(word)) return
+
+        const correctWord = pairs.find(p => p.letter === leftSelected)?.word
+        const isMatch = correctWord === word
+
+        if (isMatch) {
+            const newMatched = { ...matched, [leftSelected]: word }
+            setMatched(newMatched)
+            setLeftSelected(null)
+            speak(word, lesson.lang)
+            if (Object.keys(newMatched).length === pairs.length) {
+                setCompleted(true)
+                setTimeout(() => onComplete(true), 1000)
+            }
+        } else {
+            setWrongPair(leftSelected)
+            setTimeout(() => {
+                setWrongPair(null)
+                setLeftSelected(null)
+            }, 800)
+            onComplete(false)
+        }
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="text-center max-w-sm w-full"
+        >
+            <p className="text-xl font-bold text-white mb-2">🔗 মেলাও!</p>
+            <p className="text-gray-400 text-sm mb-6">
+                বাম দিক থেকে বেছে ডান দিকে মেলাও
+            </p>
+
+            <div className="flex gap-4 justify-center">
+                {/* Left column */}
+                <div className="flex flex-col gap-3 flex-1">
+                    {letters.map((letter, i) => {
+                        const isMatched = !!matched[letter]
+                        const isSelected = leftSelected === letter
+                        const isWrong = wrongPair === letter
+                        return (
+                            <motion.button key={i}
+                                whileTap={!isMatched ? { scale: 0.95 } : {}}
+                                animate={isWrong ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                onClick={() => !isMatched && handleLeftClick(letter)}
+                                className={`h-14 rounded-2xl text-2xl font-bold border-2 transition-all ${isMatched
+                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                    : isSelected
+                                        ? `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg ring-4 ring-white/20`
+                                        : isWrong
+                                            ? 'bg-red-500/20 border-red-500/40 text-red-400'
+                                            : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                                    }`}
+                            >
+                                {isMatched ? '✅' : letter}
+                            </motion.button>
+                        )
+                    })}
+                </div>
+
+                {/* Connector */}
+                <div className="flex flex-col justify-around py-2">
+                    {letters.map((_, i) => (
+                        <div key={i} className="w-6 h-0.5 bg-white/10" />
+                    ))}
+                </div>
+
+                {/* Right column */}
+                <div className="flex flex-col gap-3 flex-1">
+                    {words.map((word, i) => {
+                        const isMatched = Object.values(matched).includes(word)
+                        const matchedLetter = Object.entries(matched).find(([, w]) => w === word)?.[0]
+                        return (
+                            <motion.button key={i}
+                                whileTap={!isMatched ? { scale: 0.95 } : {}}
+                                onClick={() => !isMatched && handleRightClick(word)}
+                                className={`h-14 rounded-2xl text-base font-bold border-2 transition-all px-2 ${isMatched
+                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                    : leftSelected
+                                        ? 'bg-white/15 border-violet-500/40 text-white hover:bg-violet-500/20 cursor-pointer'
+                                        : 'bg-white/10 border-white/20 text-gray-400'
+                                    }`}
+                            >
+                                {isMatched ? `${matchedLetter} ✅` : word}
+                            </motion.button>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {completed && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mt-5 bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4"
+                >
+                    <p className="text-3xl mb-1">🎉</p>
+                    <p className="text-emerald-400 font-bold">সব মিলে গেছে! শাবাশ!</p>
+                </motion.div>
+            )}
+
+            {!completed && leftSelected && (
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-4 text-sm text-violet-400"
+                >
+                    {leftSelected} এর সাথে মিলিয়ে দাও →
+                </motion.p>
+            )}
+        </motion.div>
+    )
+}
+
+// ── Main LessonEngine Component ───────────────────────────────────────────────
 
 export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const router = useRouter()
@@ -67,15 +231,26 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const [showCelebration, setShowCelebration] = useState(false)
     const [hasDrawn, setHasDrawn] = useState(false)
     const [listenState, setListenState] = useState<'idle' | 'correct' | 'wrong'>('idle')
+    const [mistakes, setMistakes] = useState<Exercise[]>([])
+    const [repeatMode, setRepeatMode] = useState(false)
+    const [repeatQueue, setRepeatQueue] = useState<Exercise[]>([])
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const isDrawing = useRef(false)
 
-    const currentEx = lesson.exercises[exIdx]
-    const progress = (exIdx / lesson.exercises.length) * 100
-    const isResult = exIdx >= lesson.exercises.length
+    // Repeat mode এ current exercise
+    const currentEx = repeatMode
+        ? repeatQueue[exIdx]
+        : lesson.exercises[exIdx]
 
-    // ── Auto-speak ────────────────────────────────────────────────────────────
+    const totalSteps = repeatMode
+        ? repeatQueue.length
+        : lesson.exercises.length
+
+    const progress = (exIdx / totalSteps) * 100
+    const isResult = exIdx >= totalSteps
+
+    // ── Auto-speak ─────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!currentEx || isResult) return
@@ -83,13 +258,13 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
             speak(currentEx.voiceText, lesson.lang)
         }, 500)
         return () => clearTimeout(timer)
-    }, [exIdx, currentEx, speak, lesson.lang, isResult])
+    }, [exIdx, currentEx, speak, lesson.lang, isResult, repeatMode])
 
-    // ── Voice recognition result ──────────────────────────────────────────────
+    // ── Voice recognition ──────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!transcript || isListening) return
-        if (currentEx?.type !== 'listen-repeat') return
+        if (currentEx?.type !== 'listen-repeat' && currentEx?.type !== 'pronounce') return
 
         const expected = currentEx.content.toLowerCase()
         const actual = transcript.toLowerCase()
@@ -107,7 +282,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transcript, isListening])
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
     function celebrate() {
         setShowCelebration(true)
@@ -115,9 +290,16 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         setTimeout(() => setShowCelebration(false), 1800)
     }
 
+    function recordMistake(ex: Exercise) {
+        // একই exercise দুইবার add না করতে
+        setMistakes(prev =>
+            prev.find(m => m.id === ex.id) ? prev : [...prev, ex]
+        )
+    }
+
     function nextEx() {
         const next = exIdx + 1
-        if (next < lesson.exercises.length) {
+        if (next < totalSteps) {
             setExIdx(next)
             setSelected(null)
             setIsCorrect(null)
@@ -125,9 +307,28 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
             setHasDrawn(false)
             clearCanvas()
         } else {
-            const pct = (xp / 35) * 100
-            setStars(pct >= 90 ? 3 : pct >= 60 ? 2 : 1)
-            setExIdx(lesson.exercises.length)
+            // Repeat mode শেষ হলে result
+            if (repeatMode) {
+                const pct = (xp / 50) * 100
+                setStars(pct >= 90 ? 3 : pct >= 60 ? 2 : 1)
+                setExIdx(totalSteps)
+                return
+            }
+
+            // Mistake আছে → repeat mode শুরু
+            if (mistakes.length > 0) {
+                setRepeatMode(true)
+                setRepeatQueue(mistakes)
+                setMistakes([])
+                setExIdx(0)
+                setSelected(null)
+                setIsCorrect(null)
+                setListenState('idle')
+            } else {
+                const pct = (xp / 50) * 100
+                setStars(pct >= 90 ? 3 : pct >= 60 ? 2 : 1)
+                setExIdx(totalSteps)
+            }
         }
     }
 
@@ -136,12 +337,17 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         setSelected(option)
         const correct = option === currentEx?.correctAnswer
         setIsCorrect(correct)
-        if (correct) { celebrate(); setXp(x => x + 10) }
-        else setHearts(h => Math.max(0, h - 1))
+        if (correct) {
+            celebrate()
+            setXp(x => x + 10)
+        } else {
+            setHearts(h => Math.max(0, h - 1))
+            if (currentEx) recordMistake(currentEx)
+        }
         setTimeout(() => nextEx(), 1400)
     }
 
-    // ── Canvas ────────────────────────────────────────────────────────────────
+    // ── Canvas ─────────────────────────────────────────────────────────────────
 
     function getPos(e: React.TouchEvent | React.MouseEvent, canvas: HTMLCanvasElement) {
         const rect = canvas.getBoundingClientRect()
@@ -177,7 +383,6 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         setHasDrawn(false)
     }
 
-
     // ── Result Screen ─────────────────────────────────────────────────────────
 
     if (isResult) return (
@@ -205,7 +410,13 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                 <h2 className="text-2xl font-bold text-white mb-1">
                     {stars === 3 ? 'অসাধারণ! 🎉' : stars === 2 ? 'খুব ভালো! 👏' : 'চেষ্টা করেছো! 💪'}
                 </h2>
-                <p className="text-gray-400 mb-6">{lesson.letter} lesson শেষ!</p>
+                <p className="text-gray-400 mb-2">{lesson.letter} lesson শেষ!</p>
+
+                {repeatMode && (
+                    <div className="bg-violet-500/10 border border-violet-500/30 rounded-2xl p-3 mb-4 text-sm text-violet-300">
+                        ✅ ভুল গুলো repeat করে শিখে ফেলেছো!
+                    </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-3 mb-5">
                     {[
@@ -229,7 +440,9 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                 {xp >= 20 && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
                         className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 mb-5 text-sm text-emerald-300"
-                    >🔓 পরের lesson unlock হয়েছে!</motion.div>
+                    >
+                        🔓 পরের lesson unlock হয়েছে!
+                    </motion.div>
                 )}
 
                 <div className="flex gap-3">
@@ -237,6 +450,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         onClick={() => {
                             setExIdx(0); setHearts(3); setXp(0)
                             setStars(0); setSelected(null); setIsCorrect(null)
+                            setMistakes([]); setRepeatMode(false); setRepeatQueue([])
                         }}
                         className="flex-1 py-3 rounded-2xl bg-white/10 border border-white/20 text-white font-semibold"
                     >🔄 আবার</motion.button>
@@ -292,13 +506,26 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                 </div>
             </div>
 
+            {/* Repeat mode banner */}
+            {repeatMode && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mx-4 mb-2 bg-violet-500/10 border border-violet-500/30 rounded-2xl px-4 py-2 flex items-center gap-2"
+                >
+                    <span className="text-lg">🔁</span>
+                    <p className="text-violet-300 text-sm font-semibold">
+                        ভুল গুলো আবার practice করো! ({exIdx + 1}/{repeatQueue.length})
+                    </p>
+                </motion.div>
+            )}
+
             {/* Step label */}
             <div className="text-center mb-1">
                 <span className="text-xs text-gray-500 uppercase tracking-widest">
-                    {exIdx + 1}/{lesson.exercises.length} — {currentEx?.title}
+                    {repeatMode ? '🔁 Repeat — ' : ''}{exIdx + 1}/{totalSteps} — {currentEx?.title}
                 </span>
             </div>
-
             {/* Exercise */}
             <div className="flex-1 flex flex-col items-center justify-center px-4 pb-6">
                 <AnimatePresence mode="wait">
@@ -318,15 +545,12 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 {currentEx.content}
                                 <span className="absolute top-3 right-3 text-white/60 text-xl">{isSpeaking ? '🔊' : '🔈'}</span>
                             </motion.div>
-
                             <div className="text-6xl mb-2">{lesson.emoji}</div>
                             <h2 className="text-3xl font-bold text-white mb-1">{lesson.word}</h2>
                             <p className="text-gray-400 text-sm mb-4">{lesson.wordEn}</p>
-
                             <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
                                 className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-5 mx-auto flex items-center gap-2`}
                             >🔊 আবার শুনি</button>
-
                             <button onClick={nextEx}
                                 className="w-full bg-linear-to-r from-violet-600 to-purple-600 text-white py-4 rounded-2xl text-lg font-bold shadow-lg"
                             >পরের ধাপ →</button>
@@ -343,12 +567,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}
                                 className={`w-32 h-32 rounded-3xl bg-linear-to-br ${lesson.color} flex items-center justify-center text-6xl font-bold text-white shadow-xl mx-auto mb-3`}
                             >{currentEx.content}</motion.div>
-                            <p className="text-2xl font-bold text-white mb-2">{lesson.word}</p>
-
-                            {/* আবার শুনি button */}
-                            <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
-                                className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-6 mx-auto flex items-center gap-2`}
-                            >🔊 আবার শুনি</button>
+                            <p className="text-2xl font-bold text-white mb-5">{lesson.word}</p>
 
                             {listenState === 'correct' && (
                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-5xl mb-4">🌟</motion.div>
@@ -359,31 +578,95 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 >আবার চেষ্টা করো! 💪</motion.div>
                             )}
 
+                            <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
+                                className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-4 mx-auto flex items-center gap-2`}
+                            >🔊 আবার শুনি</button>
+
                             {listenState === 'idle' && (
                                 <div className="space-y-3">
-                                    {/* Mic button — supported হলে দেখাবে */}
                                     {supported && (
                                         <motion.button whileTap={{ scale: 0.95 }}
                                             onClick={() => startListening(lesson.lang)}
                                             disabled={isListening}
-                                            className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg flex items-center justify-center gap-2 ${isListening
-                                                ? 'bg-red-500 text-white animate-pulse'
-                                                : 'bg-white/10 border-2 border-white/20 text-white hover:bg-white/20'
+                                            className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg flex items-center justify-center gap-2 ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 border-2 border-white/20 text-white'
                                                 }`}
                                         >{isListening ? '🎤 শুনছি...' : '🎤 এখন বলো!'}</motion.button>
                                     )}
-
-                                    {/* সবসময় এই button থাকবে */}
                                     <motion.button whileTap={{ scale: 0.97 }}
                                         onClick={() => {
                                             speak(currentEx.voiceText, lesson.lang)
-                                            setTimeout(() => {
-                                                setXp(x => x + 3)
-                                                nextEx()
-                                            }, 1500)
+                                            setTimeout(() => { setXp(x => x + 3); nextEx() }, 1500)
                                         }}
                                         className="w-full py-3 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-semibold text-sm"
                                     >✅ শুনলাম! পরের ধাপে যাই →</motion.button>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* PRONOUNCE */}
+                    {currentEx?.type === 'pronounce' && (
+                        <motion.div key={`pronounce-${exIdx}`}
+                            initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}
+                            className="text-center max-w-sm w-full"
+                        >
+                            <p className="text-xl font-bold text-white mb-3">🗣️ জোরে বলো!</p>
+                            <motion.div
+                                animate={{ scale: [1, 1.05, 1] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                onClick={() => speak(currentEx.voiceText, lesson.lang)}
+                                className={`w-full py-8 rounded-3xl bg-linear-to-br ${lesson.color} flex flex-col items-center justify-center gap-3 shadow-2xl mx-auto mb-6 cursor-pointer`}
+                            >
+                                <span className="text-7xl font-bold text-white">{currentEx.content}</span>
+                                <span className="text-2xl text-white/80">{lesson.word}</span>
+                                <span className="text-sm text-white/60">🔊 tap করলে শুনবে</span>
+                            </motion.div>
+
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
+                                <p className="text-gray-400 text-xs mb-1">উচ্চারণ গাইড</p>
+                                <p className="text-white font-semibold">{currentEx.voiceText}</p>
+                            </div>
+
+                            {listenState === 'correct' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-3xl mb-1">🌟</p>
+                                    <p className="text-emerald-400 font-bold">শাবাশ! চমৎকার উচ্চারণ!</p>
+                                </motion.div>
+                            )}
+                            {listenState === 'wrong' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-red-400 font-semibold">আবার চেষ্টা করো! 💪</p>
+                                    <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
+                                        className="mt-2 text-sm text-red-300 underline"
+                                    >আবার শুনি</button>
+                                </motion.div>
+                            )}
+
+                            {listenState === 'idle' && (
+                                <div className="space-y-3">
+                                    {supported && (
+                                        <motion.button whileTap={{ scale: 0.95 }}
+                                            onClick={() => startListening(lesson.lang)}
+                                            disabled={isListening}
+                                            className={`w-full py-5 rounded-2xl text-xl font-bold shadow-lg flex items-center justify-center gap-3 ${isListening ? 'bg-red-500 text-white animate-pulse' : `bg-linear-to-r ${lesson.color} text-white`
+                                                }`}
+                                        >
+                                            {isListening ? (
+                                                <><motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}>🎤</motion.span> শুনছি...</>
+                                            ) : <>🎤 এখন বলো!</>}
+                                        </motion.button>
+                                    )}
+                                    <motion.button whileTap={{ scale: 0.97 }}
+                                        onClick={() => {
+                                            speak(currentEx.voiceText, lesson.lang)
+                                            setTimeout(() => { setXp(x => x + 3); nextEx() }, 1500)
+                                        }}
+                                        className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm"
+                                    >✅ বললাম! পরের ধাপে যাই →</motion.button>
                                 </div>
                             )}
                         </motion.div>
@@ -476,6 +759,157 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         </motion.div>
                     )}
 
+                    {/* ARCHERY TARGET */}
+                    {currentEx?.type === 'archery-target' && (
+                        <motion.div key={`archery-${exIdx}`}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="text-center max-w-sm w-full"
+                        >
+                            <p className="text-xl font-bold text-white mb-2">🏹 সঠিক লক্ষ্যে আঘাত করো!</p>
+                            <p className="text-gray-400 text-sm mb-6">{lesson.word} কোন বর্ণ দিয়ে শুরু?</p>
+                            <div className="relative w-full h-72 bg-linear-to-b from-emerald-500/10 to-teal-500/5 rounded-3xl border border-white/10 overflow-hidden mb-4">
+                                <div className="absolute bottom-0 left-0 right-0 h-12 bg-emerald-500/10" />
+                                {currentEx.options?.map((opt, i) => (
+                                    <motion.button key={i}
+                                        animate={{
+                                            y: [0, i % 2 === 0 ? -40 : 40, 0],
+                                            x: [0, i % 3 === 0 ? 20 : -20, 0],
+                                        }}
+                                        transition={{ duration: 2.5 + i * 0.8, repeat: Infinity, ease: 'easeInOut', delay: i * 0.6 }}
+                                        whileTap={{ scale: 0.1, opacity: 0, transition: { duration: 0.15 } }}
+                                        onClick={() => handleSelect(opt)}
+                                        className="absolute flex items-center justify-center"
+                                        style={{ left: `${10 + i * 22}%`, top: `${15 + (i % 2) * 35}%`, width: 80, height: 80 }}
+                                    >
+                                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center ${selected === opt ? opt === currentEx.correctAnswer ? 'ring-4 ring-emerald-400' : 'ring-4 ring-red-400' : ''
+                                            }`}>
+                                            <div className="absolute inset-0 rounded-full border-4 border-red-500/40" />
+                                            <div className="absolute inset-2 rounded-full border-4 border-blue-500/40" />
+                                            <div className="absolute inset-4 rounded-full border-4 border-red-500/40" />
+                                            <div className={`absolute inset-6 rounded-full ${selected === opt && opt === currentEx.correctAnswer ? 'bg-emerald-500'
+                                                : selected === opt ? 'bg-red-500' : 'bg-amber-400'
+                                                }`} />
+                                            <span className="relative z-10 text-2xl font-bold text-white drop-shadow-lg">{opt}</span>
+                                        </div>
+                                        {selected === opt && opt === currentEx.correctAnswer && (
+                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-8 text-2xl">🏹</motion.div>
+                                        )}
+                                    </motion.button>
+                                ))}
+                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-3xl">🏹</div>
+                            </div>
+                            {selected && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                    className={`rounded-2xl p-3 text-sm font-semibold ${isCorrect ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
+                                        : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                                        }`}
+                                >
+                                    {isCorrect ? '🎯 শাবাশ! সঠিক লক্ষ্য!' : `❌ সঠিক উত্তর: ${currentEx.correctAnswer}`}
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* WORD BUILDER */}
+                    {currentEx?.type === 'word-builder' && (
+                        <motion.div key={`word-builder-${exIdx}`}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="text-center max-w-sm w-full"
+                        >
+                            <p className="text-xl font-bold text-white mb-2">🔤 অক্ষর সাজাও!</p>
+                            <p className="text-gray-400 text-sm mb-4">{lesson.emoji} {lesson.word} বানাও</p>
+
+                            <div className="flex justify-center gap-2 mb-8">
+                                {lesson.word.split('').map((_, i) => {
+                                    const builtWord = selected || ''
+                                    const isPlaced = builtWord[i] !== undefined
+                                    return (
+                                        <motion.div key={i}
+                                            animate={isPlaced ? { scale: [1, 1.2, 1] } : {}}
+                                            className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${isPlaced
+                                                ? `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg`
+                                                : 'bg-white/5 border-dashed border-white/30 text-gray-600'
+                                                }`}
+                                        >
+                                            {isPlaced ? builtWord[i] : '_'}
+                                        </motion.div>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="flex flex-wrap justify-center gap-3 mb-6">
+                                {currentEx.options?.map((opt, i) => {
+                                    const builtWord = selected || ''
+                                    const usedCount = builtWord.split('').filter(c => c === opt).length
+                                    const availCount = currentEx.options?.filter(c => c === opt).length || 0
+                                    const isUsed = usedCount >= availCount
+                                    return (
+                                        <motion.button key={i}
+                                            whileHover={!isUsed ? { scale: 1.1, y: -4 } : {}}
+                                            whileTap={!isUsed ? { scale: 0.9 } : {}}
+                                            onClick={() => {
+                                                if (isUsed || selected === lesson.word) return
+                                                const newWord = (selected || '') + opt
+                                                setSelected(newWord)
+                                                if (newWord === lesson.word) {
+                                                    setIsCorrect(true)
+                                                    celebrate()
+                                                    setXp(x => x + 15)
+                                                    setTimeout(() => nextEx(), 1500)
+                                                } else if (newWord.length >= lesson.word.length) {
+                                                    setIsCorrect(false)
+                                                    setHearts(h => Math.max(0, h - 1))
+                                                    if (currentEx) recordMistake(currentEx)
+                                                    setTimeout(() => { setSelected(null); setIsCorrect(null) }, 800)
+                                                }
+                                            }}
+                                            className={`w-14 h-14 rounded-2xl text-2xl font-bold border-2 transition-all shadow-md ${isUsed
+                                                ? 'bg-white/5 border-white/10 text-gray-600 cursor-not-allowed'
+                                                : `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg`
+                                                }`}
+                                        >{opt}</motion.button>
+                                    )
+                                })}
+                            </div>
+
+                            {selected && selected.length > 0 && isCorrect === null && (
+                                <motion.button whileTap={{ scale: 0.97 }}
+                                    onClick={() => setSelected(null)}
+                                    className="px-6 py-2 rounded-xl bg-white/10 border border-white/20 text-gray-400 text-sm font-medium mb-4"
+                                >🗑 মুছি</motion.button>
+                            )}
+                            {isCorrect === true && (
+                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-3 text-emerald-400 font-bold"
+                                >🌟 শাবাশ! সঠিক word বানিয়েছো!</motion.div>
+                            )}
+                            {isCorrect === false && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 text-red-400 text-sm"
+                                >❌ ভুল! আবার চেষ্টা করো</motion.div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* MATCHING */}
+                    {currentEx?.type === 'matching' && (
+                        <MatchingExercise
+                            currentEx={currentEx}
+                            lesson={lesson}
+                            speak={speak}
+                            onComplete={(correct) => {
+                                if (correct) {
+                                    celebrate()
+                                    setXp(x => x + 12)
+                                } else {
+                                    setHearts(h => Math.max(0, h - 1))
+                                    if (currentEx) recordMistake(currentEx)
+                                }
+                                setTimeout(() => nextEx(), 1500)
+                            }}
+                        />
+                    )}
+
                     {/* TRACE */}
                     {currentEx?.type === 'trace' && (
                         <motion.div key={`trace-${exIdx}`}
@@ -484,7 +918,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         >
                             <p className="text-xl font-bold text-white mb-2">✍️ আঙুল দিয়ে লিখি!</p>
                             <p className="text-gray-400 text-sm mb-4">{currentEx.content} লেখো</p>
-                            <div className="relative mx-auto mb-4 width: 280px; height: 280px;">
+                            <div className="relative mx-auto mb-4" style={{ width: 280, height: 280 }}>
                                 <div className="absolute inset-0 flex items-center justify-center text-9xl font-bold text-white/8 select-none pointer-events-none">
                                     {currentEx.content}
                                 </div>
@@ -495,16 +929,24 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 />
                             </div>
                             <div className="flex gap-3">
-                                <button onClick={clearCanvas} className="flex-1 py-3 rounded-2xl bg-white/10 text-gray-300 font-semibold hover:bg-white/20">🗑 মুছি</button>
+                                <button onClick={clearCanvas}
+                                    className="flex-1 py-3 rounded-2xl bg-white/10 text-gray-300 font-semibold hover:bg-white/20"
+                                >🗑 মুছি</button>
                                 <motion.button whileTap={{ scale: 0.97 }}
-                                    onClick={() => { if (hasDrawn) { celebrate(); setXp(x => x + 5); setTimeout(nextEx, 1200) } }}
+                                    onClick={() => {
+                                        if (hasDrawn) {
+                                            celebrate()
+                                            setXp(x => x + 5)
+                                            setTimeout(nextEx, 1200)
+                                        }
+                                    }}
                                     disabled={!hasDrawn}
-                                    className={`flex-1 py-3 rounded-2xl font-bold transition-all ${hasDrawn ? `bg-linear-to-r ${lesson.color} text-white shadow-lg` : 'bg-white/5 text-gray-600 cursor-not-allowed'}`}
+                                    className={`flex-1 py-3 rounded-2xl font-bold transition-all ${hasDrawn ? `bg-linear-to-r ${lesson.color} text-white shadow-lg` : 'bg-white/5 text-gray-600 cursor-not-allowed'
+                                        }`}
                                 >✅ হয়েছে!</motion.button>
                             </div>
                         </motion.div>
                     )}
-
 
                     {/* QUIZ */}
                     {currentEx?.type === 'quiz' && (
@@ -536,298 +978,8 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         </motion.div>
                     )}
 
-                    {/* PRONOUNCE */}
-                    {currentEx?.type === 'pronounce' && (
-                        <motion.div key={`pronounce-${exIdx}`}
-                            initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}
-                            className="text-center max-w-sm w-full"
-                        >
-                            <p className="text-xl font-bold text-white mb-3">🗣️ জোরে বলো!</p>
-
-                            {/* Big word display */}
-                            <motion.div
-                                animate={{ scale: [1, 1.05, 1] }}
-                                transition={{ repeat: Infinity, duration: 2 }}
-                                onClick={() => speak(currentEx.voiceText, lesson.lang)}
-                                className={`w-full py-8 rounded-3xl bg-linear-to-br ${lesson.color} flex flex-col items-center justify-center gap-3 shadow-2xl mx-auto mb-6 cursor-pointer`}
-                            >
-                                <span className="text-7xl font-bold text-white">{currentEx.content}</span>
-                                <span className="text-2xl text-white/80">{lesson.word}</span>
-                                <span className="text-sm text-white/60 flex items-center gap-1">
-                                    🔊 tap করলে শুনবে
-                                </span>
-                            </motion.div>
-
-                            {/* Pronunciation guide */}
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
-                                <p className="text-gray-400 text-xs mb-1">উচ্চারণ গাইড</p>
-                                <p className="text-white font-semibold">{currentEx.voiceText}</p>
-                            </div>
-
-                            {listenState === 'correct' && (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 mb-4"
-                                >
-                                    <p className="text-3xl mb-1">🌟</p>
-                                    <p className="text-emerald-400 font-bold">শাবাশ! চমৎকার উচ্চারণ!</p>
-                                </motion.div>
-                            )}
-                            {listenState === 'wrong' && (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
-                                >
-                                    <p className="text-red-400 font-semibold">আবার চেষ্টা করো! 💪</p>
-                                    <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
-                                        className="mt-2 text-sm text-red-300 underline"
-                                    >আবার শুনি</button>
-                                </motion.div>
-                            )}
-
-                            {listenState === 'idle' && (
-                                <div className="space-y-3">
-                                    {supported && (
-                                        <motion.button whileTap={{ scale: 0.95 }}
-                                            onClick={() => startListening(lesson.lang)}
-                                            disabled={isListening}
-                                            className={`w-full py-5 rounded-2xl text-xl font-bold shadow-lg flex items-center justify-center gap-3 ${isListening
-                                                ? 'bg-red-500 text-white animate-pulse'
-                                                : `bg-linear-to-r ${lesson.color} text-white`
-                                                }`}
-                                        >
-                                            {isListening ? (
-                                                <>
-                                                    <motion.span
-                                                        animate={{ scale: [1, 1.3, 1] }}
-                                                        transition={{ repeat: Infinity, duration: 0.5 }}
-                                                    >🎤</motion.span>
-                                                    শুনছি...
-                                                </>
-                                            ) : (
-                                                <>🎤 এখন বলো!</>
-                                            )}
-                                        </motion.button>
-                                    )}
-
-                                    <motion.button whileTap={{ scale: 0.97 }}
-                                        onClick={() => {
-                                            speak(currentEx.voiceText, lesson.lang)
-                                            setTimeout(() => {
-                                                setXp(x => x + 3)
-                                                nextEx()
-                                            }, 1500)
-                                        }}
-                                        className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm"
-                                    >✅ বললাম! পরের ধাপে যাই →</motion.button>
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-
-                    {/* ARCHERY TARGET */}
-                    {currentEx?.type === 'archery-target' && (
-                        <motion.div key={`archery-${exIdx}`}
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="text-center max-w-sm w-full"
-                        >
-                            <p className="text-xl font-bold text-white mb-2">🏹 সঠিক লক্ষ্যে আঘাত করো!</p>
-                            <p className="text-gray-400 text-sm mb-6">
-                                {lesson.word} কোন বর্ণ দিয়ে শুরু?
-                            </p>
-
-                            {/* Targets */}
-                            <div className="relative w-full h-72 bg-linear-to-b from-emerald-500/10 to-teal-500/5 rounded-3xl border border-white/10 overflow-hidden mb-4">
-
-                                {/* Background grass */}
-                                <div className="absolute bottom-0 left-0 right-0 h-12 bg-emerald-500/10" />
-
-                                {currentEx.options?.map((opt, i) => (
-                                    <motion.button key={i}
-                                        animate={{
-                                            y: [0, i % 2 === 0 ? -40 : 40, 0],
-                                            x: [0, i % 3 === 0 ? 20 : -20, 0],
-                                        }}
-                                        transition={{
-                                            duration: 2.5 + i * 0.8,
-                                            repeat: Infinity,
-                                            ease: 'easeInOut',
-                                            delay: i * 0.6,
-                                        }}
-                                        whileTap={{ scale: 0.1, opacity: 0, transition: { duration: 0.15 } }}
-                                        onClick={() => handleSelect(opt)}
-                                        className="absolute flex items-center justify-center"
-                                        style={{
-                                            left: `${10 + i * 22}%`,
-                                            top: `${15 + (i % 2) * 35}%`,
-                                            width: 80,
-                                            height: 80,
-                                        }}
-                                    >
-                                        {/* Target rings */}
-                                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center ${selected === opt
-                                            ? opt === currentEx.correctAnswer
-                                                ? 'ring-4 ring-emerald-400'
-                                                : 'ring-4 ring-red-400'
-                                            : ''
-                                            }`}>
-                                            {/* Outer ring */}
-                                            <div className="absolute inset-0 rounded-full border-4 border-red-500/40" />
-                                            {/* Middle ring */}
-                                            <div className="absolute inset-2 rounded-full border-4 border-blue-500/40" />
-                                            {/* Inner ring */}
-                                            <div className="absolute inset-4 rounded-full border-4 border-red-500/40" />
-                                            {/* Center */}
-                                            <div className={`absolute inset-6 rounded-full ${selected === opt && opt === currentEx.correctAnswer
-                                                ? 'bg-emerald-500'
-                                                : selected === opt
-                                                    ? 'bg-red-500'
-                                                    : 'bg-amber-400'
-                                                }`} />
-                                            {/* Letter */}
-                                            <span className="relative z-10 text-2xl font-bold text-white drop-shadow-lg">
-                                                {opt}
-                                            </span>
-                                        </div>
-
-                                        {/* Arrow indicator — correct answer এ */}
-                                        {selected === opt && opt === currentEx.correctAnswer && (
-                                            <motion.div
-                                                initial={{ scale: 0 }}
-                                                animate={{ scale: 1 }}
-                                                className="absolute -top-8 text-2xl"
-                                            >🏹</motion.div>
-                                        )}
-                                    </motion.button>
-                                ))}
-
-                                {/* Bow at bottom */}
-                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-3xl">
-                                    🏹
-                                </div>
-                            </div>
-
-                            {/* Feedback */}
-                            {selected && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={`rounded-2xl p-3 text-sm font-semibold ${isCorrect
-                                        ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
-                                        : 'bg-red-500/20 border border-red-500/30 text-red-400'
-                                        }`}
-                                >
-                                    {isCorrect ? '🎯 শাবাশ! সঠিক লক্ষ্য!' : `❌ সঠিক উত্তর: ${currentEx.correctAnswer}`}
-                                </motion.div>
-                            )}
-                        </motion.div>
-                    )}
-
-                    {/* WORD BUILDER */}
-                    {currentEx?.type === 'word-builder' && (
-                        <motion.div key={`word-builder-${exIdx}`}
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="text-center max-w-sm w-full"
-                        >
-                            <p className="text-xl font-bold text-white mb-2">🔤 অক্ষর সাজাও!</p>
-                            <p className="text-gray-400 text-sm mb-4">
-                                {lesson.emoji} {lesson.word} বানাও
-                            </p>
-
-                            {/* Target word display — blank boxes */}
-                            <div className="flex justify-center gap-2 mb-8">
-                                {lesson.word.split('').map((char, i) => {
-                                    const builtWord = (selected || '')
-                                    const isPlaced = builtWord[i] !== undefined
-                                    return (
-                                        <motion.div
-                                            key={i}
-                                            animate={isPlaced ? { scale: [1, 1.2, 1] } : {}}
-                                            className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${isPlaced
-                                                ? `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg`
-                                                : 'bg-white/5 border-dashed border-white/30 text-gray-600'
-                                                }`}
-                                        >
-                                            {isPlaced ? builtWord[i] : '_'}
-                                        </motion.div>
-                                    )
-                                })}
-                            </div>
-
-                            {/* Shuffled letter buttons */}
-                            <div className="flex flex-wrap justify-center gap-3 mb-6">
-                                {currentEx.options?.map((opt, i) => {
-                                    const builtWord = selected || ''
-                                    const isUsed = builtWord.includes(opt) &&
-                                        builtWord.split('').filter(c => c === opt).length >=
-                                        (currentEx.options?.filter(c => c === opt).length || 1)
-
-                                    return (
-                                        <motion.button key={i}
-                                            whileHover={!isUsed ? { scale: 1.1, y: -4 } : {}}
-                                            whileTap={!isUsed ? { scale: 0.9 } : {}}
-                                            onClick={() => {
-                                                if (isUsed || selected === lesson.word) return
-                                                const newWord = (selected || '') + opt
-                                                setSelected(newWord)
-
-                                                // সঠিক word হলে
-                                                if (newWord === lesson.word) {
-                                                    setIsCorrect(true)
-                                                    celebrate()
-                                                    setXp(x => x + 15)
-                                                    setTimeout(() => nextEx(), 1500)
-                                                }
-                                                // ভুল হলে — reset
-                                                else if (newWord.length >= lesson.word.length) {
-                                                    setIsCorrect(false)
-                                                    setHearts(h => Math.max(0, h - 1))
-                                                    setTimeout(() => setSelected(null), 800)
-                                                }
-                                            }}
-                                            className={`w-14 h-14 rounded-2xl text-2xl font-bold border-2 transition-all shadow-md ${isUsed
-                                                ? 'bg-white/5 border-white/10 text-gray-600 cursor-not-allowed'
-                                                : `bg-linear-to-br ${lesson.color} text-white border-transparent shadow-lg`
-                                                }`}
-                                        >
-                                            {opt}
-                                        </motion.button>
-                                    )
-                                })}
-                            </div>
-
-                            {/* Clear button */}
-                            {selected && selected.length > 0 && isCorrect === null && (
-                                <motion.button
-                                    whileTap={{ scale: 0.97 }}
-                                    onClick={() => setSelected(null)}
-                                    className="px-6 py-2 rounded-xl bg-white/10 border border-white/20 text-gray-400 text-sm font-medium mb-4"
-                                >
-                                    🗑 মুছি
-                                </motion.button>
-                            )}
-
-                            {/* Feedback */}
-                            {isCorrect === true && (
-                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-3 text-emerald-400 font-bold"
-                                >
-                                    🌟 শাবাশ! সঠিক word বানিয়েছো!
-                                </motion.div>
-                            )}
-                            {isCorrect === false && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 text-red-400 text-sm"
-                                >
-                                    ❌ ভুল! আবার চেষ্টা করো
-                                </motion.div>
-                            )}
-                        </motion.div>
-                    )}
-
-
-
                 </AnimatePresence>
             </div>
         </div>
     )
 }
-

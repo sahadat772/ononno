@@ -11,6 +11,7 @@ const lessons: Record<string, LessonConfig> = {
         exercises: [
             { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: '১ মানে এক', content: '১' },
             { id: 'e2', type: 'listen-repeat', title: 'বলো — এক', voiceText: 'এক', content: 'এক' },
+            { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'এক', content: 'এক' },
             { id: 'e3', type: 'tap-correct', title: '১ কোথায়?', voiceText: 'এক খুঁজে বের করো', content: '১', options: ['১', '২', '৩', '৪'], correctAnswer: '১' },
             { id: 'e4', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'সঠিক সংখ্যার বুদবুদ ফাটাও', content: '১', options: ['১', '২', '৩', '৪'], correctAnswer: '১' },
             { id: 'e5', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক সংখ্যা বেছে নাও', content: '১', options: ['১', '২', '৩', '৪'], correctAnswer: '১' },
