@@ -31,7 +31,7 @@ const menuItems = [
     desc: 'সব user দেখো ও manage করো',
     icon: '👥',
     href: '/dashboard/admin/users',
-    gradient: 'from-blue-500 to-cyan-500',
+    linear: 'from-blue-500 to-cyan-500',
     border: 'border-blue-500/20',
     glow: 'hover:shadow-blue-500/20',
   },
@@ -40,7 +40,7 @@ const menuItems = [
     desc: 'Subjects ও lessons manage করো',
     icon: '📚',
     href: '/dashboard/admin/content',
-    gradient: 'from-violet-500 to-purple-500',
+    linear: 'from-violet-500 to-purple-500',
     border: 'border-violet-500/20',
     glow: 'hover:shadow-violet-500/20',
   },
@@ -49,7 +49,7 @@ const menuItems = [
     desc: 'এতিম/দরিদ্র আবেদন যাচাই করো',
     icon: '🤲',
     href: '/dashboard/admin/free-access',
-    gradient: 'from-emerald-500 to-teal-500',
+    linear: 'from-emerald-500 to-teal-500',
     border: 'border-emerald-500/20',
     glow: 'hover:shadow-emerald-500/20',
   },
@@ -58,7 +58,7 @@ const menuItems = [
     desc: 'Payment ও subscription manage করো',
     icon: '💳',
     href: '/dashboard/admin/subscriptions',
-    gradient: 'from-amber-500 to-orange-500',
+    linear: 'from-amber-500 to-orange-500',
     border: 'border-amber-500/20',
     glow: 'hover:shadow-amber-500/20',
   },
@@ -67,7 +67,7 @@ const menuItems = [
     desc: 'AI performance ও ML data দেখো',
     icon: '🧠',
     href: '/dashboard/admin/analytics',
-    gradient: 'from-rose-500 to-pink-500',
+    linear: 'from-rose-500 to-pink-500',
     border: 'border-rose-500/20',
     glow: 'hover:shadow-rose-500/20',
   },
@@ -76,7 +76,7 @@ const menuItems = [
     desc: 'Teacher list, approve ও assign করো',
     icon: '👨‍🏫',
     href: '/dashboard/admin/teachers',
-    gradient: 'from-indigo-500 to-blue-500',
+    linear: 'from-indigo-500 to-blue-500',
     border: 'border-indigo-500/20',
     glow: 'hover:shadow-indigo-500/20',
   },
@@ -85,7 +85,7 @@ const menuItems = [
     desc: 'School/Madrasah partnership manage করো',
     icon: '🏫',
     href: '/dashboard/admin/institutions',
-    gradient: 'from-teal-500 to-cyan-500',
+    linear: 'from-teal-500 to-cyan-500',
     border: 'border-teal-500/20',
     glow: 'hover:shadow-teal-500/20',
   },
@@ -94,7 +94,7 @@ const menuItems = [
     desc: 'সব user কে notification পাঠাও',
     icon: '🔔',
     href: '/dashboard/admin/notifications',
-    gradient: 'from-yellow-500 to-amber-500',
+    linear: 'from-yellow-500 to-amber-500',
     border: 'border-yellow-500/20',
     glow: 'hover:shadow-yellow-500/20',
   },
@@ -103,7 +103,7 @@ const menuItems = [
     desc: 'Platform settings ও configuration',
     icon: '⚙️',
     href: '/dashboard/admin/settings',
-    gradient: 'from-gray-500 to-slate-500',
+    linear: 'from-gray-500 to-slate-500',
     border: 'border-gray-500/20',
     glow: 'hover:shadow-gray-500/20',
   },
@@ -119,6 +119,7 @@ const aiMetrics = [
 const quickActions = [
   { label: 'নতুন ঘোষণা', icon: '📢', href: '/dashboard/admin/notifications' },
   { label: 'Free Approve', icon: '✅', href: '/dashboard/admin/free-access' },
+  { label: 'Approve', icon: '✅', href: '/dashboard/admin/subscriptions' },
   { label: 'User যোগ', icon: '➕', href: '/dashboard/admin/users' },
   { label: 'Content যোগ', icon: '📝', href: '/dashboard/admin/content' },
 ]
@@ -133,7 +134,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0a0a1a]/80 backdrop-blur-xl px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-sm font-bold">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center text-sm font-bold">
               A
             </div>
             <div>
@@ -160,7 +161,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
               onClick={() => setShowProfile(!showProfile)}
               className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 hover:bg-white/10 transition-all"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-sm font-bold">
+              <div className="w-7 h-7 rounded-full bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center text-sm font-bold">
                 {profile?.full_name?.charAt(0) || 'A'}
               </div>
               <span className="text-sm text-white hidden md:block">{profile?.full_name}</span>
@@ -182,7 +183,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
             >
               {/* Profile Info */}
               <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-2xl font-bold shadow-lg">
+                <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center text-2xl font-bold shadow-lg">
                   {profile?.full_name?.charAt(0) || 'A'}
                 </div>
                 <div>
@@ -224,7 +225,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
 
           {/* Welcome Banner */}
           <motion.div variants={fadeUp} className="mb-8">
-            <div className="rounded-3xl bg-gradient-to-r from-red-500/10 via-rose-500/10 to-pink-500/10 border border-red-500/20 p-6 md:p-8">
+            <div className="rounded-3xl bg-linear-to-r from-red-500/10 via-rose-500/10 to-pink-500/10 border border-red-500/20 p-6 md:p-8">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white">
@@ -257,10 +258,10 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
                 {stat.alert && (
                   <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 )}
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-xl mb-3 shadow-md`}>
+                <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${stat.color} flex items-center justify-center text-xl mb-3 shadow-md`}>
                   {stat.icon}
                 </div>
-                <div className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                <div className={`text-2xl font-bold bg-linear-to-r ${stat.color} bg-clip-text text-transparent`}>
                   {stat.value}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
@@ -308,7 +309,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
                     >
                       <Link href={item.href}>
                         <div className={`rounded-2xl border ${item.border} bg-white/5 hover:bg-white/10 hover:shadow-xl ${item.glow} p-5 transition-all duration-300 cursor-pointer h-full`}>
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center text-2xl mb-4 shadow-md`}>
+                          <div className={`w-12 h-12 rounded-xl bg-linear-to-br ${item.linear} flex items-center justify-center text-2xl mb-4 shadow-md`}>
                             {item.icon}
                           </div>
                           <h3 className="font-bold text-white mb-1">{item.title}</h3>
@@ -437,7 +438,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
                           transition={{ delay: i * 0.05 }}
                           className="flex items-center gap-4 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
                         >
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
                             {user.full_name?.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
