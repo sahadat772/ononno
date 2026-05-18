@@ -14,7 +14,7 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'অ দিয়ে অজগর', content: 'অ' },
             { id: 'e4', type: 'tap-correct', title: 'অ কোথায়?', voiceText: 'অ খুঁজে বের করো', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
             { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'সঠিক বর্ণের বুদবুদ ফাটাও', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
-            { id: 'e6', type: 'archery-target', title: 'লক্ষ্যে আঘাত করো!', voiceText: 'সঠিক বর্ণে আঘাত করো', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
+            // { id: 'e6', type: 'archery-target', title: 'লক্ষ্যে আঘাত করো!', voiceText: 'সঠিক বর্ণে আঘাত করো', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
             { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণটা বেছে নাও', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
             { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'অজগর বানাও', content: 'অজগর', options: ['অ', 'জ', 'গ', 'র'], correctAnswer: 'অজগর' },
             { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'অ', options: ['অ-অজগর', 'আ-আম', 'ই-ইলিশ', 'ঈ-ঈগল'], correctAnswer: 'অ' },

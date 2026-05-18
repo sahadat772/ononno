@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useSpeech } from '@/hooks/useSpeech'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
+import { createClient } from '@/lib/supabase'
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -220,7 +222,7 @@ function MatchingExercise({
 export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const router = useRouter()
     const { speak, isSpeaking } = useSpeech()
-    const { isListening, transcript, startListening, resetTranscript, supported } = useSpeechRecognition()
+    const { isListening, transcript, resetTranscript } = useSpeechRecognition()
 
     const [exIdx, setExIdx] = useState(0)
     const [hearts, setHearts] = useState(3)
@@ -230,10 +232,11 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
     const [showCelebration, setShowCelebration] = useState(false)
     const [hasDrawn, setHasDrawn] = useState(false)
-    const [listenState, setListenState] = useState<'idle' | 'correct' | 'wrong'>('idle')
+    // const [ setListenState] = useState<'idle' | 'correct' | 'wrong'>('idle')
     const [mistakes, setMistakes] = useState<Exercise[]>([])
     const [repeatMode, setRepeatMode] = useState(false)
     const [repeatQueue, setRepeatQueue] = useState<Exercise[]>([])
+    const { state: voiceState, transcript: voiceTranscript, checkPronunciation, reset: resetVoice } = useVoiceRecorder()
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const isDrawing = useRef(false)
@@ -271,7 +274,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         const correct = actual.includes(expected) || expected.includes(actual)
 
         queueMicrotask(() => {
-            setListenState(correct ? 'correct' : 'wrong')
+            // setListenState(correct ? 'correct' : 'wrong')
             if (correct) setXp(x => x + 5)
             else setHearts(h => Math.max(0, h - 1))
         })
@@ -299,11 +302,12 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
 
     function nextEx() {
         const next = exIdx + 1
+        resetVoice()
         if (next < totalSteps) {
             setExIdx(next)
             setSelected(null)
             setIsCorrect(null)
-            setListenState('idle')
+            // setListenState('idle')
             setHasDrawn(false)
             clearCanvas()
         } else {
@@ -323,7 +327,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                 setExIdx(0)
                 setSelected(null)
                 setIsCorrect(null)
-                setListenState('idle')
+                // setListenState('idle')
             } else {
                 const pct = (xp / 50) * 100
                 setStars(pct >= 90 ? 3 : pct >= 60 ? 2 : 1)
@@ -333,7 +337,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     }
 
     function handleSelect(option: string) {
-        if (selected) return
+        if (selected !== null) return  // ← null check করো
         setSelected(option)
         const correct = option === currentEx?.correctAnswer
         setIsCorrect(correct)
@@ -455,7 +459,33 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         className="flex-1 py-3 rounded-2xl bg-white/10 border border-white/20 text-white font-semibold"
                     >🔄 আবার</motion.button>
                     <motion.button whileTap={{ scale: 0.97 }}
-                        onClick={() => router.push(lesson.backHref)}
+                        onClick={async () => {
+                            try {
+                                const supabase = createClient()
+                                const { data: { user } } = await supabase.auth.getUser()
+                                if (user) {
+                                    // এই lesson complete mark করো
+                                    await supabase.from('learning_progress').upsert({
+                                        user_id: user.id,
+                                        lesson_id: lesson.id,
+                                        score: xp,
+                                        stars: stars,
+                                        completed: true,
+                                        completed_at: new Date().toISOString(),
+                                    }, { onConflict: 'user_id,lesson_id' })
+
+                                    // student_stats update করো
+                                    await supabase.from('student_stats').upsert({
+                                        user_id: user.id,
+                                        total_xp: xp,
+                                        lessons_completed: 1,
+                                    }, { onConflict: 'user_id' })
+                                }
+                            } catch (e) {
+                                console.error('Progress save failed:', e)
+                            }
+                            router.push(lesson.backHref)
+                        }}
                         className={`flex-1 py-3 rounded-2xl bg-linear-to-r ${lesson.color} text-white font-bold shadow-lg`}
                     >পরের lesson →</motion.button>
                 </div>
@@ -564,41 +594,69 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             className="text-center max-w-sm w-full"
                         >
                             <p className="text-xl font-bold text-white mb-5">🎧 শোনো এবং বলো!</p>
+
                             <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}
                                 className={`w-32 h-32 rounded-3xl bg-linear-to-br ${lesson.color} flex items-center justify-center text-6xl font-bold text-white shadow-xl mx-auto mb-3`}
                             >{currentEx.content}</motion.div>
-                            <p className="text-2xl font-bold text-white mb-5">{lesson.word}</p>
 
-                            {listenState === 'correct' && (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-5xl mb-4">🌟</motion.div>
-                            )}
-                            {listenState === 'wrong' && (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-3 mb-4 text-red-400 text-sm"
-                                >আবার চেষ্টা করো! 💪</motion.div>
-                            )}
+                            <p className="text-2xl font-bold text-white mb-4">{lesson.word}</p>
 
                             <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
-                                className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-4 mx-auto flex items-center gap-2`}
+                                className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-5 mx-auto flex items-center gap-2`}
                             >🔊 আবার শুনি</button>
 
-                            {listenState === 'idle' && (
+                            {/* Voice state feedback */}
+                            {voiceState === 'recording' && (
+                                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-red-400 font-bold text-lg">🎤 শুনছি... বলো!</p>
+                                    <p className="text-gray-400 text-sm mt-1">৩ সেকেন্ড সময় আছে</p>
+                                </motion.div>
+                            )}
+                            {voiceState === 'processing' && (
+                                <div className="bg-violet-500/20 border border-violet-500/30 rounded-2xl p-4 mb-4">
+                                    <p className="text-violet-400 font-bold">⏳ যাচাই করছি...</p>
+                                </div>
+                            )}
+                            {voiceState === 'correct' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-3xl mb-1">🌟</p>
+                                    <p className="text-emerald-400 font-bold">শাবাশ! সঠিক উচ্চারণ!</p>
+                                    {voiceTranscript && <p className="text-gray-400 text-sm mt-1">তুমি বলেছো: {voiceTranscript}</p>}
+                                </motion.div>
+                            )}
+                            {voiceState === 'wrong' && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-red-400 font-bold">আবার চেষ্টা করো! 💪</p>
+                                    {voiceTranscript && <p className="text-gray-400 text-sm mt-1">তুমি বলেছো: {voiceTranscript}</p>}
+                                </motion.div>
+                            )}
+
+                            {voiceState === 'idle' && (
                                 <div className="space-y-3">
-                                    {supported && (
-                                        <motion.button whileTap={{ scale: 0.95 }}
-                                            onClick={() => startListening(lesson.lang)}
-                                            disabled={isListening}
-                                            className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg flex items-center justify-center gap-2 ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 border-2 border-white/20 text-white'
-                                                }`}
-                                        >{isListening ? '🎤 শুনছি...' : '🎤 এখন বলো!'}</motion.button>
-                                    )}
-                                    <motion.button whileTap={{ scale: 0.97 }}
-                                        onClick={() => {
-                                            speak(currentEx.voiceText, lesson.lang)
-                                            setTimeout(() => { setXp(x => x + 3); nextEx() }, 1500)
+                                    <motion.button whileTap={{ scale: 0.95 }}
+                                        onClick={async () => {
+                                            const correct = await checkPronunciation(currentEx.content, lesson.lang)
+                                            if (correct) {
+                                                setXp(x => x + 5)
+                                                setTimeout(() => nextEx(), 1500)
+                                            } else {
+                                                setHearts(h => Math.max(0, h - 1))
+                                                setTimeout(() => resetVoice(), 2000)
+                                            }
                                         }}
-                                        className="w-full py-3 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-semibold text-sm"
-                                    >✅ শুনলাম! পরের ধাপে যাই →</motion.button>
+                                        className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg flex items-center justify-center gap-2 bg-linear-to-r ${lesson.color} text-white`}
+                                    >🎤 এখন বলো!</motion.button>
+
+                                    <motion.button whileTap={{ scale: 0.97 }}
+                                        onClick={() => { setXp(x => x + 2); nextEx() }}
+                                        className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm"
+                                    >✅ শুনলাম! এড়িয়ে যাই →</motion.button>
                                 </div>
                             )}
                         </motion.div>
@@ -611,6 +669,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             className="text-center max-w-sm w-full"
                         >
                             <p className="text-xl font-bold text-white mb-3">🗣️ জোরে বলো!</p>
+
                             <motion.div
                                 animate={{ scale: [1, 1.05, 1] }}
                                 transition={{ repeat: Infinity, duration: 2 }}
@@ -622,51 +681,59 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 <span className="text-sm text-white/60">🔊 tap করলে শুনবে</span>
                             </motion.div>
 
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
-                                <p className="text-gray-400 text-xs mb-1">উচ্চারণ গাইড</p>
-                                <p className="text-white font-semibold">{currentEx.voiceText}</p>
-                            </div>
-
-                            {listenState === 'correct' && (
+                            {voiceState === 'recording' && (
+                                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}
+                                    className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
+                                >
+                                    <p className="text-red-400 font-bold text-lg">🎤 শুনছি... বলো!</p>
+                                    <p className="text-gray-400 text-sm">৩ সেকেন্ড সময় আছে</p>
+                                </motion.div>
+                            )}
+                            {voiceState === 'processing' && (
+                                <div className="bg-violet-500/20 border border-violet-500/30 rounded-2xl p-4 mb-4">
+                                    <p className="text-violet-400 font-bold">⏳ যাচাই করছি...</p>
+                                </div>
+                            )}
+                            {voiceState === 'correct' && (
                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                                     className="bg-emerald-500/20 border border-emerald-500/30 rounded-2xl p-4 mb-4"
                                 >
                                     <p className="text-3xl mb-1">🌟</p>
-                                    <p className="text-emerald-400 font-bold">শাবাশ! চমৎকার উচ্চারণ!</p>
+                                    <p className="text-emerald-400 font-bold">চমৎকার উচ্চারণ!</p>
+                                    {voiceTranscript && <p className="text-gray-400 text-sm mt-1">তুমি বলেছো: {voiceTranscript}</p>}
                                 </motion.div>
                             )}
-                            {listenState === 'wrong' && (
+                            {voiceState === 'wrong' && (
                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                                     className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 mb-4"
                                 >
-                                    <p className="text-red-400 font-semibold">আবার চেষ্টা করো! 💪</p>
-                                    <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
-                                        className="mt-2 text-sm text-red-300 underline"
-                                    >আবার শুনি</button>
+                                    <p className="text-red-400 font-bold">আবার চেষ্টা করো! 💪</p>
+                                    {voiceTranscript && <p className="text-gray-400 text-sm mt-1">তুমি বলেছো: {voiceTranscript}</p>}
                                 </motion.div>
                             )}
 
-                            {listenState === 'idle' && (
+                            {voiceState === 'idle' && (
                                 <div className="space-y-3">
-                                    {supported && (
-                                        <motion.button whileTap={{ scale: 0.95 }}
-                                            onClick={() => startListening(lesson.lang)}
-                                            disabled={isListening}
-                                            className={`w-full py-5 rounded-2xl text-xl font-bold shadow-lg flex items-center justify-center gap-3 ${isListening ? 'bg-red-500 text-white animate-pulse' : `bg-linear-to-r ${lesson.color} text-white`
-                                                }`}
-                                        >
-                                            {isListening ? (
-                                                <><motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 0.5 }}>🎤</motion.span> শুনছি...</>
-                                            ) : <>🎤 এখন বলো!</>}
-                                        </motion.button>
-                                    )}
-                                    <motion.button whileTap={{ scale: 0.97 }}
-                                        onClick={() => {
-                                            speak(currentEx.voiceText, lesson.lang)
-                                            setTimeout(() => { setXp(x => x + 3); nextEx() }, 1500)
+                                    <motion.button whileTap={{ scale: 0.95 }}
+                                        onClick={async () => {
+                                            const correct = await checkPronunciation(currentEx.content, lesson.lang)
+                                            if (correct) {
+                                                celebrate()
+                                                setXp(x => x + 5)
+                                                setTimeout(() => nextEx(), 1500)
+                                            } else {
+                                                setHearts(h => Math.max(0, h - 1))
+                                                if (currentEx) recordMistake(currentEx)
+                                                setTimeout(() => resetVoice(), 2000)
+                                            }
                                         }}
+                                        className={`w-full py-5 rounded-2xl text-xl font-bold shadow-lg flex items-center justify-center gap-3 bg-linear-to-r ${lesson.color} text-white`}
+                                    >🎤 এখন বলো!</motion.button>
+
+                                    <motion.button whileTap={{ scale: 0.97 }}
+                                        onClick={() => { setXp(x => x + 2); nextEx() }}
                                         className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm"
-                                    >✅ বললাম! পরের ধাপে যাই →</motion.button>
+                                    >✅ বললাম! এড়িয়ে যাই →</motion.button>
                                 </div>
                             )}
                         </motion.div>
@@ -776,8 +843,11 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                             x: [0, i % 3 === 0 ? 20 : -20, 0],
                                         }}
                                         transition={{ duration: 2.5 + i * 0.8, repeat: Infinity, ease: 'easeInOut', delay: i * 0.6 }}
-                                        whileTap={{ scale: 0.1, opacity: 0, transition: { duration: 0.15 } }}
-                                        onClick={() => handleSelect(opt)}
+                                        whileTap={{ scale: 0.1, transition: { duration: 0.15 } }}
+                                        onClick={() => {
+                                            if (selected) return
+                                            handleSelect(opt)
+                                        }}
                                         className="absolute flex items-center justify-center"
                                         style={{ left: `${10 + i * 22}%`, top: `${15 + (i % 2) * 35}%`, width: 80, height: 80 }}
                                     >
@@ -934,11 +1004,28 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 >🗑 মুছি</button>
                                 <motion.button whileTap={{ scale: 0.97 }}
                                     onClick={() => {
-                                        if (hasDrawn) {
-                                            celebrate()
-                                            setXp(x => x + 5)
-                                            setTimeout(nextEx, 1200)
+                                        const canvas = canvasRef.current
+                                        if (!canvas) return
+                                        const ctx = canvas.getContext('2d')
+                                        if (!ctx) return
+
+                                        // কতটুকু আঁকা হয়েছে check করো
+                                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                                        const pixels = imageData.data
+                                        let filledPixels = 0
+                                        for (let i = 3; i < pixels.length; i += 4) {
+                                            if (pixels[i] > 0) filledPixels++
                                         }
+
+                                        // কমপক্ষে ৫০০ pixel আঁকতে হবে
+                                        if (filledPixels < 500) {
+                                            alert('আরেকটু বড় করে লেখো! ✍️')
+                                            return
+                                        }
+
+                                        celebrate()
+                                        setXp(x => x + 5)
+                                        setTimeout(nextEx, 1200)
                                     }}
                                     disabled={!hasDrawn}
                                     className={`flex-1 py-3 rounded-2xl font-bold transition-all ${hasDrawn ? `bg-linear-to-r ${lesson.color} text-white shadow-lg` : 'bg-white/5 text-gray-600 cursor-not-allowed'

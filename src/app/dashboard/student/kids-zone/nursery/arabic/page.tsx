@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
@@ -16,7 +16,7 @@ const units = [
         border: 'border-emerald-500/30',
         lessons: [
             { id: 'arabic-alif', title: 'ا — أسد (সিংহ)', icon: 'ا', unlocked: true, completed: false, xp: 10 },
-            { id: 'arabic-ba', title: 'ب — بطة (হাঁস)', icon: 'ب', unlocked: false, completed: false, xp: 10 },
+            { id: 'arabic-ba', title: 'ب — بطة (হাঁস)', icon: 'ب', unlocked: true, completed: false, xp: 10 },
             { id: 'arabic-ta', title: 'ت — تفاح (আপেল)', icon: 'ت', unlocked: false, completed: false, xp: 10 },
             { id: 'arabic-tha', title: 'ث — ثعلب (শেয়াল)', icon: 'ث', unlocked: false, completed: false, xp: 10 },
             { id: 'arabic-jeem', title: 'ج — جمل (উট)', icon: 'ج', unlocked: false, completed: false, xp: 10 },
