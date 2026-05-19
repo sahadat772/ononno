@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
@@ -25,6 +27,34 @@ const classNames: Record<string, string> = {
 }
 
 export default function GeneralDashboard({ profile, studentProfile }: Props) {
+
+    const [realStats, setRealStats] = useState({ lessons: 0, quizScore: 0 })
+
+    useEffect(() => {
+        async function loadStats() {
+            try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                const { data } = await supabase
+                    .from('learning_progress')
+                    .select('completed, score')
+                    .eq('user_id', user.id)
+
+                if (data) {
+                    const completedLessons = data.filter(r => r.completed).length
+                    const avgScore = data.length > 0
+                        ? Math.round(data.reduce((sum, r) => sum + (r.score || 0), 0) / data.length)
+                        : 0
+                    setRealStats({ lessons: completedLessons, quizScore: avgScore })
+                }
+            } catch (e) {
+                console.error('Stats load failed:', e)
+            }
+        }
+        void loadStats()
+    }, [])
     const classLevel = studentProfile?.class_level || 'general'
     const className = classNames[classLevel] || classLevel
     const firstName = profile?.full_name?.split(' ')[0] || 'বন্ধু'
@@ -100,9 +130,9 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                     {/* Stats — 2x2 on mobile, 4 cols on md+ */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-4">
                         {[
-                            { label: 'আজকের লেসন', value: '০', icon: '📚', color: 'from-blue-500 to-cyan-500' },
+                            { label: 'সম্পন্ন লেসন', value: `${realStats.lessons}`, icon: '📚', color: 'from-blue-500 to-cyan-500' },
                             { label: 'ইসলামিক', value: '০%', icon: '🕌', color: 'from-emerald-500 to-teal-500' },
-                            { label: 'Quiz score', value: '০%', icon: '✅', color: 'from-violet-500 to-purple-500' },
+                            { label: 'Quiz score', value: `${realStats.quizScore}%`, icon: '✅', color: 'from-violet-500 to-purple-500' },
                             { label: 'Streak', value: '১ দিন', icon: '🔥', color: 'from-amber-500 to-orange-500' },
                         ].map((stat, i) => (
                             <motion.div

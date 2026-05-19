@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 
@@ -60,7 +61,7 @@ const subjects = [
         color: 'from-amber-400 to-yellow-500',
         bg: 'bg-amber-50',
         border: 'border-amber-200',
-        href: '/dashboard/student/kids-zone/learn/world', // ✅ fix
+        href: '/dashboard/student/kids-zone', // ✅ fix
         topics: ['প্রাণী জগৎ', 'গাছপালা', 'আমার পরিবার'],
     },
     {
@@ -69,7 +70,7 @@ const subjects = [
         color: 'from-purple-400 to-violet-500',
         bg: 'bg-purple-50',
         border: 'border-purple-200',
-        href: '/dashboard/student/kids-zone/creative', // ✅ fix
+        href: '/dashboard/student/kids-zone', // ✅ fix
         topics: ['রং চেনো', 'আঁকো', 'রঙ করো'],
     },
 ]
@@ -91,6 +92,7 @@ const rewards = [
 ]
 
 export default function NurseryDashboard({ profile, studentProfile }: Props) {
+    const [realStats, setRealStats] = useState({ stars: 0, lessons: 0, streak: 1 })
     const [currentTime, setCurrentTime] = useState('')
     const [greeting, setGreeting] = useState('')
     const [showReward, setShowReward] = useState(false)
@@ -116,6 +118,34 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
     useEffect(() => {
         const timer = setTimeout(() => setShowReward(true), 2000)
         return () => clearTimeout(timer)
+    }, [])
+
+    useEffect(() => {
+        async function loadStats() {
+            try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                const { data } = await supabase
+                    .from('learning_progress')
+                    .select('stars, completed')
+                    .eq('user_id', user.id)
+
+                if (data) {
+                    const completedLessons = data.filter(r => r.completed).length
+                    const totalStars = data.reduce((sum, r) => sum + (r.stars || 0), 0)
+                    setRealStats({
+                        stars: totalStars,
+                        lessons: completedLessons,
+                        streak: 1,
+                    })
+                }
+            } catch (e) {
+                console.error('Stats load failed:', e)
+            }
+        }
+        void loadStats()
     }, [])
 
     const firstName = profile?.full_name?.split(' ')[0] || 'বন্ধু'
@@ -228,10 +258,10 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
             {/* Stats Row */}
             <div className="grid grid-cols-4 gap-3 mb-6">
                 {[
-                    { icon: '⭐', label: 'তারা', value: '২', color: 'from-yellow-400 to-amber-500' },
-                    { icon: '📚', label: 'লেসন', value: '০', color: 'from-blue-400 to-cyan-500' },
+                    { icon: '⭐', label: 'তারা', value: `${realStats.stars}`, color: 'from-yellow-400 to-amber-500' },
+                    { icon: '📚', label: 'লেসন', value: `${realStats.lessons}`, color: 'from-blue-400 to-cyan-500' },
                     { icon: '✅', label: 'Quiz', value: '০', color: 'from-green-400 to-emerald-500' },
-                    { icon: '🔥', label: 'Streak', value: '১', color: 'from-orange-400 to-red-500' },
+                    { icon: '🔥', label: 'Streak', value: `${realStats.streak} দিন`, color: 'from-orange-400 to-red-500' },
                 ].map((stat, i) => (
                     <motion.div
                         key={i}

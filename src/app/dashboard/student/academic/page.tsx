@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 interface Sector {
     id: string
@@ -30,8 +30,6 @@ export default function AcademicPage() {
     const [selectedSector, setSelectedSector] = useState<Sector | null>(null)
     const [studentLevel, setStudentLevel] = useState<string>('')
     const [loading, setLoading] = useState(true)
-    const params = useParams()
-    const classSlug = params.classSlug as string
     const router = useRouter()
 
     // Subject আনার পরে এই check যোগ করো
@@ -49,11 +47,6 @@ export default function AcademicPage() {
 
             if (sp?.class_level) setStudentLevel(sp.class_level)
 
-            // ✅ Nursery ও KG → Kids Zone এ redirect
-            if (classSlug === 'nursery' || classSlug === 'kg') {
-                router.replace('/dashboard/student/kids-zone')
-                return
-            }
 
             // Sectors আনো
             const { data: sectorsData } = await supabase
@@ -66,7 +59,7 @@ export default function AcademicPage() {
             setLoading(false)
         }
         fetchData()
-    }, [classSlug])
+    }, [router]) // router dependency দিয়ে রাখলাম যাতে page এ focus এলে আবার ডেটা ফেচ হয়, এটা optional
 
     const fetchClasses = async (sector: Sector) => {
         setSelectedSector(sector)
@@ -127,11 +120,11 @@ export default function AcademicPage() {
                 </Link>
 
                 <div className="flex items-center gap-4 mt-2">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-3xl shadow-lg">
+                    <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-3xl shadow-lg">
                         📚
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                             Learning Dashboard
                         </h1>
                         <p className="text-gray-400 mt-1">তোমার level বেছে নাও এবং শেখা শুরু করো</p>
@@ -144,7 +137,7 @@ export default function AcademicPage() {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mb-6 rounded-2xl bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4 flex items-center justify-between flex-wrap gap-3"
+                    className="mb-6 rounded-2xl bg-linear-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 p-4 flex items-center justify-between flex-wrap gap-3"
                 >
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">🎯</span>
@@ -156,7 +149,7 @@ export default function AcademicPage() {
                         </div>
                     </div>
                     <Link
-                        href={`/dashboard/student/academic/learn/${studentLevel}`}
+                        href={`/dashboard/student/kids-zone/nursery${studentLevel}`}
                         className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-all"
                     >
                         আমার ক্লাসে যাও →
@@ -186,12 +179,12 @@ export default function AcademicPage() {
                                     onClick={() => fetchClasses(sector)}
                                     className={`cursor-pointer rounded-2xl border ${sectorBorders[sector.slug] || 'border-white/10 hover:border-white/30'} bg-white/5 hover:bg-white/10 p-6 transition-all duration-300`}
                                 >
-                                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${sectorColors[sector.slug] || sector.color} flex items-center justify-center text-3xl mb-4 shadow-lg`}>
+                                    <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${sectorColors[sector.slug] || sector.color} flex items-center justify-center text-3xl mb-4 shadow-lg`}>
                                         {sectorIcons[sector.slug] || sector.icon}
                                     </div>
                                     <h3 className="font-bold text-white text-xl mb-1">{sector.name}</h3>
                                     <p className="text-gray-400 text-sm mb-3">{sector.level_range}</p>
-                                    <div className={`text-sm font-semibold bg-gradient-to-r ${sectorColors[sector.slug] || sector.color} bg-clip-text text-transparent flex items-center gap-1`}>
+                                    <div className={`text-sm font-semibold bg-linear-to-r ${sectorColors[sector.slug] || sector.color} bg-clip-text text-transparent flex items-center gap-1`}>
                                         দেখো <span>→</span>
                                     </div>
                                 </motion.div>
@@ -217,7 +210,7 @@ export default function AcademicPage() {
                         </button>
 
                         {/* Sector Header */}
-                        <div className={`rounded-2xl bg-gradient-to-r ${sectorColors[selectedSector.slug] || selectedSector.color} p-px mb-6`}>
+                        <div className={`rounded-2xl bg-linear-to-r ${sectorColors[selectedSector.slug] || selectedSector.color} p-px mb-6`}>
                             <div className="rounded-2xl bg-[#0f0f2a] p-5 flex items-center gap-4">
                                 <span className="text-4xl">{sectorIcons[selectedSector.slug] || selectedSector.icon}</span>
                                 <div>
@@ -240,7 +233,7 @@ export default function AcademicPage() {
                                     <Link href={`/dashboard/student/academic/learn/${cls.slug}`}>
                                         <div className={`rounded-2xl border ${sectorBorders[selectedSector.slug] || 'border-white/10'} bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer`}>
                                             <div className="flex items-center justify-between mb-3">
-                                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sectorColors[selectedSector.slug] || selectedSector.color} flex items-center justify-center text-lg font-bold text-white shadow-md`}>
+                                                <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${sectorColors[selectedSector.slug] || selectedSector.color} flex items-center justify-center text-lg font-bold text-white shadow-md`}>
                                                     {i + 1}
                                                 </div>
                                                 {cls.level === studentLevel && (
@@ -250,7 +243,7 @@ export default function AcademicPage() {
                                                 )}
                                             </div>
                                             <h3 className="font-bold text-white text-lg mb-1">{cls.name}</h3>
-                                            <div className={`mt-3 text-sm font-semibold bg-gradient-to-r ${sectorColors[selectedSector.slug] || selectedSector.color} bg-clip-text text-transparent`}>
+                                            <div className={`mt-3 text-sm font-semibold bg-linear-to-r ${sectorColors[selectedSector.slug] || selectedSector.color} bg-clip-text text-transparent`}>
                                                 শুরু করো →
                                             </div>
                                         </div>
