@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
@@ -209,7 +209,7 @@ export default function ChapterListPage() {
                                             >
                                                 <div className="flex items-center gap-4">
                                                     {/* Chapter Icon */}
-                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0 shadow-lg ${!unlocked
+                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink:0 shadow-lg ${!unlocked
                                                             ? 'bg-white/5 text-gray-600'
                                                             : completed
                                                                 ? 'bg-linear-to-br from-emerald-500 to-teal-500'
@@ -272,7 +272,7 @@ export default function ChapterListPage() {
 
                                                     {/* Arrow */}
                                                     {unlocked && (
-                                                        <span className="text-gray-400 text-xl flex-shrink-0">→</span>
+                                                        <span className="text-gray-400 text-xl flex-shrink:0">→</span>
                                                     )}
                                                 </div>
                                             </motion.div>

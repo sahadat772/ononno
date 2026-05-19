@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import LogoutButton from '@/components/shared/LogoutButton'
 import NurseryDashboard from './levels/NurseryDashboard'
 import GeneralDashboard from './levels/GeneralDashboard'
@@ -39,17 +40,23 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
 
                     {/* Right side */}
                     <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                        <span className="hidden md:block text-sm text-gray-300 truncate max-w-[120px]">
+                        <span className="hidden md:block text-sm text-gray-300 truncate max-width: 120px;">
                             👋 {profile?.full_name}
                         </span>
+                        <Link
+                            href="/dashboard/student/learning-path"
+                            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition text-xs"
+                        >
+                            🤖 আজকের Plan
+                        </Link>
                         <Link
                             href="/dashboard/student/profile"
                             className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/40 transition-all shrink-0"
                         >
                             {profile?.avatar_url ? (
-                                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                                <Image src={profile.avatar_url} alt="Profile" width={32} height={32} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">
+                                <div className="w-full h-full bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">
                                     {profile?.full_name?.charAt(0) || '?'}
                                 </div>
                             )}
