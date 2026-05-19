@@ -32,7 +32,6 @@ export default function AcademicPage() {
     const [loading, setLoading] = useState(true)
     const router = useRouter()
 
-    // Subject আনার পরে এই check যোগ করো
     useEffect(() => {
         const fetchData = async () => {
             const supabase = createClient()
@@ -47,8 +46,12 @@ export default function AcademicPage() {
 
             if (sp?.class_level) setStudentLevel(sp.class_level)
 
+            // Nursery ও KG → Kids Zone এ redirect
+            if (sp?.class_level === 'nursery' || sp?.class_level === 'kg') {
+                router.replace('/dashboard/student/kids-zone')
+                return
+            }
 
-            // Sectors আনো
             const { data: sectorsData } = await supabase
                 .from('learning_sectors')
                 .select('*')
@@ -59,9 +62,15 @@ export default function AcademicPage() {
             setLoading(false)
         }
         fetchData()
-    }, [router]) // router dependency দিয়ে রাখলাম যাতে page এ focus এলে আবার ডেটা ফেচ হয়, এটা optional
+    }, [router])
 
     const fetchClasses = async (sector: Sector) => {
+        // Kids Zone sector → সরাসরি kids-zone page এ নিয়ে যাও
+        if (sector.slug === 'kids-zone') {
+            router.push('/dashboard/student/kids-zone')
+            return
+        }
+
         setSelectedSector(sector)
         const supabase = createClient()
         const { data } = await supabase
@@ -102,7 +111,16 @@ export default function AcademicPage() {
         'university': '🎓',
         'masters': '🔬',
     }
-    
+
+    // "আমার ক্লাসে যাও" এর সঠিক href বের করো
+    const myClassHref = (() => {
+        if (!studentLevel) return '#'
+        const level = studentLevel.toLowerCase().trim()
+        if (level === 'nursery' || level === 'kg') {
+            return '/dashboard/student/kids-zone'
+        }
+        return `/dashboard/student/academic/learn/${level}`
+    })()
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
@@ -149,7 +167,7 @@ export default function AcademicPage() {
                         </div>
                     </div>
                     <Link
-                        href={`/dashboard/student/kids-zone/nursery${studentLevel}`}
+                        href={myClassHref}
                         className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-all"
                     >
                         আমার ক্লাসে যাও →
@@ -185,7 +203,7 @@ export default function AcademicPage() {
                                     <h3 className="font-bold text-white text-xl mb-1">{sector.name}</h3>
                                     <p className="text-gray-400 text-sm mb-3">{sector.level_range}</p>
                                     <div className={`text-sm font-semibold bg-linear-to-r ${sectorColors[sector.slug] || sector.color} bg-clip-text text-transparent flex items-center gap-1`}>
-                                        দেখো <span>→</span>
+                                        {sector.slug === 'kids-zone' ? '🧒 Kids Zone এ যাও →' : 'দেখো →'}
                                     </div>
                                 </motion.div>
                             ))}
