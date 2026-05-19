@@ -96,14 +96,14 @@ export default function ClassSubjectsPage() {
                 </Link>
 
                 {classInfo && (
-                    <div className={`rounded-2xl bg-gradient-to-r ${sectorColor} p-px mt-4`}>
+                    <div className={`rounded-2xl bg-linear-to-r ${sectorColor} p-px mt-4`}>
                         <div className="rounded-2xl bg-[#0f0f2a] p-6">
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
                                     <p className="text-gray-400 text-sm mb-1">
                                         {classInfo.learning_sectors?.name}
                                     </p>
-                                    <h1 className={`text-3xl font-bold bg-gradient-to-r ${sectorColor} bg-clip-text text-transparent`}>
+                                    <h1 className={`text-3xl font-bold bg-linear-to-r ${sectorColor} bg-clip-text text-transparent`}>
                                         {classInfo.name}
                                     </h1>
                                     <p className="text-gray-400 mt-1">{subjects.length}টি বিষয়</p>
@@ -124,7 +124,7 @@ export default function ClassSubjectsPage() {
                                     <span>০%</span>
                                 </div>
                                 <div className="w-full bg-white/10 rounded-full h-2">
-                                    <div className={`bg-gradient-to-r ${sectorColor} h-2 rounded-full w-0`} />
+                                    <div className={`bg-linear-to-r ${sectorColor} h-2 rounded-full w-0`} />
                                 </div>
                             </div>
                         </div>
@@ -210,12 +210,12 @@ function SubjectCard({
                 <div className={`rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer group`}>
                     {/* Icon & Progress */}
                     <div className="flex items-start justify-between mb-4">
-                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-3xl shadow-lg`}>
+                        <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${subject.color} flex items-center justify-center text-3xl shadow-lg`}>
                             {subject.icon}
                         </div>
                         <div className="text-right">
                             <p className="text-xs text-gray-500">অগ্রগতি</p>
-                            <p className={`text-lg font-bold bg-gradient-to-r ${subject.color} bg-clip-text text-transparent`}>
+                            <p className={`text-lg font-bold bg-linear-to-r ${subject.color} bg-clip-text text-transparent`}>
                                 {progress}%
                             </p>
                         </div>
@@ -233,11 +233,11 @@ function SubjectCard({
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
                             transition={{ duration: 0.8, delay: index * 0.1 }}
-                            className={`bg-gradient-to-r ${subject.color} h-2 rounded-full`}
+                            className={`bg-linear-to-r ${subject.color} h-2 rounded-full`}
                         />
                     </div>
 
-                    <div className={`text-sm font-semibold bg-gradient-to-r ${subject.color} bg-clip-text text-transparent flex items-center gap-1`}>
+                    <div className={`text-sm font-semibold bg-linear-to-r ${subject.color} bg-clip-text text-transparent flex items-center gap-1`}>
                         {progress > 0 ? 'চালিয়ে যাও' : 'শুরু করো'} <span>→</span>
                     </div>
                 </div>

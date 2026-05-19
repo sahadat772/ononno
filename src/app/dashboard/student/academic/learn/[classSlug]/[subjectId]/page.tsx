@@ -138,7 +138,7 @@ export default function ChapterListPage() {
                         <motion.div
                             animate={{ scale: [1, 1.05, 1] }}
                             transition={{ repeat: Infinity, duration: 3 }}
-                            className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-5xl mx-auto mb-4 shadow-2xl`}
+                            className={`w-24 h-24 rounded-3xl bg-linear-to-br ${subject.color} flex items-center justify-center text-5xl mx-auto mb-4 shadow-2xl`}
                         >
                             {subject.icon}
                         </motion.div>
@@ -175,7 +175,7 @@ export default function ChapterListPage() {
                 ) : (
                     <div className="relative">
                         {/* Path Line */}
-                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-white/20 via-white/10 to-transparent -translate-x-1/2 hidden md:block" />
+                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-linear-to-b from-white/20 via-white/10 to-transparent -translate-x-1/2 hidden md:block" />
 
                         <div className="space-y-6">
                             {chapters.map((chapter, index) => {
@@ -212,10 +212,10 @@ export default function ChapterListPage() {
                                                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0 shadow-lg ${!unlocked
                                                             ? 'bg-white/5 text-gray-600'
                                                             : completed
-                                                                ? 'bg-gradient-to-br from-emerald-500 to-teal-500'
+                                                                ? 'bg-linear-to-br from-emerald-500 to-teal-500'
                                                                 : inProgress
-                                                                    ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
-                                                                    : 'bg-gradient-to-br from-violet-500 to-purple-500'
+                                                                    ? 'bg-linear-to-br from-blue-500 to-cyan-500'
+                                                                    : 'bg-linear-to-br from-violet-500 to-purple-500'
                                                         }`}>
                                                         {!unlocked ? '🔒' : completed ? '✅' : inProgress ? '📖' : chapter.chapter_number}
                                                     </div>
@@ -261,8 +261,8 @@ export default function ChapterListPage() {
                                                                         animate={{ width: `${chapterProg}%` }}
                                                                         transition={{ duration: 0.8, delay: index * 0.1 }}
                                                                         className={`h-2 rounded-full ${completed
-                                                                                ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                                                                                : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                                                                                ? 'bg-linear-to-r from-emerald-500 to-teal-500'
+                                                                                : 'bg-linear-to-r from-blue-500 to-cyan-500'
                                                                             }`}
                                                                     />
                                                                 </div>
