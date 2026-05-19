@@ -1,4 +1,4 @@
-import { useState,  useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 interface SpeechRecognitionHook {
     isListening: boolean
@@ -32,7 +32,7 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
             continuous: boolean
             maxAlternatives: number
             onstart: (() => void) | null
-            onresult: ((e: SpeechRecognitionEvent) => void) | null
+            onresult: ((e: { resultIndex: number; results: { [key: number]: { [key: number]: { transcript: string } } } }) => void) | null
             onerror: ((e: { error: string }) => void) | null
             onend: (() => void) | null
             start: () => void
@@ -59,7 +59,7 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
             setTranscript('')
         }
 
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
+        recognition.onresult = (event: { resultIndex: number; results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
             const current = event.resultIndex
             const result = event.results[current]
             const text = result[0].transcript
