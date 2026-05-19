@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const supabase =await createServerSupabaseClient()
-        const studentId = params.id
+        const supabase = await createServerSupabaseClient()
+        const { id: studentId } = await params
 
         if (!studentId) {
             return NextResponse.json(
