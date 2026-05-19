@@ -88,11 +88,11 @@ export default function FreeAccessPage() {
                     ← Admin Panel এ ফিরে যাও
                 </Link>
                 <div className="flex items-center gap-4 mt-2">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-3xl shadow-lg">
+                    <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-3xl shadow-lg">
                         🤲
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold bg-linear-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
                             বিনামূল্যে অ্যাক্সেস
                         </h1>
                         <p className="text-gray-400 mt-1">এতিম, দরিদ্র ও প্রতিবন্ধী শিক্ষার্থীদের আবেদন</p>
@@ -110,7 +110,7 @@ export default function FreeAccessPage() {
                     <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                         className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
                         <div className="text-2xl mb-1">{s.icon}</div>
-                        <div className={`text-3xl font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.value}</div>
+                        <div className={`text-3xl font-bold bg-linear-to-r ${s.color} bg-clip-text text-transparent`}>{s.value}</div>
                         <div className="text-xs text-gray-400 mt-1">{s.label}</div>
                     </motion.div>
                 ))}
@@ -161,7 +161,7 @@ export default function FreeAccessPage() {
                                 </div>
 
                                 {req.status === 'pending' && (
-                                    <div className="flex gap-2 flex-shrink-0">
+                                    <div className="flex gap-2 flex-shrink:0">
                                         <button
                                             onClick={() => handleAction(req.id, 'approved')}
                                             disabled={processing === req.id}

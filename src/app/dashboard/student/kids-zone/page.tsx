@@ -111,7 +111,7 @@ export default function KidsZonePage() {
     })()
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#0d0a2e] via-[#0a1628] to-[#0a0a1a] text-white overflow-x-hidden">
+        <div className="min-h-screen bg-linear-to-b from-[#0d0a2e] via-[#0a1628] to-[#0a0a1a] text-white overflow-x-hidden">
 
             {/* Floating Background */}
             {floatingItems.map((item, i) => (
@@ -137,7 +137,7 @@ export default function KidsZonePage() {
                 <motion.div
                     initial={{ opacity: 0, y: -30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-blue-600 p-5 md:p-6 mb-6 relative overflow-hidden"
+                    className="rounded-3xl bg-linear-to-r from-violet-600 via-purple-600 to-blue-600 p-5 md:p-6 mb-6 relative overflow-hidden"
                 >
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         {[...Array(15)].map((_, i) => (
@@ -197,7 +197,7 @@ export default function KidsZonePage() {
                             whileTap={{ scale: 0.97 }}
                             onClick={() => setActiveLevel(level.key as 'nursery' | 'kg')}
                             className={`flex-1 py-3 px-4 rounded-2xl text-left transition-all border ${activeLevel === level.key
-                                    ? 'bg-gradient-to-r from-violet-600/30 to-purple-600/30 border-violet-500/50 text-white'
+                                    ? 'bg-linear-to-r from-violet-600/30 to-purple-600/30 border-violet-500/50 text-white'
                                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                 }`}
                         >
@@ -231,7 +231,7 @@ export default function KidsZonePage() {
                                             <motion.div
                                                 animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.1, 1] }}
                                                 transition={{ repeat: Infinity, duration: 3, delay: i * 0.5 }}
-                                                className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-2xl font-bold text-white mb-3 shadow-lg`}
+                                                className={`w-14 h-14 rounded-2xl bg-linear-to-br ${subject.color} flex items-center justify-center text-2xl font-bold text-white mb-3 shadow-lg`}
                                             >
                                                 {subject.icon}
                                             </motion.div>
@@ -241,10 +241,10 @@ export default function KidsZonePage() {
                                                 <span>📝 {subject.lessons} Lesson</span>
                                             </div>
                                             <div className="w-full bg-white/10 rounded-full h-2 mb-1">
-                                                <div className={`h-2 rounded-full bg-gradient-to-r ${subject.color} w-0`} />
+                                                <div className={`h-2 rounded-full bg-linear-to-r ${subject.color} w-0`} />
                                             </div>
                                             <div className="text-xs text-gray-500">০% সম্পন্ন</div>
-                                            <div className={`mt-3 text-xs font-bold bg-gradient-to-r ${subject.color} bg-clip-text text-transparent`}>
+                                            <div className={`mt-3 text-xs font-bold bg-linear-to-r ${subject.color} bg-clip-text text-transparent`}>
                                                 শুরু করো →
                                             </div>
                                         </div>
@@ -295,7 +295,7 @@ export default function KidsZonePage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
-                            className="mt-4 rounded-3xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5"
+                            className="mt-4 rounded-3xl bg-linear-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5"
                         >
                             <div className="flex items-center justify-between gap-3 flex-wrap">
                                 <div>
@@ -317,7 +317,7 @@ export default function KidsZonePage() {
                                     <span>০/৫ বর্ণ শেখা হয়েছে</span><span>০%</span>
                                 </div>
                                 <div className="w-full bg-white/10 rounded-full h-3">
-                                    <div className="bg-gradient-to-r from-amber-400 to-orange-400 h-3 rounded-full w-0" />
+                                    <div className="bg-linear-to-r from-amber-400 to-orange-400 h-3 rounded-full w-0" />
                                 </div>
                             </div>
                         </motion.div>
@@ -339,7 +339,7 @@ function KGZoneCard({ zone, locked }: { zone: typeof kgZones[0]; locked?: boolea
                 <motion.div
                     animate={!locked ? { rotate: [0, 5, -5, 0], scale: [1, 1.1, 1] } : {}}
                     transition={{ repeat: Infinity, duration: 3 }}
-                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${zone.color} flex items-center justify-center text-3xl mb-3 shadow-lg`}
+                    className={`w-14 h-14 rounded-2xl bg-linear-to-br ${zone.color} flex items-center justify-center text-3xl mb-3 shadow-lg`}
                 >
                     {zone.icon}
                 </motion.div>
@@ -350,7 +350,7 @@ function KGZoneCard({ zone, locked }: { zone: typeof kgZones[0]; locked?: boolea
                     ))}
                 </div>
                 {!locked && (
-                    <div className={`mt-3 text-sm font-bold bg-gradient-to-r ${zone.color} bg-clip-text text-transparent`}>
+                    <div className={`mt-3 text-sm font-bold bg-linear-to-r ${zone.color} bg-clip-text text-transparent`}>
                         প্রবেশ করো →
                     </div>
                 )}

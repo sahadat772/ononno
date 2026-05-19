@@ -72,7 +72,7 @@ export default function BanglaBarnaPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#0d0a2e] via-[#0a1628] to-[#0a0a1a] text-white">
+        <div className="min-h-screen bg-linear-to-b from-[#0d0a2e] via-[#0a1628] to-[#0a0a1a] text-white">
 
             {/* Celebration */}
             <AnimatePresence>
@@ -87,7 +87,7 @@ export default function BanglaBarnaPage() {
                             initial={{ scale: 0.5, rotate: -10 }}
                             animate={{ scale: 1, rotate: 0 }}
                             exit={{ scale: 0.5 }}
-                            className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl p-8 text-center max-w-xs"
+                            className="bg-linear-to-br from-yellow-400 to-orange-500 rounded-3xl p-8 text-center max-w-xs"
                         >
                             <motion.div
                                 animate={{ scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }}
@@ -161,7 +161,7 @@ export default function BanglaBarnaPage() {
                             key={tab.key}
                             onClick={() => { setActiveTab(tab.key as 'swar' | 'byanjan'); setSelectedLetter(null) }}
                             className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.key
-                                ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-lg'
+                                ? 'bg-linear-to-r from-red-500 to-rose-500 text-white shadow-lg'
                                 : 'text-gray-400 hover:text-white'
                                 }`}
                         >
@@ -180,7 +180,7 @@ export default function BanglaBarnaPage() {
                             exit={{ opacity: 0, scale: 0.8 }}
                             className="mb-6"
                         >
-                            <div className={`rounded-3xl bg-gradient-to-br ${selectedLetter.color} p-1`}>
+                            <div className={`rounded-3xl bg-linear-to-br ${selectedLetter.color} p-1`}>
                                 <div className="rounded-3xl bg-[#0f0f2a] p-6 text-center">
                                     <motion.div
                                         animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
@@ -191,7 +191,7 @@ export default function BanglaBarnaPage() {
                                         {selectedLetter.letter}
                                     </motion.div>
                                     <div className="text-6xl mb-3">{selectedLetter.emoji}</div>
-                                    <p className={`text-2xl font-bold bg-gradient-to-r ${selectedLetter.color} bg-clip-text text-transparent mb-2`}>
+                                    <p className={`text-2xl font-bold bg-linear-to-r ${selectedLetter.color} bg-clip-text text-transparent mb-2`}>
                                         {selectedLetter.word}
                                     </p>
                                     <p className="text-gray-400 text-sm">
@@ -227,7 +227,7 @@ export default function BanglaBarnaPage() {
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => handleLetterClick(item)}
                                 className={`relative rounded-2xl p-3 text-center transition-all ${selectedLetter?.letter === item.letter
-                                    ? `bg-gradient-to-br ${item.color} shadow-lg`
+                                    ? `bg-linear-to-br ${item.color} shadow-lg`
                                     : learned
                                         ? 'bg-emerald-500/20 border border-emerald-500/30'
                                         : 'bg-white/5 border border-white/10 hover:bg-white/10'
@@ -270,7 +270,7 @@ export default function BanglaBarnaPage() {
                                     currentBarna.map(b => b.letter).includes(l)
                                 ).length / currentBarna.length) * 100}%`
                             }}
-                            className="bg-gradient-to-r from-red-400 to-rose-500 h-3 rounded-full"
+                            className="bg-linear-to-r from-red-400 to-rose-500 h-3 rounded-full"
                         />
                     </div>
                 </motion.div>
@@ -283,7 +283,7 @@ export default function BanglaBarnaPage() {
                         className="mt-4"
                     >
                         <Link href="/dashboard/student/kids-zone/learn/bangla/quiz">
-                            <button className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold text-lg shadow-lg shadow-red-500/30">
+                            <button className="w-full py-4 rounded-2xl bg-linear-to-r from-red-500 to-rose-500 text-white font-bold text-lg shadow-lg shadow-red-500/30">
                                 🎯 Quiz দাও! ({learnedLetters.length}টি বর্ণ শিখেছো)
                             </button>
                         </Link>

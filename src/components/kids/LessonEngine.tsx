@@ -441,7 +441,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                     ))}
                 </div>
 
-                {xp >= 20 && (
+                {stars >= 1 && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
                         className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 mb-5 text-sm text-emerald-300"
                     >
@@ -475,11 +475,11 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                     }, { onConflict: 'user_id,lesson_id' })
 
                                     // student_stats update করো
-                                    await supabase.from('student_stats').upsert({
-                                        user_id: user.id,
-                                        total_xp: xp,
-                                        lessons_completed: 1,
-                                    }, { onConflict: 'user_id' })
+                                    await supabase.rpc('increment_student_xp', {
+                                        p_user_id: user.id,
+                                        p_xp: xp,
+                                        p_lessons: 1,
+                                    })
                                 }
                             } catch (e) {
                                 console.error('Progress save failed:', e)
@@ -826,7 +826,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         </motion.div>
                     )}
 
-                    {/* ARCHERY TARGET */}
+                    {/* ARCHERY TARGET 
                     {currentEx?.type === 'archery-target' && (
                         <motion.div key={`archery-${exIdx}`}
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -878,7 +878,8 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 </motion.div>
                             )}
                         </motion.div>
-                    )}
+                    )} 
+                     */}
 
                     {/* WORD BUILDER */}
                     {currentEx?.type === 'word-builder' && (
@@ -1009,17 +1010,38 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                         const ctx = canvas.getContext('2d')
                                         if (!ctx) return
 
-                                        // কতটুকু আঁকা হয়েছে check করো
                                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
                                         const pixels = imageData.data
+                                        const w = canvas.width
+                                        const h = canvas.height
+
+                                        // মোট কতটা pixel আঁকা হয়েছে
                                         let filledPixels = 0
                                         for (let i = 3; i < pixels.length; i += 4) {
-                                            if (pixels[i] > 0) filledPixels++
+                                            if (pixels[i] > 128) filledPixels++
                                         }
 
-                                        // কমপক্ষে ৫০০ pixel আঁকতে হবে
-                                        if (filledPixels < 500) {
+                                        // Canvas কে 4টা zone এ ভাগ করো — কমপক্ষে 2টা zone এ আঁকতে হবে
+                                        const zones = [0, 0, 0, 0]
+                                        for (let y = 0; y < h; y++) {
+                                            for (let x = 0; x < w; x++) {
+                                                const alpha = pixels[(y * w + x) * 4 + 3]
+                                                if (alpha > 128) {
+                                                    const zoneX = x < w / 2 ? 0 : 1
+                                                    const zoneY = y < h / 2 ? 0 : 1
+                                                    zones[zoneY * 2 + zoneX] = 1
+                                                }
+                                            }
+                                        }
+                                        const coveredZones = zones.reduce((a, b) => a + b, 0)
+
+                                        // কমপক্ষে ১৫০০ pixel এবং ২টা zone cover করতে হবে
+                                        if (filledPixels < 1500) {
                                             alert('আরেকটু বড় করে লেখো! ✍️')
+                                            return
+                                        }
+                                        if (coveredZones < 2) {
+                                            alert('পুরো অক্ষরটা লেখো, শুধু একটা অংশ না! ✍️')
                                             return
                                         }
 

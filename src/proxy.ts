@@ -41,6 +41,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/redirect', request.url))
   }
 
+  // Login হলে session start করো
+  if (user && pathname === '/auth/redirect') {
+    const sessionCheckUrl = new URL('/api/session/start', request.url)
+    fetch(sessionCheckUrl.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: user.id,
+        device_info: request.headers.get('user-agent') || 'unknown',
+      }),
+    }).catch(() => { })  // fire-and-forget, error হলেও block করবে না
+  }
+
   return supabaseResponse
 }
 
