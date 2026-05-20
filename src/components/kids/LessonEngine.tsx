@@ -223,6 +223,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const router = useRouter()
     const { speak, isSpeaking } = useSpeech()
     const { isListening, transcript, resetTranscript } = useSpeechRecognition()
+    const [feedback, setFeedback] = useState<string | null>(null)
 
     const [exIdx, setExIdx] = useState(0)
     const [hearts, setHearts] = useState(3)
@@ -826,61 +827,6 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         </motion.div>
                     )}
 
-                    {/* ARCHERY TARGET 
-                    {currentEx?.type === 'archery-target' && (
-                        <motion.div key={`archery-${exIdx}`}
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="text-center max-w-sm w-full"
-                        >
-                            <p className="text-xl font-bold text-white mb-2">🏹 সঠিক লক্ষ্যে আঘাত করো!</p>
-                            <p className="text-gray-400 text-sm mb-6">{lesson.word} কোন বর্ণ দিয়ে শুরু?</p>
-                            <div className="relative w-full h-72 bg-linear-to-b from-emerald-500/10 to-teal-500/5 rounded-3xl border border-white/10 overflow-hidden mb-4">
-                                <div className="absolute bottom-0 left-0 right-0 h-12 bg-emerald-500/10" />
-                                {currentEx.options?.map((opt, i) => (
-                                    <motion.button key={i}
-                                        animate={{
-                                            y: [0, i % 2 === 0 ? -40 : 40, 0],
-                                            x: [0, i % 3 === 0 ? 20 : -20, 0],
-                                        }}
-                                        transition={{ duration: 2.5 + i * 0.8, repeat: Infinity, ease: 'easeInOut', delay: i * 0.6 }}
-                                        whileTap={{ scale: 0.1, transition: { duration: 0.15 } }}
-                                        onClick={() => {
-                                            if (selected) return
-                                            handleSelect(opt)
-                                        }}
-                                        className="absolute flex items-center justify-center"
-                                        style={{ left: `${10 + i * 22}%`, top: `${15 + (i % 2) * 35}%`, width: 80, height: 80 }}
-                                    >
-                                        <div className={`relative w-20 h-20 rounded-full flex items-center justify-center ${selected === opt ? opt === currentEx.correctAnswer ? 'ring-4 ring-emerald-400' : 'ring-4 ring-red-400' : ''
-                                            }`}>
-                                            <div className="absolute inset-0 rounded-full border-4 border-red-500/40" />
-                                            <div className="absolute inset-2 rounded-full border-4 border-blue-500/40" />
-                                            <div className="absolute inset-4 rounded-full border-4 border-red-500/40" />
-                                            <div className={`absolute inset-6 rounded-full ${selected === opt && opt === currentEx.correctAnswer ? 'bg-emerald-500'
-                                                : selected === opt ? 'bg-red-500' : 'bg-amber-400'
-                                                }`} />
-                                            <span className="relative z-10 text-2xl font-bold text-white drop-shadow-lg">{opt}</span>
-                                        </div>
-                                        {selected === opt && opt === currentEx.correctAnswer && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-8 text-2xl">🏹</motion.div>
-                                        )}
-                                    </motion.button>
-                                ))}
-                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-3xl">🏹</div>
-                            </div>
-                            {selected && (
-                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                    className={`rounded-2xl p-3 text-sm font-semibold ${isCorrect ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400'
-                                        : 'bg-red-500/20 border border-red-500/30 text-red-400'
-                                        }`}
-                                >
-                                    {isCorrect ? '🎯 শাবাশ! সঠিক লক্ষ্য!' : `❌ সঠিক উত্তর: ${currentEx.correctAnswer}`}
-                                </motion.div>
-                            )}
-                        </motion.div>
-                    )} 
-                     */}
-
                     {/* WORD BUILDER */}
                     {currentEx?.type === 'word-builder' && (
                         <motion.div key={`word-builder-${exIdx}`}
@@ -990,7 +936,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             <p className="text-xl font-bold text-white mb-2">✍️ আঙুল দিয়ে লিখি!</p>
                             <p className="text-gray-400 text-sm mb-4">{currentEx.content} লেখো</p>
                             <div className="relative mx-auto mb-4" style={{ width: 280, height: 280 }}>
-                                <div className="absolute inset-0 flex items-center justify-center text-9xl font-bold text-white/8 select-none pointer-events-none">
+                                <div className="absolute inset-0 flex items-center justify-center text-9xl font-bold opacity-10 text-white select-none pointer-events-none">
                                     {currentEx.content}
                                 </div>
                                 <canvas ref={canvasRef} width={280} height={280}
@@ -1004,55 +950,69 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                     className="flex-1 py-3 rounded-2xl bg-white/10 text-gray-300 font-semibold hover:bg-white/20"
                                 >🗑 মুছি</button>
                                 <motion.button whileTap={{ scale: 0.97 }}
-                                    onClick={() => {
+                                    onClick={async () => {
                                         const canvas = canvasRef.current
                                         if (!canvas) return
                                         const ctx = canvas.getContext('2d')
                                         if (!ctx) return
 
+                                        // Pixel check — একদম ফাঁকা হলে reject
                                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
                                         const pixels = imageData.data
-                                        const w = canvas.width
-                                        const h = canvas.height
-
-                                        // মোট কতটা pixel আঁকা হয়েছে
                                         let filledPixels = 0
                                         for (let i = 3; i < pixels.length; i += 4) {
                                             if (pixels[i] > 128) filledPixels++
                                         }
-
-                                        // Canvas কে 4টা zone এ ভাগ করো — কমপক্ষে 2টা zone এ আঁকতে হবে
-                                        const zones = [0, 0, 0, 0]
-                                        for (let y = 0; y < h; y++) {
-                                            for (let x = 0; x < w; x++) {
-                                                const alpha = pixels[(y * w + x) * 4 + 3]
-                                                if (alpha > 128) {
-                                                    const zoneX = x < w / 2 ? 0 : 1
-                                                    const zoneY = y < h / 2 ? 0 : 1
-                                                    zones[zoneY * 2 + zoneX] = 1
-                                                }
-                                            }
-                                        }
-                                        const coveredZones = zones.reduce((a, b) => a + b, 0)
-
-                                        // কমপক্ষে ১৫০০ pixel এবং ২টা zone cover করতে হবে
                                         if (filledPixels < 1500) {
                                             alert('আরেকটু বড় করে লেখো! ✍️')
                                             return
                                         }
-                                        if (coveredZones < 2) {
-                                            alert('পুরো অক্ষরটা লেখো, শুধু একটা অংশ না! ✍️')
-                                            return
-                                        }
 
-                                        celebrate()
-                                        setXp(x => x + 5)
-                                        setTimeout(nextEx, 1200)
+                                        // Canvas কে base64 এ convert করো — white background দিয়ে
+                                        const exportCanvas = document.createElement('canvas')
+                                        exportCanvas.width = canvas.width
+                                        exportCanvas.height = canvas.height
+                                        const exportCtx = exportCanvas.getContext('2d')!
+                                        exportCtx.fillStyle = 'white'
+                                        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+                                        exportCtx.drawImage(canvas, 0, 0)
+                                        const base64 = exportCanvas.toDataURL('image/png').split(',')[1]
+
+                                        // Groq Vision দিয়ে verify করো
+                                        try {
+                                            setFeedback('checking')
+                                            const res = await fetch('/api/trace-verify', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    imageBase64: base64,
+                                                    expectedLetter: currentEx?.content,
+                                                    language: lesson.lang,
+                                                }),
+                                            })
+                                            const data = await res.json()
+
+                                            if (data.isCorrect) {
+                                                celebrate()
+                                                setXp(x => x + 5)
+                                                setTimeout(nextEx, 1200)
+                                            } else {
+                                                alert(`এটা "${currentEx?.content}" না! আবার চেষ্টা করো 💪`)
+                                                clearCanvas()
+                                            }
+                                        } catch {
+                                            // API fail হলে pixel check pass করলেই দিয়ে দাও
+                                            celebrate()
+                                            setXp(x => x + 5)
+                                            setTimeout(nextEx, 1200)
+                                        } finally {
+                                            setFeedback(null)
+                                        }
                                     }}
                                     disabled={!hasDrawn}
                                     className={`flex-1 py-3 rounded-2xl font-bold transition-all ${hasDrawn ? `bg-linear-to-r ${lesson.color} text-white shadow-lg` : 'bg-white/5 text-gray-600 cursor-not-allowed'
                                         }`}
-                                >✅ হয়েছে!</motion.button>
+                                >{feedback === 'checking' ? '🔍 দেখছি...' : '✅ হয়েছে!'}</motion.button>
                             </div>
                         </motion.div>
                     )}
