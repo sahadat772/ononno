@@ -1,13 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 
 export function useSession(userId: string | null) {
     const supabase = createClient()
     const sessionIdRef = useRef<string | null>(null)
 
     // Login হলে session start
-    const startSession = async () => {
+    const startSession = useCallback(async () => {
         if (!userId) return
 
         const deviceInfo = navigator.userAgent
@@ -26,10 +25,10 @@ export function useSession(userId: string | null) {
             sessionIdRef.current = data.id
             localStorage.setItem('session_id', data.id)
         }
-    }
+    }, [userId, supabase])
 
     // Logout হলে session end
-    const endSession = async () => {
+    const endSession = useCallback(async () => {
         const sessionId = sessionIdRef.current || localStorage.getItem('session_id')
         if (!sessionId || !userId) return
 
@@ -55,7 +54,7 @@ export function useSession(userId: string | null) {
             localStorage.removeItem('session_id')
             sessionIdRef.current = null
         }
-    }
+    }, [userId, supabase])
 
     // Page close হলে auto session end
     useEffect(() => {
@@ -72,7 +71,7 @@ export function useSession(userId: string | null) {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload)
         }
-    }, [userId])
+    }, [userId, startSession, endSession])
 
     return { startSession, endSession }
 }

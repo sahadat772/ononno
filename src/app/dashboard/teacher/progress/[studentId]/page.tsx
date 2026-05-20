@@ -5,16 +5,14 @@ import ProgressPageClient from './ProgressPageClient'
 export default async function StudentProgressPage({
     params,
 }: {
-    params: { studentId: string }
+    params: Promise<{ studentId: string }>
 }) {
+    const { studentId } = await params
     const supabase = await createServerSupabaseClient()
 
     // Auth check
     const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-        redirect('/login')
-    }
+    if (!user) redirect('/login')
 
     // Teacher role check
     const { data: profile } = await supabase
@@ -23,43 +21,32 @@ export default async function StudentProgressPage({
         .eq('id', user.id)
         .single()
 
-    if (profile?.role !== 'teacher') {
-        redirect('/dashboard')
-    }
+    if (profile?.role !== 'teacher') redirect('/dashboard')
 
     // Teacher এর student কিনা check করো
     const { data: relation } = await supabase
         .from('teacher_students')
         .select('id')
         .eq('teacher_id', user.id)
-        .eq('student_id', params.studentId)
+        .eq('student_id', studentId)
         .single()
 
-    if (!relation) {
-        redirect('/dashboard/teacher')
-    }
+    if (!relation) redirect('/dashboard/teacher')
 
     // Student profile fetch
     const { data: student } = await supabase
         .from('profiles')
-        .select(`
-      id,
-      full_name,
-      email,
-      avatar_url
-    `)
-        .eq('id', params.studentId)
+        .select(`id, full_name, email, avatar_url`)
+        .eq('id', studentId)
         .single()
 
-    if (!student) {
-        redirect('/dashboard/teacher')
-    }
+    if (!student) redirect('/dashboard/teacher')
 
     // Student class level fetch
     const { data: studentProfile } = await supabase
         .from('student_profiles')
         .select('class_level')
-        .eq('user_id', params.studentId)
+        .eq('user_id', studentId)
         .single()
 
     return (

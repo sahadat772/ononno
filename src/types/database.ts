@@ -87,11 +87,10 @@ export type StudentProgress = {
     id: string
     user_id: string
     lesson_id: string
-    subject_id: string
     completed: boolean
-    score: number | null
-    time_spent_minutes: number
-    last_accessed_at: string
+    score: number
+    stars: number
+    completed_at: string | null
     created_at: string
 }
 

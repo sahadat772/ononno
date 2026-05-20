@@ -63,11 +63,10 @@ export default async function AuthRedirect() {
             if (recipients.length > 0) {
                 await adminSupabase.from('notifications').insert(
                     recipients.map((recipient_id) => ({
-                        recipient_id,
-                        sender_id: user.id,
+                        user_id: recipient_id,
+                        title: 'Student Login 🔔',
+                        message: `${profile.full_name} এইমাত্র login করেছে`,
                         type: 'student_login',
-                        title: 'Student Login',
-                        body: `${profile.full_name} এইমাত্র login করেছে`,
                         is_read: false,
                     }))
                 )
