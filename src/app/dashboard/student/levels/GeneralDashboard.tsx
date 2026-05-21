@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import AdWrapper from '@/components/shared/AdWrapper'
 
 interface Props {
     profile: Record<string, string> | null
@@ -27,7 +28,6 @@ const classNames: Record<string, string> = {
 }
 
 export default function GeneralDashboard({ profile, studentProfile }: Props) {
-
     const [realStats, setRealStats] = useState({ lessons: 0, quizScore: 0 })
 
     useEffect(() => {
@@ -55,6 +55,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
         }
         void loadStats()
     }, [])
+
     const classLevel = studentProfile?.class_level || 'general'
     const className = classNames[classLevel] || classLevel
     const firstName = profile?.full_name?.split(' ')[0] || 'বন্ধু'
@@ -100,6 +101,9 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] p-4 md:p-8">
+            {/* Top Ad */}
+            <AdWrapper position="top" className="mb-4" />
+
             {/* Welcome */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
@@ -127,7 +131,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                         </div>
                     </div>
 
-                    {/* Stats — 2x2 on mobile, 4 cols on md+ */}
+                    {/* Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-4">
                         {[
                             { label: 'সম্পন্ন লেসন', value: `${realStats.lessons}`, icon: '📚', color: 'from-blue-500 to-cyan-500' },
@@ -169,7 +173,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                                     <div className={`w-11 h-11 md:w-12 md:h-12 rounded-xl bg-linear-to-br ${module.color} flex items-center justify-center text-2xl shadow-md`}>
                                         {module.icon}
                                     </div>
-                                    <span className={`text-xs px-2 py-1 rounded-full border ${module.badgeColor} max-w-120px text-center leading-tight`}>
+                                    <span className={`text-xs px-2 py-1 rounded-full border ${module.badgeColor} max-width: 120px; text-center leading-tight`}>
                                         {module.badge}
                                     </span>
                                 </div>
@@ -244,6 +248,9 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                     </Link>
                 </motion.div>
             )}
+
+            {/* Bottom Ad */}
+            <AdWrapper position="bottom" className="mt-6" />
         </div>
     )
 }

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import LogoutButton from '@/components/shared/LogoutButton'
 import NurseryDashboard from './levels/NurseryDashboard'
 import GeneralDashboard from './levels/GeneralDashboard'
+import PushPermission from '@/components/notification/PushPermission'
 
 interface Props {
     profile: Record<string, string> | null
@@ -65,6 +66,11 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
                     </div>
                 </div>
             </nav>
+
+            {/* Push Notification Permission */}
+            <div className="max-w-6xl mx-auto px-4 pt-16 pb-2">
+                <PushPermission />
+            </div>
 
             {/* Dashboard Content */}
             <div className="pt-14">

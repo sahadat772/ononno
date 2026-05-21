@@ -137,3 +137,168 @@ export type FreeAccessRequest = {
     verified_at: string | null
     created_at: string
 }
+
+// ============================================================
+// PART 3 — Islamic Module Types
+// ============================================================
+
+export type IslamicContentType =
+    | 'quran'
+    | 'hadith'
+    | 'dua'
+    | 'kalima'
+    | 'tajweed'
+
+export type IslamicProgressStatus =
+    | 'not_started'
+    | 'in_progress'
+    | 'completed'
+
+export type TajweedRuleId =
+    | 'ghunna'
+    | 'ikhfa'
+    | 'idgham'
+    | 'iqlab'
+    | 'madd'
+    | 'qalqalah'
+
+export type IslamicQATopic =
+    | 'fiqh'
+    | 'aqeedah'
+    | 'quran'
+    | 'hadith'
+    | 'seerah'
+    | 'dua'
+    | 'general'
+
+export type KidsIslamicType =
+    | 'kalima'
+    | 'dua'
+    | 'surah'
+
+export type KidsIslamicLevel =
+    | 'nursery'
+    | 'kg'
+
+// islamic_progress table
+export type IslamicProgress = {
+    id: string
+    student_id: string
+    content_type: IslamicContentType
+    content_id: string
+    status: IslamicProgressStatus
+    score: number | null
+    attempts: number
+    last_practiced_at: string | null
+    created_at: string
+}
+
+// quran_memorization table
+export type QuranMemorization = {
+    id: string
+    student_id: string
+    surah_number: number
+    ayah_from: number
+    ayah_to: number
+    memorization_level: 0 | 1 | 2 | 3 | 4 | 5
+    last_revised_at: string | null
+    next_revision_at: string | null
+    audio_recording_url: string | null
+    ai_score: number | null
+    ai_feedback: string | null
+    created_at: string
+}
+
+// tajweed_sessions table
+export type TajweedMistake = {
+    word: string
+    error: string
+    correction: string
+}
+
+export type TajweedSession = {
+    id: string
+    student_id: string
+    rule_id: TajweedRuleId
+    ayah_text: string | null
+    audio_url: string | null
+    ai_feedback: string | null
+    ai_score: number | null
+    mistakes: TajweedMistake[] | null
+    created_at: string
+}
+
+// islamic_qa_history table
+export type IslamicQASource = {
+    type: 'quran' | 'hadith'
+    ref: string
+    text: string
+}
+
+export type IslamicQAHistory = {
+    id: string
+    student_id: string
+    question: string
+    answer: string
+    topic: IslamicQATopic | null
+    sources: IslamicQASource[] | null
+    created_at: string
+}
+
+// kids_islamic_lessons table
+export type KidsIslamicLesson = {
+    id: string
+    type: KidsIslamicType
+    title: string
+    title_bn: string
+    arabic_text: string
+    bangla_translation: string
+    pronunciation: string | null
+    audio_url: string | null
+    order_index: number
+    level: KidsIslamicLevel
+    is_active: boolean
+    created_at: string
+}
+
+// daily_islamic_tracker table
+export type DailyIslamicTracker = {
+    id: string
+    student_id: string
+    date: string
+    quran_ayahs_read: number
+    duas_recited: number
+    hadith_read: number
+    tajweed_practiced: boolean
+    memorization_done: boolean
+    fajr_reminder: boolean
+    daily_streak: number
+    created_at: string
+}
+
+// ── ML Analysis Types ─────────────────────────────────────
+
+// Weekly Islamic progress — ML analysis output
+export type IslamicWeeklyAnalysis = {
+    student_id: string
+    week_start: string
+    week_end: string
+    quran_ayahs_total: number
+    tajweed_avg_score: number
+    memorization_levels: Record<string, number>
+    daily_streak: number
+    weak_tajweed_rules: TajweedRuleId[]
+    ai_recommendations: string[]
+    parent_report: string
+}
+
+// Spaced repetition schedule
+export type RevisionSchedule = {
+    surah_number: number
+    ayah_from: number
+    ayah_to: number
+    memorization_level: number
+    next_revision_at: string
+    overdue: boolean
+    days_overdue: number
+}
