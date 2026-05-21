@@ -6,6 +6,136 @@ import Link from 'next/link';
 import AnalysisPanel from '@/components/ui/AnalysisPanel';
 import type { AnalysisResult } from '@/lib/groq';
 
+// ── AI Hadith Explainer ───────────────────────────────────
+type HadithExplanation = {
+    main_lesson: string
+    simple_explanation: string
+    real_life_example: string
+    how_to_apply: string[]
+    memory_tip: string
+    related_quran_ayah: string
+    scholars_view: string
+    du_a: string
+}
+
+function HadithExplainer({ hadithText, hadithId }: { hadithText: string; hadithId: string }) {
+    const [loading, setLoading] = useState(false)
+    const [explanation, setExplanation] = useState<HadithExplanation | null>(null)
+    const [shown, setShown] = useState(false)
+
+    const handleExplain = async () => {
+        if (explanation) { setShown(!shown); return }
+        setLoading(true)
+        try {
+            const res = await fetch('/api/islamic/hadith-explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    hadith_text: hadithText,
+                    student_age: '14',
+                }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                setExplanation(data.explanation)
+                setShown(true)
+            }
+        } catch {
+            console.error('Hadith explain error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="mt-2">
+            <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleExplain}
+                disabled={loading}
+                className="w-full py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+                {loading ? (
+                    <>
+                        <motion.span
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                        >⚙️</motion.span>
+                        AI ব্যাখ্যা করছে...
+                    </>
+                ) : shown ? '▲ ব্যাখ্যা লুকাও' : '🤖 AI দিয়ে ব্যাখ্যা করো'}
+            </motion.button>
+
+            <AnimatePresence>
+                {shown && explanation && (
+                    <motion.div
+                        key={hadithId}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-2 space-y-2"
+                    >
+                        {/* Main lesson */}
+                        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
+                            <p className="text-xs text-emerald-400 font-semibold mb-1">💡 মূল শিক্ষা</p>
+                            <p className="text-gray-300 text-xs leading-relaxed">{explanation.main_lesson}</p>
+                        </div>
+
+                        {/* Simple explanation */}
+                        <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3">
+                            <p className="text-xs text-blue-400 font-semibold mb-1">📖 সহজ ব্যাখ্যা</p>
+                            <p className="text-gray-300 text-xs leading-relaxed">{explanation.simple_explanation}</p>
+                        </div>
+
+                        {/* Real life example */}
+                        <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-3">
+                            <p className="text-xs text-violet-400 font-semibold mb-1">🌍 বাস্তব উদাহরণ</p>
+                            <p className="text-gray-300 text-xs leading-relaxed">{explanation.real_life_example}</p>
+                        </div>
+
+                        {/* How to apply */}
+                        {explanation.how_to_apply.length > 0 && (
+                            <div className="rounded-xl bg-teal-500/10 border border-teal-500/20 p-3">
+                                <p className="text-xs text-teal-400 font-semibold mb-2">✅ জীবনে কীভাবে apply করবো</p>
+                                <ul className="space-y-1">
+                                    {explanation.how_to_apply.map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                            <span className="text-teal-400 text-xs mt-0.5">{i + 1}.</span>
+                                            <p className="text-gray-300 text-xs">{item}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Memory tip */}
+                        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
+                            <p className="text-xs text-amber-400 font-semibold mb-1">🧠 মনে রাখার উপায়</p>
+                            <p className="text-gray-300 text-xs">{explanation.memory_tip}</p>
+                        </div>
+
+                        {/* Related ayah */}
+                        {explanation.related_quran_ayah && (
+                            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
+                                <p className="text-xs text-emerald-400 font-semibold mb-1">📖 সম্পর্কিত আয়াত</p>
+                                <p className="text-gray-300 text-xs">{explanation.related_quran_ayah}</p>
+                            </div>
+                        )}
+
+                        {/* Dua */}
+                        {explanation.du_a && (
+                            <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-3">
+                                <p className="text-xs text-rose-400 font-semibold mb-1">🤲 দোয়া</p>
+                                <p className="text-gray-300 text-xs">{explanation.du_a}</p>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    )
+}
+
 interface Category {
     id: string;
     title: string;
@@ -118,11 +248,11 @@ export default function HadithPage() {
                     ← ইসলামিক স্টাডিতে ফিরে যাও
                 </Link>
                 <div className="flex items-center gap-4 mt-2">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-3xl shadow-lg">
+                    <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-3xl shadow-lg">
                         📜
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold bg-linear-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">
                             হাদিস শরীফ
                         </h1>
                         <p className="text-gray-400 mt-1">বিষয়ভিত্তিক হাদিস • AI বিশ্লেষণ</p>
@@ -149,7 +279,7 @@ export default function HadithPage() {
                             onClick={() => handleCategorySelect(cat)}
                             className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 p-5 transition-all group"
                         >
-                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-3xl mb-4 shadow-md`}>
+                            <div className={`w-14 h-14 rounded-xl bg-linear-to-br ${cat.color} flex items-center justify-center text-3xl mb-4 shadow-md`}>
                                 {cat.icon}
                             </div>
                             <h3 className="font-bold text-lg text-white group-hover:text-amber-400 transition-colors mb-1">
@@ -194,7 +324,7 @@ export default function HadithPage() {
                     </div>
 
                     {/* Category Header */}
-                    <div className={`rounded-2xl bg-gradient-to-r ${selectedCategory.color} p-px mb-6`}>
+                    <div className={`rounded-2xl bg-linear-to-r ${selectedCategory.color} p-px mb-6`}>
                         <div className="rounded-2xl bg-[#0f0f2a] p-5 flex items-center gap-4">
                             <span className="text-4xl">{selectedCategory.icon}</span>
                             <div>
@@ -275,12 +405,10 @@ export default function HadithPage() {
                                                                 exit={{ opacity: 0, height: 0 }}
                                                                 className="mt-3 pt-3 border-t border-white/10 space-y-2"
                                                             >
-                                                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-                                                                    <p className="text-xs text-amber-400 font-semibold mb-1">💡 শিক্ষা</p>
-                                                                    <p className="text-gray-300 text-xs leading-relaxed">
-                                                                        এই হাদিসটি আমাদের দৈনন্দিন জীবনে গুরুত্বপূর্ণ শিক্ষা দেয়। AI বিশ্লেষণ বাটনে ক্লিক করে বিস্তারিত জানুন।
-                                                                    </p>
-                                                                </div>
+                                                                <HadithExplainer
+                                                                    hadithText={hadith.title}
+                                                                    hadithId={hadith.id}
+                                                                />
                                                                 <div className="flex gap-2">
                                                                     <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">
                                                                         ✓ প্রামাণিক
@@ -374,8 +502,8 @@ export default function HadithPage() {
                                                 key={page}
                                                 onClick={() => handlePageChange(page)}
                                                 className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${currentPage === page
-                                                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
-                                                        : 'border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                                                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+                                                    : 'border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
                                                     }`}
                                             >
                                                 {page}

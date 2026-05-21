@@ -130,11 +130,11 @@ export default function LearningPathClient({
                     >
                         ←
                     </motion.button>
-                    <div className="flex-1">
-                        <h1 className="text-white font-bold">আজকের Learning Plan</h1>
-                        <p className="text-white/40 text-xs">{classLevel} — AI personalized</p>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-white font-bold text-sm md:text-base">আজকের Learning Plan</h1>
+                        <p className="text-white/40 text-xs hidden sm:block">{classLevel} — AI personalized</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink: 0;">
                         <p className="text-violet-300 font-bold">{progressPercent}%</p>
                         <p className="text-white/30 text-xs">সম্পন্ন</p>
                     </div>
@@ -190,7 +190,7 @@ export default function LearningPathClient({
                         </motion.div>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-2 md:gap-3">
                             {[
                                 { label: 'মোট পাঠ', value: totalCount, icon: '📚' },
                                 { label: 'সময় লাগবে', value: `${learningPath.total_study_minutes} মিনিট`, icon: '⏱️' },
@@ -236,8 +236,8 @@ export default function LearningPathClient({
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: index * 0.1 }}
                                         className={`bg-white/5 border rounded-2xl p-4 transition ${isCompleted
-                                                ? 'border-green-500/30 bg-green-500/5'
-                                                : 'border-white/10'
+                                            ? 'border-green-500/30 bg-green-500/5'
+                                            : 'border-white/10'
                                             }`}
                                     >
                                         <div className="flex items-start gap-4">
@@ -247,24 +247,24 @@ export default function LearningPathClient({
                                                 whileTap={{ scale: 0.9 }}
                                                 onClick={() => toggleComplete(index)}
                                                 className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink:0 mt-0.5 transition ${isCompleted
-                                                        ? 'bg-green-500 border-green-500 text-white'
-                                                        : 'border-white/30'
+                                                    ? 'bg-green-500 border-green-500 text-white'
+                                                    : 'border-white/30'
                                                     }`}
                                             >
                                                 {isCompleted && <span className="text-xs">✓</span>}
                                             </motion.button>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                    <span className="text-lg">{getTypeIcon(item.type)}</span>
-                                                    <span className="text-white/50 text-xs">
+                                                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                                    <span className="text-base md:text-lg">{getTypeIcon(item.type)}</span>
+                                                    <span className="text-white/50 text-xs hidden sm:inline">
                                                         {getTypeLabel(item.type)}
                                                     </span>
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getPriorityColor(item.priority)}`}>
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded-full border ${getPriorityColor(item.priority)}`}>
                                                         {getPriorityLabel(item.priority)}
                                                     </span>
                                                     <span className="text-white/30 text-xs ml-auto">
-                                                        ⏱️ {item.estimated_minutes} মিনিট
+                                                        ⏱️ {item.estimated_minutes}m
                                                     </span>
                                                 </div>
                                                 <h3 className={`font-semibold mb-1 ${isCompleted ? 'line-through text-white/40' : 'text-white'}`}>

@@ -34,7 +34,6 @@ interface SessionsPageClientProps {
 }
 
 export default function SessionsPageClient({
-    teacherId,
     students,
     selectedStudent,
 }: SessionsPageClientProps) {
@@ -92,8 +91,8 @@ export default function SessionsPageClient({
                         ←
                     </motion.button>
                     <div>
-                        <h1 className="text-white font-bold">Session History</h1>
-                        <p className="text-white/40 text-xs">Student এর login/logout tracking</p>
+                        <h1 className="text-white font-bold text-sm md:text-base">Session History</h1>
+                        <p className="text-white/40 text-xs hidden sm:block">Student এর login/logout tracking</p>
                     </div>
                 </div>
             </div>
@@ -139,24 +138,24 @@ export default function SessionsPageClient({
 
                         {/* Summary */}
                         {summary && (
-                            <div className="flex gap-4 text-center">
+                            <div className="flex gap-2 md:gap-4 text-center">
                                 <div>
-                                    <p className="text-violet-300 font-bold">
+                                    <p className="text-violet-300 font-bold text-sm md:text-base">
                                         {summary.todaySessionCount}
                                     </p>
                                     <p className="text-white/40 text-xs">আজ</p>
                                 </div>
                                 <div>
-                                    <p className="text-violet-300 font-bold">
+                                    <p className="text-violet-300 font-bold text-sm md:text-base">
                                         {summary.totalSessions}
                                     </p>
                                     <p className="text-white/40 text-xs">মোট</p>
                                 </div>
                                 <div>
-                                    <p className="text-violet-300 font-bold">
+                                    <p className="text-violet-300 font-bold text-sm md:text-base">
                                         {summary.todayDuration}
                                     </p>
-                                    <p className="text-white/40 text-xs">আজ (মিনিট)</p>
+                                    <p className="text-white/40 text-xs">মিনিট</p>
                                 </div>
                             </div>
                         )}

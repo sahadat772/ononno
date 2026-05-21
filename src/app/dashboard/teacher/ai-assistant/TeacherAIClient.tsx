@@ -97,13 +97,13 @@ export default function TeacherAIClient({
                     >
                         ←
                     </motion.button>
-                    <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-violet-600 to-purple-600 flex items-center justify-center text-lg">
+                    <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-lg flex-shrink-0">
                             🤖
                         </div>
-                        <div>
-                            <h1 className="text-white font-bold">AI Assistant</h1>
-                            <p className="text-white/40 text-xs">
+                        <div className="min-w-0">
+                            <h1 className="text-white font-bold text-sm md:text-base">AI Assistant</h1>
+                            <p className="text-white/40 text-xs hidden sm:block">
                                 {studentsCount} জন student এর data বিশ্লেষণ করতে পারব
                             </p>
                         </div>
@@ -112,9 +112,9 @@ export default function TeacherAIClient({
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setMessages([])}
-                        className="text-white/40 text-xs hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"
+                        className="text-white/40 text-xs hover:text-white transition px-2 md:px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 flex-shrink-0"
                     >
-                        নতুন chat
+                        <span className="hidden sm:inline">নতুন </span>chat
                     </motion.button>
                 </div>
             </div>
@@ -141,7 +141,7 @@ export default function TeacherAIClient({
 
                         {/* Suggested Questions */}
                         <div>
-                            <p className="text-white/40 text-sm mb-3">💡 প্রস্তাবিত প্রশ্ন:</p>
+                            <p className="text-white/40 text-xs md:text-sm mb-3">💡 প্রস্তাবিত প্রশ্ন:</p>
                             <div className="space-y-2">
                                 {SUGGESTED_QUESTIONS.map((q, i) => (
                                     <motion.button
@@ -173,8 +173,8 @@ export default function TeacherAIClient({
                         >
                             <div
                                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                                        ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white'
-                                        : 'bg-white/5 border border-white/10 text-white'
+                                    ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white'
+                                    : 'bg-white/5 border border-white/10 text-white'
                                     }`}
                             >
                                 {message.role === 'assistant' && (
@@ -215,23 +215,24 @@ export default function TeacherAIClient({
             {/* Input */}
             <div className="border-t border-white/10 bg-white/5 backdrop-blur-xl">
                 <div className="max-w-4xl mx-auto px-4 py-4">
-                    <form onSubmit={handleSubmit} className="flex gap-3">
+                    <form onSubmit={handleSubmit} className="flex gap-2 md:gap-3">
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="যেকোনো প্রশ্ন করুন..."
+                            placeholder="প্রশ্ন করুন..."
                             disabled={isLoading}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500 transition disabled:opacity-50"
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 md:px-4 py-2.5 md:py-3 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-violet-500 transition disabled:opacity-50"
                         />
                         <motion.button
                             type="submit"
                             disabled={isLoading || !input.trim()}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="px-6 py-3 rounded-xl bg-linear-to-r from-violet-600 to-purple-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            className="px-3 md:px-6 py-2.5 md:py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
                         >
-                            পাঠাও
+                            <span className="hidden sm:inline">পাঠাও</span>
+                            <span className="sm:hidden">→</span>
                         </motion.button>
                     </form>
                 </div>

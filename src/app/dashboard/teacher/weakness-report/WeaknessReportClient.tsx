@@ -76,14 +76,14 @@ export default function WeaknessReportClient({
                         ←
                     </motion.button>
                     <div>
-                        <h1 className="text-white font-bold">Weakness Report</h1>
-                        <p className="text-white/40 text-xs">AI দিয়ে student এর দুর্বলতা বিশ্লেষণ</p>
+                        <h1 className="text-white font-bold text-sm md:text-base">Weakness Report</h1>
+                        <p className="text-white/40 text-xs hidden sm:block">AI দিয়ে student এর দুর্বলতা বিশ্লেষণ</p>
                     </div>
                 </div>
             </div>
 
             <div className="max-w-5xl mx-auto px-4 py-6">
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     {/* Student List */}
                     <div className="space-y-3">
                         <h2 className="text-white font-semibold mb-4">Students</h2>
@@ -100,8 +100,8 @@ export default function WeaknessReportClient({
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => void analyzeStudent(student)}
                                     className={`w-full text-left p-4 rounded-2xl border transition ${selectedStudent?.id === student.id
-                                            ? 'bg-violet-600/20 border-violet-500/50'
-                                            : 'bg-white/5 border-white/10 hover:bg-white/10'
+                                        ? 'bg-violet-600/20 border-violet-500/50'
+                                        : 'bg-white/5 border-white/10 hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
@@ -173,7 +173,7 @@ export default function WeaknessReportClient({
                                     </div>
 
                                     {/* Weak & Strong Topics */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                                         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
                                             <h4 className="text-red-400 font-semibold mb-3">
                                                 ⚠️ দুর্বল বিষয়

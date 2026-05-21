@@ -126,9 +126,9 @@ export default function ParentClient({ profile, childrenData }: Props) {
                     <div className="flex items-center gap-3">
                         <Link
                             href="/dashboard/parent/create-child"
-                            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm font-semibold"
+                            className="flex items-center gap-1.5 px-2 md:px-4 py-2 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-xs md:text-sm font-semibold"
                         >
-                            ➕ নতুন Child
+                            ➕ <span className="hidden sm:inline">নতুন Child</span>
                         </Link>
 
                         {/* Notification Bell */}
@@ -137,7 +137,9 @@ export default function ParentClient({ profile, childrenData }: Props) {
                         )}
                         <Link
                             href="/dashboard/parent/profile"
-                            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"
+                            title="Profile"
+                            aria-label="Profile"
+                            className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"
                         >
                             👤
                         </Link>
@@ -434,15 +436,15 @@ export default function ParentClient({ profile, childrenData }: Props) {
                                                 <div className="flex gap-2 mb-3">
                                                     <Link
                                                         href={`/dashboard/parent/child/${child.child_id}/progress`}
-                                                        className="flex-1 py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 text-sm text-center hover:bg-violet-600/30 transition"
+                                                        className="flex-1 py-2 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 text-xs md:text-sm text-center hover:bg-violet-600/30 transition"
                                                     >
-                                                        Progress দেখো
+                                                        📊 Progress
                                                     </Link>
                                                     <Link
                                                         href={`/dashboard/parent/child/${child.child_id}/sessions`}
-                                                        className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 text-sm text-center hover:bg-white/10 transition"
+                                                        className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 text-xs md:text-sm text-center hover:bg-white/10 transition"
                                                     >
-                                                        Sessions দেখো
+                                                        🕐 Sessions
                                                     </Link>
                                                 </div>
 

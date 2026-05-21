@@ -46,9 +46,9 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
                         </span>
                         <Link
                             href="/dashboard/student/learning-path"
-                            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition text-xs"
+                            className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 hover:bg-violet-600/30 transition text-xs"
                         >
-                            🤖 আজকের Plan
+                            🤖 <span className="hidden sm:inline">আজকের Plan</span>
                         </Link>
                         <Link
                             href="/dashboard/student/profile"
