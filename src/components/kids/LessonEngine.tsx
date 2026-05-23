@@ -7,6 +7,8 @@ import { useSpeech } from '@/hooks/useSpeech'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { createClient } from '@/lib/supabase'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
+import { useAccess } from '@/hooks/useAccess'
+import LockOverlay from '@/components/shared/LockOverlay'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -221,6 +223,7 @@ function MatchingExercise({
 
 export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const router = useRouter()
+    const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
     const { speak, isSpeaking } = useSpeech()
     const { isListening, transcript, resetTranscript } = useSpeechRecognition()
     const [feedback, setFeedback] = useState<string | null>(null)
@@ -512,7 +515,14 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
 
     return (
         <div className="min-h-screen bg-linear-to-b from-[#0d0a2e] to-[#0a0a1a] text-white flex flex-col">
-
+            {/* Free user daily limit */}
+            {!accessLoading && !isPaid && !canDoLesson && (
+                <div className="min-h-screen flex items-center justify-center p-6">
+                    <div className="max-w-md w-full">
+                        <LockOverlay type="daily_limit" />
+                    </div>
+                </div>
+            )}
             {/* Celebration */}
             <AnimatePresence>
                 {showCelebration && (

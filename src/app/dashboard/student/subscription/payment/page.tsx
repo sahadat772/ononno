@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { getPlanById } from '@/lib/plans'
 
 const PAYMENT_INFO = {
     bkash: {
@@ -25,22 +25,12 @@ const PAYMENT_INFO = {
     },
 }
 
-const PLAN_NAMES: Record<string, string> = {
-    monthly: 'মাসিক — ৳299',
-    yearly: 'বার্ষিক — ৳2499',
-    family: 'পারিবারিক — ৳3999',
-}
-
-const PLAN_AMOUNTS: Record<string, number> = {
-    monthly: 299,
-    yearly: 2499,
-    family: 3999,
-}
-
 function PaymentContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const planId = searchParams.get('plan') || 'monthly'
+    const planId = searchParams.get('plan') || ''
+
+    const plan = getPlanById(planId)
 
     const [selectedMethod, setSelectedMethod] = useState<'bkash' | 'nagad' | null>(null)
     const [trxId, setTrxId] = useState('')
@@ -79,7 +69,7 @@ function PaymentContent() {
                     planId,
                     paymentMethod: selectedMethod,
                     trxId: trxId.trim(),
-                    amount: PLAN_AMOUNTS[planId],
+                    amount: plan?.price,
                 }),
             })
 
@@ -99,6 +89,22 @@ function PaymentContent() {
         }
     }
 
+    if (!plan) {
+        return (
+            <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-white/50 mb-4">Plan পাওয়া যায়নি</p>
+                    <button
+                        onClick={() => router.push('/dashboard/student/subscription')}
+                        className="px-4 py-2 bg-white/10 rounded-xl text-white"
+                    >
+                        ফিরে যাও
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     const method = selectedMethod ? PAYMENT_INFO[selectedMethod] : null
 
     return (
@@ -116,11 +122,29 @@ function PaymentContent() {
                 <h1 className="text-2xl font-bold text-white mb-1">
                     পেমেন্ট করো
                 </h1>
-                <p className="text-white/50 mb-8">
-                    প্ল্যান: {PLAN_NAMES[planId]}
-                </p>
 
-                {/* Step 1 — Method Select */}
+                {/* Plan Summary */}
+                <div className={`mb-6 p-4 rounded-xl bg-gradient-to-b ${plan.color}/20 border border-white/10`}>
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl">{plan.icon}</span>
+                        <div>
+                            <p className="text-white font-bold">{plan.name}</p>
+                            <p className="text-white/50 text-sm">{plan.durationName}</p>
+                        </div>
+                        <div className="ml-auto text-right">
+                            {plan.originalPrice && (
+                                <p className="text-white/30 text-xs line-through">
+                                    ৳{plan.originalPrice}
+                                </p>
+                            )}
+                            <p className="text-2xl font-bold text-emerald-400">
+                                ৳{plan.price}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Step 1 — Method */}
                 <div className="mb-6">
                     <p className="text-white/70 text-sm mb-3">
                         ১. পেমেন্ট পদ্ধতি বেছে নাও
@@ -131,7 +155,7 @@ function PaymentContent() {
                                 key={key}
                                 onClick={() => setSelectedMethod(key)}
                                 className={`p-4 rounded-xl border transition-all ${selectedMethod === key
-                                        ? `bg-linear-to-b ${PAYMENT_INFO[key].color} ${PAYMENT_INFO[key].border}`
+                                        ? `bg-gradient-to-b ${PAYMENT_INFO[key].color} ${PAYMENT_INFO[key].border}`
                                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                                     }`}
                             >
@@ -143,14 +167,12 @@ function PaymentContent() {
                     </div>
                 </div>
 
-                {/* Step 2 — Number দেখাও */}
+                {/* Step 2 — Number */}
                 {method && (
-                    <div className={`mb-6 p-5 rounded-xl bg-linear-to-b ${method.color} border ${method.border}`}>
+                    <div className={`mb-6 p-5 rounded-xl bg-gradient-to-b ${method.color} border ${method.border}`}>
                         <p className="text-white/70 text-sm mb-3">
                             ২. এই নম্বরে Send Money করো
                         </p>
-
-                        {/* Number */}
                         <div className="flex items-center justify-between bg-black/30 rounded-xl p-4 mb-3">
                             <div>
                                 <p className="text-white/50 text-xs mb-1">{method.name} Number</p>
@@ -165,34 +187,22 @@ function PaymentContent() {
                                 {copied ? '✓ Copied' : 'Copy'}
                             </button>
                         </div>
-
-                        {/* Amount */}
                         <div className="bg-black/30 rounded-xl p-4">
                             <p className="text-white/50 text-xs mb-1">পাঠাতে হবে</p>
                             <p className="text-2xl font-bold text-emerald-400">
-                                ৳{PLAN_AMOUNTS[planId]}
+                                ৳{plan.price}
                             </p>
                         </div>
-
-                        {/* Instructions */}
                         <div className="mt-3 space-y-1">
-                            <p className="text-white/50 text-xs">
-                                📱 {method.name} app খোলো
-                            </p>
-                            <p className="text-white/50 text-xs">
-                                💸 Send Money তে যাও
-                            </p>
-                            <p className="text-white/50 text-xs">
-                                📝 উপরের নম্বরে ৳{PLAN_AMOUNTS[planId]} পাঠাও
-                            </p>
-                            <p className="text-white/50 text-xs">
-                                🔢 Transaction ID টা কপি করো
-                            </p>
+                            <p className="text-white/50 text-xs">📱 {method.name} app খোলো</p>
+                            <p className="text-white/50 text-xs">💸 Send Money তে যাও</p>
+                            <p className="text-white/50 text-xs">📝 উপরের নম্বরে ৳{plan.price} পাঠাও</p>
+                            <p className="text-white/50 text-xs">🔢 Transaction ID টা কপি করো</p>
                         </div>
                     </div>
                 )}
 
-                {/* Step 3 — TrxID Input */}
+                {/* Step 3 — TrxID */}
                 {method && (
                     <div className="mb-6">
                         <p className="text-white/70 text-sm mb-3">
@@ -228,7 +238,6 @@ function PaymentContent() {
                         {loading ? 'জমা দেওয়া হচ্ছে...' : 'পেমেন্ট নিশ্চিত করো ✓'}
                     </button>
                 )}
-
             </div>
         </div>
     )

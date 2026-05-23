@@ -103,10 +103,14 @@ export default function Home() {
                     </Link>
 
                     <div className="hidden md:flex items-center gap-6">
-                        {['Features', 'Pricing', 'About'].map((item, i) => (
-                            <a key={i} href={`#${item.toLowerCase()}`}
+                        {[
+                            { key: 'features', label: 'বৈশিষ্ট্য' },
+                            { key: 'pricing', label: 'মূল্য' },
+                            { key: 'about', label: 'আমাদের সম্পর্কে' },
+                        ].map((item, i) => (
+                            <a key={i} href={`#${item.key}`}
                                 className="text-sm text-gray-400 hover:text-white transition-colors font-medium">
-                                {item === 'Features' ? 'বৈশিষ্ট্য' : item === 'Pricing' ? 'মূল্য' : 'আমাদের সম্পর্কে'}
+                                {item.label}
                             </a>
                         ))}
                     </div>
@@ -363,9 +367,10 @@ export default function Home() {
                     </motion.div>
                 </div>
             </section>
+                    
 
             {/* ── FOOTER ── */}
-            <footer className="py-12 border-t border-white/[0.06] bg-[#05050f]">
+            < footer className="py-12 border-t border-white/[0.06] bg-[#05050f]" >
                 <div className="max-w-6xl mx-auto px-5 text-center">
                     <div className="flex items-center justify-center gap-2.5 mb-4">
                         <div className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-black">
@@ -383,7 +388,7 @@ export default function Home() {
                         ))}
                     </div>
                 </div>
-            </footer>
-        </main>
+            </ footer>
+        </main >
     )
 }

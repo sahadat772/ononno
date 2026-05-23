@@ -52,8 +52,8 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e10', type: 'quiz', title: 'সাবাশ! শেষ প্রশ্ন', voiceText: 'আপেল বা তুফফাহুন কোন হরফ দিয়ে শুরু হয়?', content: 'ت', options: ['ب', 'ث', 'ت', 'ن'], correctAnswer: 'ت' },
         ],
     },
-    'arabic-cha': {
-        id: 'arabic-cha', letter: 'ث - এটি ছা!', word: 'ثعلب -ছা দিয়ে হয় সা’লাবুন - মানে শিয়াল!', wordEn: 'Fox', emoji: '🦊',
+    'arabic-tha': {
+        id: 'arabic-tha', letter: 'ث - এটি ছা!', word: 'ثعلب -ছা দিয়ে হয় সা’লাবুন - মানে শিয়াল!', wordEn: 'Fox', emoji: '🦊',
         color: 'from-amber-400 to-orange-500', lang: 'ar-SA',
         backHref: '/dashboard/student/kids-zone/nursery/arabic',
         exercises: [
@@ -100,7 +100,7 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e10', type: 'quiz', title: 'সাবাশ! শেষ প্রশ্ন', voiceText: 'ঘোড়া বা হিসানুন কোন হরফ দিয়ে শুরু?', content: 'ح', options: ['ج', 'خ', 'ح', 'ع'], correctAnswer: 'ح' },
         ],
     },
-    'arabic-kha': {
+    'arabic-kho': {
         id: 'arabic-kho', letter: ' خ - এটি খ!', word: 'خروف - খ দিয়ে হয় খারুফুন - মানে ভেড়া!', wordEn: 'Sheep', emoji: '🐑',
         color: 'from-lime-400 to-green-500', lang: 'ar-SA',
         backHref: '/dashboard/student/kids-zone/nursery/arabic',

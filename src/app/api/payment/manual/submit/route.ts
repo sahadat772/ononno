@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getPlanById } from '@/lib/plans'
 import { v4 as uuidv4 } from 'uuid'
-
-const PLAN_AMOUNTS: Record<string, number> = {
-    monthly: 299,
-    yearly: 2499,
-    family: 3999,
-}
 
 export async function POST(req: NextRequest) {
     try {
@@ -31,7 +26,9 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        if (!PLAN_AMOUNTS[planId]) {
+        // Plan valid কিনা check করো
+        const plan = getPlanById(planId)
+        if (!plan) {
             return NextResponse.json(
                 { error: 'Invalid plan' },
                 { status: 400 }
@@ -49,7 +46,7 @@ export async function POST(req: NextRequest) {
         const { data: existing } = await supabase
             .from('payment_transactions')
             .select('id')
-            .eq('transaction_id', trxId)
+            .eq('metadata->>user_trx_id', trxId)
             .single()
 
         if (existing) {
@@ -61,19 +58,23 @@ export async function POST(req: NextRequest) {
 
         const transactionId = `${paymentMethod.toUpperCase()}-${uuidv4()}`
 
-        // Payment transaction save করো — status pending
+        // Payment transaction save করো
         const { error: dbError } = await supabase
             .from('payment_transactions')
             .insert({
                 user_id: user.id,
                 plan_id: planId,
-                amount: PLAN_AMOUNTS[planId],
+                amount: plan.price,
                 payment_method: paymentMethod,
                 transaction_id: transactionId,
                 status: 'pending',
                 metadata: {
-                    user_trx_id: trxId,    // Student দেওয়া TrxID
+                    user_trx_id: trxId,
                     submitted_amount: amount,
+                    plan_name: plan.name,
+                    duration: plan.durationName,
+                    duration_days: plan.durationDays,
+                    max_users: plan.maxUsers,
                 },
             })
 

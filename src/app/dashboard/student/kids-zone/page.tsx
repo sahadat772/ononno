@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useAccess } from '@/hooks/useAccess'
+import LockOverlay from '@/components/shared/LockOverlay'
+import AdBanner from '@/components/shared/AdBanner'
 
 const floatingItems = ['⭐', '🌟', '✨', '🎈', '🎀', '🌈', '🦋', '🌸']
 
@@ -138,6 +141,7 @@ const nurseryIslamicLinks = [
 
 export default function KidsZonePage() {
     const [activeLevel, setActiveLevel] = useState<'nursery' | 'kg'>('nursery')
+    const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
 
     const greeting = (() => {
         const hour = new Date().getHours()
@@ -221,9 +225,21 @@ export default function KidsZonePage() {
                         </motion.div>
                     </div>
                 </motion.div>
+                {/* Free user daily limit — সব tab এ দেখাবে */}
+                {!accessLoading && !isPaid && !canDoLesson && (
+                    <div className="mb-6">
+                        <LockOverlay type="daily_limit" />
+                    </div>
+                )}
+
+                {/* Ad Banner for free users */}
+                {!accessLoading && !isPaid && (
+                    <AdBanner position="top" className="mb-6" />
+                )}
 
                 {/* Level Tabs */}
                 <div className="flex gap-3 mb-6">
+
                     {[
                         { key: 'nursery', label: '🌱 Nursery', desc: 'শেখার শুরু' },
                         { key: 'kg', label: '⭐ KG', desc: 'আরো শিখি' },
@@ -233,8 +249,8 @@ export default function KidsZonePage() {
                             whileTap={{ scale: 0.97 }}
                             onClick={() => setActiveLevel(level.key as 'nursery' | 'kg')}
                             className={`flex-1 py-3 px-4 rounded-2xl text-left transition-all border ${activeLevel === level.key
-                                    ? 'bg-linear-to-r from-violet-600/30 to-purple-600/30 border-violet-500/50 text-white'
-                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                ? 'bg-linear-to-r from-violet-600/30 to-purple-600/30 border-violet-500/50 text-white'
+                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                 }`}
                         >
                             <div className="font-bold text-base">{level.label}</div>
@@ -349,6 +365,7 @@ export default function KidsZonePage() {
                 {/* ── KG ── */}
                 {activeLevel === 'kg' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+
                         <h2 className="text-lg font-bold text-white mb-1">⭐ KG — কোন জগতে যাবে?</h2>
                         <p className="text-gray-400 text-sm mb-4">Grid, Flashcard, Game — নিজের মতো করে শেখো</p>
 
@@ -445,6 +462,10 @@ export default function KidsZonePage() {
                                 </div>
                             </div>
                         </motion.div>
+                        {/* Ad Banner bottom KG */}
+                        {!accessLoading && !isPaid && (
+                            <AdBanner position="bottom" className="mt-6" />
+                        )}
                     </motion.div>
                 )}
             </div>

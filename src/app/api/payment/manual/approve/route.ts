@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-
-const PLAN_DURATION: Record<string, number> = {
-    monthly: 30,
-    yearly: 365,
-    family: 365,
-}
+import { getPlanById } from '@/lib/plans'
 
 export async function POST(req: NextRequest) {
     try {
@@ -34,9 +29,6 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // console.log('User role:', profile?.role)
-        // console.log('User id:', user.id)
-
         const { transactionId, userId, planId, amount } = await req.json()
 
         if (!transactionId || !userId || !planId) {
@@ -46,10 +38,18 @@ export async function POST(req: NextRequest) {
             )
         }
 
+        // Plan info নাও
+        const plan = getPlanById(planId)
+        if (!plan) {
+            return NextResponse.json(
+                { error: 'Invalid plan' },
+                { status: 400 }
+            )
+        }
+
         // Expire date calculate করো
-        const durationDays = PLAN_DURATION[planId] || 30
         const expiresAt = new Date()
-        expiresAt.setDate(expiresAt.getDate() + durationDays)
+        expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
 
         // Transaction status success করো
         const { error: txError } = await supabase
@@ -62,8 +62,6 @@ export async function POST(req: NextRequest) {
                 },
             })
             .eq('transaction_id', transactionId)
-
-        // console.log('txError:', txError)
 
         if (txError) {
             return NextResponse.json(
@@ -78,7 +76,7 @@ export async function POST(req: NextRequest) {
             .upsert({
                 user_id: userId,
                 plan_type: planId,
-                amount: amount,
+                amount: amount || plan.price,
                 currency: 'BDT',
                 status: 'active',
                 payment_method: 'manual',
@@ -88,8 +86,6 @@ export async function POST(req: NextRequest) {
                 onConflict: 'user_id'
             })
 
-        // console.log('subError:', subError)
-
         if (subError) {
             return NextResponse.json(
                 { error: 'Subscription update failed' },
@@ -97,18 +93,16 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // Notification
-        const { error: notifError } = await supabase
+        // Notification পাঠাও student কে
+        await supabase
             .from('notifications')
             .insert({
-                user_id: userId,
+                recipient_id: userId,
                 title: 'সাবস্ক্রিপশন Activate হয়েছে! 🎉',
-                message: `তোমার ${planId} প্ল্যান সফলভাবে activate হয়েছে।`,
+                body: `তোমার ${plan.name} (${plan.durationName}) প্ল্যান সফলভাবে activate হয়েছে। ${expiresAt.toLocaleDateString('bn-BD')} পর্যন্ত valid।`,
                 type: 'payment_success',
                 is_read: false,
             })
-
-        console.log('notifError:', notifError)
 
         return NextResponse.json({
             success: true,
@@ -117,7 +111,7 @@ export async function POST(req: NextRequest) {
         })
 
     } catch (error) {
-        console.error('Approve error full:', JSON.stringify(error, null, 2))
+        console.error('Approve error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
