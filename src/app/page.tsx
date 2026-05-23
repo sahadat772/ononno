@@ -326,6 +326,168 @@ export default function Home() {
                     </motion.div>
                 </div>
             </section>
+            {/* ── PRICING ── */}
+            <section id="pricing" className="py-28">
+                <div className="max-w-6xl mx-auto px-5">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-16"
+                    >
+                        <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium px-4 py-2 rounded-full mb-4">
+                            💳 সাশ্রয়ী মূল্য
+                        </div>
+                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4">
+                            তোমার বাজেটে{' '}
+                            <span className="bg-linear-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+                                সেরা প্ল্যান
+                            </span>
+                        </h2>
+                        <p className="text-gray-400 max-w-xl mx-auto text-lg">
+                            মাত্র ৳৯৯ থেকে শুরু — শ্রেণী অনুযায়ী প্ল্যান বেছে নাও
+                        </p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+                        {[
+                            { icon: '🌱', name: 'নার্সারি', price: '৳৯৯', color: 'from-green-400 to-emerald-500' },
+                            { icon: '📚', name: 'শ্রেণী ৩-৫', price: '৳১৯৯', color: 'from-blue-400 to-cyan-500' },
+                            { icon: '📖', name: 'শ্রেণী ৬-৮', price: '৳২৯৯', color: 'from-violet-400 to-purple-500' },
+                            { icon: '🎯', name: 'শ্রেণী ৯-১০', price: '৳৩৯৯', color: 'from-amber-400 to-orange-500' },
+                            { icon: '🏆', name: 'শ্রেণী ১১-১২', price: '৳৪৯৯', color: 'from-rose-400 to-pink-500' },
+                            { icon: '🎓', name: 'বিশ্ববিদ্যালয়', price: '৳৫৯৯', color: 'from-indigo-400 to-blue-500' },
+                            { icon: '🚀', name: 'Skill Pro', price: '৳৭৯৯', color: 'from-purple-400 to-violet-500' },
+                            { icon: '👨‍👩‍👧', name: 'পারিবারিক', price: '৳৯৯৯', color: 'from-emerald-400 to-teal-500' },
+                        ].map((plan, i) => (
+                            <motion.div
+                                key={plan.name}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.07 }}
+                                whileHover={{ y: -6 }}
+                                className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 text-center hover:bg-white/[0.06] transition-all"
+                            >
+                                <div className={`w-12 h-12 rounded-2xl bg-linear-to-br ${plan.color} flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg`}>
+                                    {plan.icon}
+                                </div>
+                                <p className="text-white font-bold text-sm mb-1">{plan.name}</p>
+                                <p className={`text-xl font-black bg-linear-to-r ${plan.color} bg-clip-text text-transparent`}>
+                                    {plan.price}
+                                </p>
+                                <p className="text-gray-600 text-xs mt-1">প্রতি মাস</p>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    <div className="text-center">
+                        <p className="text-gray-500 text-sm mb-4">
+                            বার্ষিক plan এ ৩০% ছাড় পাবে!
+                        </p>
+                        <Link href="/register"
+                            className="inline-flex items-center gap-2 bg-linear-to-r from-amber-500 to-orange-500 text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg shadow-amber-500/25">
+                            বিনামূল্যে শুরু করো →
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── ABOUT ── */}
+            <section id="about" className="py-28 border-t border-white/[0.06]">
+                <div className="max-w-5xl mx-auto px-5">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-16"
+                    >
+                        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium px-4 py-2 rounded-full mb-4">
+                            🤝 আমাদের সম্পর্কে
+                        </div>
+                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4">
+                            কেন{' '}
+                            <span className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                                অনন্য?
+                            </span>
+                        </h2>
+                        <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
+                            আমরা বিশ্বাস করি প্রতিটি শিশু অনন্য। তাই আমাদের AI প্রতিটি শিক্ষার্থীর
+                            শেখার ধরন বুঝে তাকে সেভাবে শেখায়।
+                        </p>
+                    </motion.div>
+
+                    <div className="grid md:grid-cols-3 gap-6 mb-16">
+                        {[
+                            {
+                                icon: '🕌',
+                                title: 'ইসলামিক মূল্যবোধ',
+                                desc: 'প্রতিটি content ইসলামিক দৃষ্টিভঙ্গিতে তৈরি। কুরআন ও সুন্নাহ আমাদের পথ দেখায়।',
+                                color: 'from-emerald-400 to-teal-400',
+                                border: 'border-emerald-500/20',
+                            },
+                            {
+                                icon: '🇧🇩',
+                                title: 'বাংলাদেশের জন্য',
+                                desc: 'NCTB curriculum অনুসরণ করে বাংলায় তৈরি — বাংলাদেশের শিক্ষার্থীদের কথা মাথায় রেখে।',
+                                color: 'from-blue-400 to-cyan-400',
+                                border: 'border-blue-500/20',
+                            },
+                            {
+                                icon: '🤖',
+                                title: 'AI-Powered',
+                                desc: 'Groq, LLaMA, Whisper — সর্বাধুনিক AI দিয়ে personalized শিক্ষার অভিজ্ঞতা।',
+                                color: 'from-violet-400 to-purple-400',
+                                border: 'border-violet-500/20',
+                            },
+                        ].map((item, i) => (
+                            <motion.div
+                                key={item.title}
+                                initial={{ opacity: 0, y: 24 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                                className={`rounded-2xl border ${item.border} bg-white/[0.03] p-6 text-center`}
+                            >
+                                <div className={`w-16 h-16 rounded-2xl bg-linear-to-br ${item.color} flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg`}>
+                                    {item.icon}
+                                </div>
+                                <h3 className="font-bold text-white text-lg mb-2">{item.title}</h3>
+                                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* Mission Statement */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-8 md:p-12 text-center"
+                    >
+                        <div className="text-4xl mb-4">🎯</div>
+                        <h3 className="text-2xl md:text-3xl font-black text-white mb-4">
+                            আমাদের লক্ষ্য
+                        </h3>
+                        <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed text-lg">
+                            ২০৩০ সালের মধ্যে বাংলাদেশের প্রতিটি শিক্ষার্থীর হাতে
+                            মানসম্পন্ন শিক্ষা পৌঁছে দেওয়া — প্রযুক্তি ও ইসলামিক মূল্যবোধের সমন্বয়ে।
+                        </p>
+                        <div className="mt-6 flex items-center justify-center gap-8 flex-wrap">
+                            {[
+                                { value: '৳৯৯', label: 'থেকে শুরু' },
+                                { value: '১০০%', label: 'বাংলায়' },
+                                { value: '২৪/৭', label: 'AI Tutor' },
+                            ].map((stat, i) => (
+                                <div key={i} className="text-center">
+                                    <p className="text-2xl font-black text-white">{stat.value}</p>
+                                    <p className="text-gray-500 text-sm">{stat.label}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
 
             {/* ── CTA ── */}
             <section className="py-28 relative overflow-hidden">
@@ -367,7 +529,7 @@ export default function Home() {
                     </motion.div>
                 </div>
             </section>
-                    
+
 
             {/* ── FOOTER ── */}
             < footer className="py-12 border-t border-white/[0.06] bg-[#05050f]" >

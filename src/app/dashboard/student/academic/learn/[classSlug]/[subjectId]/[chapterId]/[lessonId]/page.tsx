@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
+import { useAccess } from '@/hooks/useAccess'
+import LockOverlay from '@/components/shared/LockOverlay'
 
 interface Lesson {
     id: string
@@ -25,6 +27,7 @@ interface Question {
 
 export default function LessonContentPage() {
     const params = useParams()
+    const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
     const router = useRouter()
     const classSlug = params.classSlug as string
     const subjectId = params.subjectId as string
@@ -177,6 +180,13 @@ export default function LessonContentPage() {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white">
+            {!accessLoading && !isPaid && !canDoLesson && (
+                <div className="min-h-screen flex items-center justify-center p-6">
+                    <div className="max-w-md w-full">
+                        <LockOverlay type="daily_limit" />
+                    </div>
+                </div>
+            )}
             {/* Top Bar */}
             <div className="sticky top-0 z-40 bg-[#0a0a1a]/90 backdrop-blur-xl border-b border-white/10 px-4 py-3">
                 <div className="max-w-2xl mx-auto flex items-center gap-2 md:gap-4">
@@ -193,7 +203,7 @@ export default function LessonContentPage() {
                             <div className="w-full bg-white/10 rounded-full h-3">
                                 <motion.div
                                     animate={{ width: `${((currentQuestion) / questions.length) * 100}%` }}
-                                    className="bg-gradient-to-r from-violet-500 to-purple-500 h-3 rounded-full"
+                                    className="bg-linear-to-r from-violet-500 to-purple-500 h-3 rounded-full"
                                 />
                             </div>
                         </div>
@@ -201,7 +211,7 @@ export default function LessonContentPage() {
 
                     {/* Hearts */}
                     {phase === 'quiz' && (
-                        <div className="flex gap-1 flex-shrink-0">
+                        <div className="flex gap-1 flex-shrink: 0;">
                             {[...Array(3)].map((_, i) => (
                                 <motion.span
                                     key={i}
@@ -267,7 +277,7 @@ export default function LessonContentPage() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => setPhase('learn')}
-                                className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-xl shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all"
+                                className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-600 text-white font-bold text-xl shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all"
                             >
                                 শুরু করি! 🚀
                             </motion.button>
@@ -333,7 +343,7 @@ export default function LessonContentPage() {
                                                 saveProgress(lesson?.xp_reward || 10)
                                             }
                                         }}
-                                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-lg shadow-lg shadow-violet-500/30 transition-all"
+                                        className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-600 text-white font-bold text-lg shadow-lg shadow-violet-500/30 transition-all"
                                     >
                                         {questions.length > 0 ? 'Quiz শুরু করো! 🎯' : 'সম্পন্ন করো! ✅'}
                                     </motion.button>
@@ -430,10 +440,10 @@ export default function LessonContentPage() {
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleNext}
                                     className={`w-full py-4 rounded-2xl font-bold text-lg text-white transition-all ${isCorrect
-                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30'
+                                        ? 'bg-linear-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/30'
                                         : hearts <= 1
-                                            ? 'bg-gradient-to-r from-red-500 to-rose-500'
-                                            : 'bg-gradient-to-r from-violet-500 to-purple-500'
+                                            ? 'bg-linear-to-r from-red-500 to-rose-500'
+                                            : 'bg-linear-to-r from-violet-500 to-purple-500'
                                         }`}
                                 >
                                     {currentQuestion < questions.length - 1 ? 'পরের প্রশ্ন →' : 'ফলাফল দেখো 🏆'}
@@ -500,7 +510,7 @@ export default function LessonContentPage() {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => router.push(`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`)}
-                                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-lg shadow-lg shadow-emerald-500/30"
+                                        className="w-full py-4 rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 text-white font-bold text-lg shadow-lg shadow-emerald-500/30"
                                     >
                                         পরের Lesson এ যাও →
                                     </motion.button>
@@ -517,7 +527,7 @@ export default function LessonContentPage() {
                                             setHearts(3)
                                             setShowExplanation(false)
                                         }}
-                                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-500 text-white font-bold text-lg shadow-lg shadow-violet-500/30"
+                                        className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-500 text-white font-bold text-lg shadow-lg shadow-violet-500/30"
                                     >
                                         🔄 আবার চেষ্টা করো
                                     </motion.button>
