@@ -382,6 +382,25 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
                     </div>
                 </div>
             </motion.div>
+            {/* Kids Islamic new pages */}
+            <div className="grid grid-cols-3 gap-2 mt-3">
+                {[
+                    { href: '/dashboard/student/kids-zone/islamic/kalima', icon: '☝️', label: 'কালিমা' },
+                    { href: '/dashboard/student/kids-zone/islamic/dua', icon: '🤲', label: 'দোয়া' },
+                    { href: '/dashboard/student/kids-zone/islamic/surah', icon: '📖', label: 'সূরা' },
+                ].map((item, i) => (
+                    <Link key={i} href={item.href}>
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="rounded-2xl bg-emerald-500/20 border border-emerald-500/30 p-3 text-center cursor-pointer"
+                        >
+                            <p className="text-2xl mb-1">{item.icon}</p>
+                            <p className="text-white text-xs font-semibold">{item.label}</p>
+                        </motion.div>
+                    </Link>
+                ))}
+            </div>
 
             {/* Subjects Grid */}
             <motion.div

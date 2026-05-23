@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
@@ -26,7 +26,7 @@ const kgZones = [
         bg: 'bg-emerald-500/10',
         border: 'border-emerald-500/30',
         href: '/dashboard/student/kids-zone/islamic',
-        subjects: ['Arabic Letters', 'কালিমা', 'দোয়া'],
+        subjects: ['কালিমা শিখি', 'দোয়া শিখি', 'সূরা শিখি'],
         available: true,
     },
     {
@@ -97,6 +97,42 @@ const nurserySubjects = [
         href: '/dashboard/student/kids-zone/nursery/math',
         units: 6,
         lessons: 50,
+    },
+]
+
+// Nursery Islamic quick links — নতুন
+const nurseryIslamicLinks = [
+    {
+        href: '/dashboard/student/kids-zone/islamic/kalima',
+        icon: '☝️',
+        label: 'কালিমা',
+        color: 'from-blue-500 to-indigo-600',
+        bg: 'bg-blue-500/10',
+        border: 'border-blue-500/30',
+    },
+    {
+        href: '/dashboard/student/kids-zone/islamic/dua',
+        icon: '🤲',
+        label: 'দোয়া',
+        color: 'from-violet-500 to-purple-600',
+        bg: 'bg-violet-500/10',
+        border: 'border-violet-500/30',
+    },
+    {
+        href: '/dashboard/student/kids-zone/islamic/surah',
+        icon: '📖',
+        label: 'সূরা',
+        color: 'from-amber-500 to-orange-600',
+        bg: 'bg-amber-500/10',
+        border: 'border-amber-500/30',
+    },
+    {
+        href: '/dashboard/student/kids-zone/islamic/arabic',
+        icon: '🔤',
+        label: 'আরবি',
+        color: 'from-emerald-500 to-teal-600',
+        bg: 'bg-emerald-500/10',
+        border: 'border-emerald-500/30',
     },
 ]
 
@@ -207,13 +243,14 @@ export default function KidsZonePage() {
                     ))}
                 </div>
 
-                {/* ── NURSERY ─────────────────────────────────────────────────── */}
+                {/* ── NURSERY ── */}
                 {activeLevel === 'nursery' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                         <h2 className="text-lg font-bold text-white mb-1">🌱 Nursery — কী শিখবে?</h2>
                         <p className="text-gray-400 text-sm mb-4">Voice + Trace + Quiz — Duolingo style এ শেখো</p>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* Subjects Grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
                             {nurserySubjects.map((subject, i) => (
                                 <motion.div
                                     key={subject.id}
@@ -253,11 +290,55 @@ export default function KidsZonePage() {
                             ))}
                         </div>
 
+                        {/* Islamic Section — নতুন */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="mb-4"
+                        >
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl">🕌</span>
+                                    <h3 className="text-white font-bold">ইসলামিক শিক্ষা</h3>
+                                    <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                                        বাধ্যতামূলক
+                                    </span>
+                                </div>
+                                <Link href="/dashboard/student/kids-zone/islamic"
+                                    className="text-xs text-emerald-400 hover:text-emerald-300">
+                                    সব দেখো →
+                                </Link>
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-2">
+                                {nurseryIslamicLinks.map((item, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.35 + i * 0.08 }}
+                                        whileHover={{ scale: 1.05, y: -4 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <Link href={item.href}>
+                                            <div className={`rounded-2xl ${item.bg} border ${item.border} p-3 text-center cursor-pointer`}>
+                                                <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${item.color} flex items-center justify-center text-xl mx-auto mb-2 shadow`}>
+                                                    {item.icon}
+                                                </div>
+                                                <p className="text-white text-xs font-semibold">{item.label}</p>
+                                            </div>
+                                        </Link>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                            className="mt-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center"
+                            transition={{ delay: 0.5 }}
+                            className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center"
                         >
                             <p className="text-2xl text-emerald-300 mb-1">بِسْمِ اللَّهِ</p>
                             <p className="text-gray-400 text-sm">পড়ো তোমার রবের নামে! 📖</p>
@@ -265,13 +346,13 @@ export default function KidsZonePage() {
                     </motion.div>
                 )}
 
-                {/* ── KG ──────────────────────────────────────────────────────── */}
+                {/* ── KG ── */}
                 {activeLevel === 'kg' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                         <h2 className="text-lg font-bold text-white mb-1">⭐ KG — কোন জগতে যাবে?</h2>
                         <p className="text-gray-400 text-sm mb-4">Grid, Flashcard, Game — নিজের মতো করে শেখো</p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             {kgZones.map((zone, i) => (
                                 <motion.div
                                     key={zone.id}
@@ -291,11 +372,54 @@ export default function KidsZonePage() {
                             ))}
                         </div>
 
+                        {/* KG Islamic quick links */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                            className="mt-4 rounded-3xl bg-linear-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5"
+                            transition={{ delay: 0.35 }}
+                            className="mb-4"
+                        >
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl">🕌</span>
+                                    <h3 className="text-white font-bold">ইসলামিক শিক্ষা</h3>
+                                    <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                                        বাধ্যতামূলক
+                                    </span>
+                                </div>
+                                <Link href="/dashboard/student/kids-zone/islamic"
+                                    className="text-xs text-emerald-400 hover:text-emerald-300">
+                                    সব দেখো →
+                                </Link>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                                {nurseryIslamicLinks.map((item, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.4 + i * 0.08 }}
+                                        whileHover={{ scale: 1.05, y: -4 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <Link href={item.href}>
+                                            <div className={`rounded-2xl ${item.bg} border ${item.border} p-3 text-center cursor-pointer`}>
+                                                <div className={`w-10 h-10 rounded-xl bg-linear-to-br ${item.color} flex items-center justify-center text-xl mx-auto mb-2 shadow`}>
+                                                    {item.icon}
+                                                </div>
+                                                <p className="text-white text-xs font-semibold">{item.label}</p>
+                                            </div>
+                                        </Link>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                            className="rounded-3xl bg-linear-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 p-5"
                         >
                             <div className="flex items-center justify-between gap-3 flex-wrap">
                                 <div>

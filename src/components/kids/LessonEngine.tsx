@@ -481,6 +481,20 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                         p_xp: xp,
                                         p_lessons: 1,
                                     })
+
+                                    // ML training data save করো
+                                    await fetch('/api/ml/save-training-data', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            lessonId: lesson.id,
+                                            attempts: 1,
+                                            correctAnswers: lesson.exercises.length - mistakes.length,
+                                            wrongAnswers: mistakes.length,
+                                            timeSpentSeconds: 0,
+                                            xpEarned: xp,
+                                        }),
+                                    })
                                 }
                             } catch (e) {
                                 console.error('Progress save failed:', e)
@@ -939,6 +953,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 <div className="absolute inset-0 flex items-center justify-center text-9xl font-bold opacity-10 text-white select-none pointer-events-none">
                                     {currentEx.content}
                                 </div>
+
                                 <canvas ref={canvasRef} width={280} height={280}
                                     className="absolute inset-0 rounded-3xl border-2 border-dashed border-white/20 bg-white/5 cursor-crosshair touch-none"
                                     onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}

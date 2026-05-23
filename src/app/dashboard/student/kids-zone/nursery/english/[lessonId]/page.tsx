@@ -6,7 +6,7 @@ import LessonEngine, { LessonConfig } from '@/components/kids/LessonEngine'
 const lessons: Record<string, LessonConfig> = {
     'english-a': {
         id: 'english-a', letter: 'A', word: 'Apple', wordEn: 'Apple', emoji: '🍎',
-        color: 'from-violet-400 to-purple-500', lang: 'en-US',
+        color: 'from-violet-400 to-purple-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'A for Apple', content: 'A' },
@@ -24,7 +24,7 @@ const lessons: Record<string, LessonConfig> = {
     },
     'english-b': {
         id: 'english-b', letter: 'B', word: 'Ball', wordEn: 'Ball', emoji: '⚽',
-        color: 'from-blue-400 to-cyan-500', lang: 'en-US',
+        color: 'from-blue-400 to-cyan-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'B for Ball', content: 'B' },
@@ -42,7 +42,7 @@ const lessons: Record<string, LessonConfig> = {
     },
     'english-c': {
         id: 'english-c', letter: 'C', word: 'Cat', wordEn: 'Cat', emoji: '🐱',
-        color: 'from-amber-400 to-orange-500', lang: 'en-US',
+        color: 'from-amber-400 to-orange-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'C for Cat', content: 'C' },
@@ -60,7 +60,7 @@ const lessons: Record<string, LessonConfig> = {
     },
     'english-d': {
         id: 'english-d', letter: 'D', word: 'Dog', wordEn: 'Dog', emoji: '🐶',
-        color: 'from-rose-400 to-pink-500', lang: 'en-US',
+        color: 'from-rose-400 to-pink-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'D for Dog', content: 'D' },
@@ -78,7 +78,7 @@ const lessons: Record<string, LessonConfig> = {
     },
     'english-e': {
         id: 'english-e', letter: 'E', word: 'Egg', wordEn: 'Egg', emoji: '🥚',
-        color: 'from-emerald-400 to-teal-500', lang: 'en-US',
+        color: 'from-emerald-400 to-teal-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'E for Egg', content: 'E' },
@@ -96,7 +96,7 @@ const lessons: Record<string, LessonConfig> = {
     },
     'english-f': {
         id: 'english-f', letter: 'F', word: 'Fish', wordEn: 'Fish', emoji: '🐠',
-        color: 'from-cyan-400 to-blue-500', lang: 'en-US',
+        color: 'from-cyan-400 to-blue-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'F for Fish', content: 'F' },
@@ -114,7 +114,7 @@ const lessons: Record<string, LessonConfig> = {
     },
     'english-g': {
         id: 'english-g', letter: 'G', word: 'Goat', wordEn: 'Goat', emoji: '🐐',
-        color: 'from-lime-400 to-green-500', lang: 'en-US',
+        color: 'from-lime-400 to-green-500', lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
             { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'G for Goat', content: 'G' },
@@ -130,6 +130,91 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Goat starts with which letter?', content: 'G', options: ['C', 'O', 'G', 'Q'], correctAnswer: 'G' },
         ],
     },
+    'english-h': {
+        id: 'english-h', letter: 'H', word: 'Hat', wordEn: 'Hat', emoji: '🎩',
+        color: 'from-amber-400 to-orange-500', lang: 'bn-BD',
+        backHref: '/dashboard/student/kids-zone/nursery/english',
+        exercises: [
+            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'H for Hat', content: 'H' },
+            { id: 'e2', type: 'listen-repeat', title: 'Say — Hat', voiceText: 'Hat', content: 'Hat' },
+            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'H for Hat', content: 'H' },
+            { id: 'e4', type: 'tap-correct', title: 'Find H!', voiceText: 'Find the letter H', content: 'H', options: ['H', 'I', 'M', 'N'], correctAnswer: 'H' },
+            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'H', options: ['H', 'I', 'M', 'N'], correctAnswer: 'H' },
+            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'H', options: ['H', 'I', 'M', 'N'], correctAnswer: 'H' },
+            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Hat', content: 'Hat', options: ['H', 'a', 't'], correctAnswer: 'Hat' },
+            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'H', options: ['G-Goat', 'H-Hat', 'I-Ice', 'J-Jam'], correctAnswer: 'H' },
+            { id: 'e10', type: 'trace', title: 'Write H', voiceText: 'Write the letter H', content: 'H' },
+            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Hat starts with which letter?', content: 'H', options: ['I', 'H', 'M', 'N'], correctAnswer: 'H' },
+        ],
+    },
+    'english-i': {
+        id: 'english-i', letter: 'I', word: 'Ice', wordEn: 'Ice', emoji: '🧊',
+        color: 'from-sky-400 to-blue-500', lang: 'bn-BD',
+        backHref: '/dashboard/student/kids-zone/nursery/english',
+        exercises: [
+            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'I for Ice', content: 'I' },
+            { id: 'e2', type: 'listen-repeat', title: 'Say — Ice', voiceText: 'Ice', content: 'Ice' },
+            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'I for Ice', content: 'I' },
+            { id: 'e4', type: 'tap-correct', title: 'Find I!', voiceText: 'Find the letter I', content: 'I', options: ['I', 'J', 'L', 'K'], correctAnswer: 'I' },
+            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'I', options: ['I', 'J', 'L', 'K'], correctAnswer: 'I' },
+            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'I', options: ['I', 'J', 'L', 'K'], correctAnswer: 'I' },
+            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Ice', content: 'Ice', options: ['I', 'c', 'e'], correctAnswer: 'Ice' },
+            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'I', options: ['H-Hat', 'I-Ice', 'J-Jam', 'K-Key'], correctAnswer: 'I' },
+            { id: 'e10', type: 'trace', title: 'Write I', voiceText: 'Write the letter I', content: 'I' },
+            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Ice starts with which letter?', content: 'I', options: ['J', 'I', 'K', 'L'], correctAnswer: 'I' },
+        ],
+    },
+    'english-j': {
+        id: 'english-j', letter: 'J', word: 'Jam', wordEn: 'Jam', emoji: '🍓',
+        color: 'from-rose-400 to-pink-500', lang: 'bn-BD',
+        backHref: '/dashboard/student/kids-zone/nursery/english',
+        exercises: [
+            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'J for Jam', content: 'J' },
+            { id: 'e2', type: 'listen-repeat', title: 'Say — Jam', voiceText: 'Jam', content: 'Jam' },
+            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'J for Jam', content: 'J' },
+            { id: 'e4', type: 'tap-correct', title: 'Find J!', voiceText: 'Find the letter J', content: 'J', options: ['I', 'J', 'K', 'L'], correctAnswer: 'J' },
+            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'J', options: ['I', 'J', 'K', 'L'], correctAnswer: 'J' },
+            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'J', options: ['I', 'J', 'K', 'L'], correctAnswer: 'J' },
+            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Jam', content: 'Jam', options: ['J', 'a', 'm'], correctAnswer: 'Jam' },
+            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'J', options: ['I-Ice', 'J-Jam', 'K-Key', 'L-Lamp'], correctAnswer: 'J' },
+            { id: 'e10', type: 'trace', title: 'Write J', voiceText: 'Write the letter J', content: 'J' },
+            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Jam starts with which letter?', content: 'J', options: ['I', 'K', 'J', 'L'], correctAnswer: 'J' },
+        ],
+    },
+    'english-k': {
+        id: 'english-k', letter: 'K', word: 'Key', wordEn: 'Key', emoji: '🔑',
+        color: 'from-yellow-400 to-amber-500', lang: 'bn-BD',
+        backHref: '/dashboard/student/kids-zone/nursery/english',
+        exercises: [
+            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'K for Key', content: 'K' },
+            { id: 'e2', type: 'listen-repeat', title: 'Say — Key', voiceText: 'Key', content: 'Key' },
+            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'K for Key', content: 'K' },
+            { id: 'e4', type: 'tap-correct', title: 'Find K!', voiceText: 'Find the letter K', content: 'K', options: ['J', 'K', 'L', 'M'], correctAnswer: 'K' },
+            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'K', options: ['J', 'K', 'L', 'M'], correctAnswer: 'K' },
+            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'K', options: ['J', 'K', 'L', 'M'], correctAnswer: 'K' },
+            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Key', content: 'Key', options: ['K', 'e', 'y'], correctAnswer: 'Key' },
+            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'K', options: ['J-Jam', 'K-Key', 'L-Lamp', 'M-Moon'], correctAnswer: 'K' },
+            { id: 'e10', type: 'trace', title: 'Write K', voiceText: 'Write the letter K', content: 'K' },
+            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Key starts with which letter?', content: 'K', options: ['J', 'L', 'K', 'M'], correctAnswer: 'K' },
+        ],
+    },
+    'english-l': {
+        id: 'english-l', letter: 'L', word: 'Lamp', wordEn: 'Lamp', emoji: '💡',
+        color: 'from-violet-400 to-purple-500', lang: 'bn-BD',
+        backHref: '/dashboard/student/kids-zone/nursery/english',
+        exercises: [
+            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'L for Lamp', content: 'L' },
+            { id: 'e2', type: 'listen-repeat', title: 'Say — Lamp', voiceText: 'Lamp', content: 'Lamp' },
+            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'L for Lamp', content: 'L' },
+            { id: 'e4', type: 'tap-correct', title: 'Find L!', voiceText: 'Find the letter L', content: 'L', options: ['K', 'L', 'M', 'N'], correctAnswer: 'L' },
+            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'L', options: ['K', 'L', 'M', 'N'], correctAnswer: 'L' },
+            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'L', options: ['K', 'L', 'M', 'N'], correctAnswer: 'L' },
+            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Lamp', content: 'Lamp', options: ['L', 'a', 'm', 'p'], correctAnswer: 'Lamp' },
+            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'L', options: ['K-Key', 'L-Lamp', 'M-Moon', 'N-Net'], correctAnswer: 'L' },
+            { id: 'e10', type: 'trace', title: 'Write L', voiceText: 'Write the letter L', content: 'L' },
+            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Lamp starts with which letter?', content: 'L', options: ['K', 'M', 'L', 'N'], correctAnswer: 'L' },
+        ],
+    }
 }
 
 export default function EnglishLessonPage() {

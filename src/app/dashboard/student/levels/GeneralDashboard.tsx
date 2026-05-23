@@ -73,7 +73,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
             href: '/dashboard/student/islamic',
             badge: 'বাধ্যতামূলক',
             badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-            items: ['কুরআন তিলাওয়াত', 'হাদিস শিক্ষা', 'দোয়া শিখি'],
+            items: ['কুরআন তিলাওয়াত', 'Tajweed AI', 'হিফজ Tracker', 'উস্তাদ AI Chat'],
         },
         {
             title: 'একাডেমিক',
@@ -195,6 +195,38 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                     </motion.div>
                 ))}
             </div>
+            {/* Islamic Quick Links */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="mb-4"
+            >
+                <p className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider">
+                    🕌 Islamic — নতুন features
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                    {[
+                        { href: '/dashboard/student/islamic/tajweed', icon: '🎵', label: 'Tajweed AI', color: 'from-blue-500 to-indigo-600' },
+                        { href: '/dashboard/student/islamic/memorization', icon: '📚', label: 'হিফজ Tracker', color: 'from-violet-500 to-purple-600' },
+                        { href: '/dashboard/student/islamic/chat', icon: '🤖', label: 'উস্তাদ AI', color: 'from-emerald-500 to-teal-600' },
+                        { href: '/dashboard/student/islamic/progress', icon: '📊', label: 'Weekly Report', color: 'from-amber-500 to-orange-600' },
+                    ].map((item, i) => (
+                        <Link key={i} href={item.href}>
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-3 flex items-center gap-3 transition-all"
+                            >
+                                <div className={`w-9 h-9 rounded-lg bg-linear-to-br ${item.color} flex items-center justify-center text-lg flex-shrink-0`}>
+                                    {item.icon}
+                                </div>
+                                <p className="text-white text-sm font-semibold">{item.label}</p>
+                            </motion.div>
+                        </Link>
+                    ))}
+                </div>
+            </motion.div>
 
             {/* Career Path */}
             {isCareerAvailable && (
