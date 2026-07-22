@@ -7,6 +7,7 @@ import LogoutButton from '@/components/shared/LogoutButton'
 import NurseryDashboard from './levels/NurseryDashboard'
 import GeneralDashboard from './levels/GeneralDashboard'
 import PushPermission from '@/components/notification/PushPermission'
+import { useEffect, useState } from 'react'
 
 interface Props {
     profile: Record<string, string> | null
@@ -16,6 +17,14 @@ interface Props {
 export default function DashboardClient({ profile, studentProfile }: Props) {
     const classLevel = studentProfile?.class_level || 'general'
     const isNurseryLevel = ['nursery', 'kg', 'class_1', 'class_2'].includes(classLevel)
+    const [announcements, setAnnouncements] = useState<{ id: string; title: string; message: string }[]>([])
+
+    useEffect(() => {
+        fetch('/api/announcements')
+            .then(r => r.json())
+            .then(d => setAnnouncements(d.announcements || []))
+            .catch(() => { })
+    }, [])
 
     return (
         <main className="min-h-screen bg-[#0a0a1a] text-white">
@@ -62,6 +71,12 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
                                 </div>
                             )}
                         </Link>
+                        <Link
+                            href="/free-access"
+                            className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30 transition text-xs"
+                        >
+                            🤲 Free Access
+                        </Link>
                         <LogoutButton />
                     </div>
                 </div>
@@ -71,6 +86,25 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
             <div className="max-w-6xl mx-auto px-4 pt-16 pb-2">
                 <PushPermission />
             </div>
+
+            {announcements.length > 0 && (
+                <div className="mb-4 space-y-2">
+                    {announcements.map(ann => (
+                        <motion.div
+                            key={ann.id}
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-start gap-3"
+                        >
+                            <span className="text-xl shrink-0">📢</span>
+                            <div>
+                                <p className="font-bold text-amber-300 text-sm">{ann.title}</p>
+                                <p className="text-gray-400 text-xs mt-0.5">{ann.message}</p>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
 
             {/* Dashboard Content */}
             <div className="pt-14">

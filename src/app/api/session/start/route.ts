@@ -1,21 +1,24 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+
+// Service Role client — RLS bypass করবে
+const adminSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createServerSupabaseClient()
+
         const body = await req.json()
         const { user_id, device_info } = body
 
         if (!user_id) {
-            return NextResponse.json(
-                { error: 'user_id required' },
-                { status: 400 }
-            )
+            return NextResponse.json({ error: 'user_id required' }, { status: 400 })
         }
 
-        // Session insert
-        const { data, error } = await supabase
+        // Session insert — service role দিয়ে RLS bypass
+        const { data, error } = await adminSupabase
             .from('user_sessions')
             .insert({
                 user_id,
@@ -25,28 +28,25 @@ export async function POST(req: NextRequest) {
             .select('id')
             .single()
 
+
         if (error) {
-            return NextResponse.json(
-                { error: error.message },
-                { status: 500 }
-            )
+        
+            console.log('SESSION INSERT ERROR:', error)
+            return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
-        // Parent/Teacher কে notification পাঠাও
-        // Parent খোঁজো
-        const { data: parentData } = await supabase
+        // Parent/Teacher notification
+        const { data: parentData } = await adminSupabase
             .from('parent_children')
             .select('parent_id')
             .eq('child_id', user_id)
 
-        // Teacher খোঁজো
-        const { data: teacherData } = await supabase
+        const { data: teacherData } = await adminSupabase
             .from('teacher_students')
             .select('teacher_id')
             .eq('student_id', user_id)
 
-        // Student name খোঁজো
-        const { data: profile } = await supabase
+        const { data: profile } = await adminSupabase
             .from('profiles')
             .select('full_name')
             .eq('id', user_id)
@@ -54,29 +54,26 @@ export async function POST(req: NextRequest) {
 
         const studentName = profile?.full_name || 'Student'
         const recipients = [
-            ...(parentData || []).map((p) => p.parent_id),
-            ...(teacherData || []).map((t) => t.teacher_id),
+            ...(parentData || []).map(p => p.parent_id),
+            ...(teacherData || []).map(t => t.teacher_id),
         ]
 
-        // Notification insert
+        
         if (recipients.length > 0) {
-            await supabase.from('notifications').insert(
-                recipients.map((recipient_id) => ({
-                    recipient_id,
-                    sender_id: user_id,
+            await adminSupabase.from('notifications').insert(
+                recipients.map(recipient_id => ({
+                    user_id: recipient_id,
                     type: 'student_login',
-                    title: 'Student Login',
-                    body: `${studentName} এইমাত্র login করেছে`,
+                    title: '🔔 Student Login',
+                    message: `${studentName} এইমাত্র login করেছে`,
                     is_read: false,
                 }))
             )
         }
 
         return NextResponse.json({ session_id: data.id }, { status: 200 })
-    } catch  {
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        )
+    } catch (error) {
+        console.error('SESSION START ERROR:', error)
+        return NextResponse.json({ error: String(error) }, { status: 500 })
     }
 }

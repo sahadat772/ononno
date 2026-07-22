@@ -89,6 +89,8 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
               { label: '✅ Free Approve', href: '/dashboard/admin/free-access' },
               { label: '💳 Payments', href: '/dashboard/admin/subscriptions' },
               { label: '📚 Content', href: '/dashboard/admin/content' },
+              { label: '🤲 Free Access', href: '/free-access' },
+              { label: '📞 Contact', href: '/contact' },
             ].map((a, i) => (
               <Link key={i} href={a.href}
                 className="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/[0.08] text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/15 transition-all font-medium">

@@ -14,7 +14,7 @@ const categories = [
 ]
 
 const districts = [
-    'ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট',
+    'ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'নওগাঁ', 'খুলনা', 'বরিশাল', 'সিলেট',
     'রংপুর', 'ময়মনসিংহ', 'কুমিল্লা', 'গাজীপুর', 'নারায়ণগঞ্জ',
     'টাঙ্গাইল', 'যশোর', 'দিনাজপুর', 'বগুড়া', 'পাবনা', 'নোয়াখালী',
     'ফেনী', 'লক্ষ্মীপুর', 'ব্রাহ্মণবাড়িয়া', 'হবিগঞ্জ', 'মৌলভীবাজার',
@@ -150,7 +150,7 @@ export default function FreeAccessPage() {
             }
 
             // Submit
-            const { error: dbError } = await supabase
+            const { data, error: dbError } = await supabase
                 .from('free_access_requests')
                 .insert({
                     user_id: user.id,
@@ -173,16 +173,22 @@ export default function FreeAccessPage() {
                     status: 'pending',
                     reason_type: selectedCategory,
                 })
+                .select()
+
+            console.log("INSERT DATA:", data)
+            console.log("INSERT ERROR:", dbError)
 
             if (dbError) {
-                setError('কিছু সমস্যা হয়েছে, আবার চেষ্টা করো')
+                console.error(dbError)
+                setError(dbError.message)
                 return
-            }
+            } 
 
             setStep('success')
 
-        } catch {
-            setError('Server এ সমস্যা হয়েছে')
+        } catch (error) {
+            console.error("FREE ACCESS ERROR:", error)
+            setError(error instanceof Error ? error.message : "Server এ সমস্যা হয়েছে")
         } finally {
             setLoading(false)
         }
@@ -463,6 +469,7 @@ export default function FreeAccessPage() {
 
                     {/* Step 3 — প্রমাণ ও নথি */}
                     {currentStep === 3 && (
+
                         <div className="space-y-5">
                             <h2 className="text-white font-bold text-lg mb-4">
                                 ধাপ ৩ — প্রমাণ ও নথি
@@ -480,19 +487,19 @@ export default function FreeAccessPage() {
                             </div>
 
                             <div>
-                                <p className="text-white/70 text-sm mb-2 font-medium">Student ID (যদি থাকে)</p>
+                                <p className="text-white/70 text-sm mb-2 font-medium">Birth ID *</p>
                                 <input
                                     type="text"
                                     value={studentId}
                                     onChange={(e) => setStudentId(e.target.value)}
-                                    placeholder="Student ID নম্বর"
+                                    placeholder="Birth ID নম্বর"
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
                                 />
                             </div>
 
                             <div>
                                 <p className="text-white/70 text-sm mb-2 font-medium">
-                                    চেয়ারম্যান/কাউন্সিলর সনদ নম্বর (যদি থাকে)
+                                    চেয়ারম্যান/কাউন্সিলর সনদ নম্বর *
                                 </p>
                                 <input
                                     type="text"

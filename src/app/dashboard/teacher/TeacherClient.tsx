@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import StudentCard from '@/components/teacher/StudentCard'
 import NotificationBell from '@/components/teacher/NotificationBell'
 import CreateAccountForm from '@/components/shared/CreateAccountForm'
+import LogoutButton from '@/components/shared/LogoutButton'
 
 interface Teacher {
     id: string
@@ -229,6 +230,13 @@ export default function TeacherClient({ teacher }: TeacherClientProps) {
                         >
                             👤
                         </motion.button>
+                        {/* <Link
+                            href="/free-access"
+                            className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30 transition text-xs"
+                        >
+                            🤲 Free Access
+                        </Link> */}
+                        <LogoutButton />
                     </div>
                 </div>
             </div>

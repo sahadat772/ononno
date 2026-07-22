@@ -104,12 +104,16 @@ export default function Home() {
 
                     <div className="hidden md:flex items-center gap-6">
                         {[
-                            { key: 'features', label: 'বৈশিষ্ট্য' },
-                            { key: 'pricing', label: 'মূল্য' },
-                            { key: 'about', label: 'আমাদের সম্পর্কে' },
+                            { label: 'বৈশিষ্ট্য', href: '#features' },
+                            { label: 'মূল্য', href: '#pricing' },
+                            { label: 'যোগাযোগ', href: '/contact' },
+                            { label: '🤲 বিনামূল্যে আবেদন', href: '/free-access' },
                         ].map((item, i) => (
-                            <a key={i} href={`#${item.key}`}
-                                className="text-sm text-gray-400 hover:text-white transition-colors font-medium">
+                            <a key={i} href={item.href}
+                                className={`text-sm font-medium transition-colors ${item.label.includes('আবেদন')
+                                    ? 'text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full bg-emerald-500/10'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}>
                                 {item.label}
                             </a>
                         ))}
@@ -413,7 +417,8 @@ export default function Home() {
                         </h2>
                         <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
                             আমরা বিশ্বাস করি প্রতিটি শিশু অনন্য। তাই আমাদের AI প্রতিটি শিক্ষার্থীর
-                            শেখার ধরন বুঝে তাকে সেভাবে শেখায়।
+                            শেখার ধরন বুঝে তাকে সেভাবে শেখায়। আপনার সন্তান শিখবে তার মতো করে, তার গতিতে। আমরা শুধু content দিই না, আমরা শেখার অভিজ্ঞতা তৈরি করি।
+                            বর্তমান শিক্ষাব্যবস্থা যেখানে standardized, সেখানে অনন্য personalized। আমরা শুধু শিক্ষাই দিই না, আমরা Islamic মূল্যবোধও শেখাই। কুরআন ও সুন্নাহ আমাদের পথ দেখায়।
                         </p>
                     </motion.div>
 
@@ -472,6 +477,7 @@ export default function Home() {
                         <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed text-lg">
                             ২০৩০ সালের মধ্যে বাংলাদেশের প্রতিটি শিক্ষার্থীর হাতে
                             মানসম্পন্ন শিক্ষা পৌঁছে দেওয়া — প্রযুক্তি ও ইসলামিক মূল্যবোধের সমন্বয়ে।
+                            আপনারকে আমরা স্বাগত জানাই এই যাত্রায়। একসাথে আমরা শিক্ষার landscape পরিবর্তন করতে পারি।
                         </p>
                         <div className="mt-6 flex items-center justify-center gap-8 flex-wrap">
                             {[
