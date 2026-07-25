@@ -44,6 +44,7 @@ export type LessonConfig = {
     color: string
     lang: 'bn-BD' | 'en-US' | 'ar-SA'
     backHref: string
+    showDotCount?: boolean
     exercises: Exercise[]
 }
 
@@ -602,6 +603,40 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             </motion.div>
                             <div className="text-6xl mb-2">{lesson.emoji}</div>
                             <h2 className="text-3xl font-bold text-white mb-1">{lesson.word}</h2>
+                            {/* Math Dot Count — বাচ্চাদের জন্য */}
+                            {lesson.showDotCount && (() => {
+                                const num = parseInt(lesson.letter.replace(/[^\d]/g, '')) || 0
+                                const rows: number[] = []
+                                let remaining = num
+                                while (remaining > 0) {
+                                    rows.push(Math.min(remaining, 10))
+                                    remaining -= 10
+                                }
+                                return (
+                                    <div className="mt-3 mb-4">
+                                        <div className="flex flex-col items-center gap-1.5">
+                                            {rows.map((count, rowIdx) => (
+                                                <div key={rowIdx} className="flex gap-1.5 flex-wrap justify-center">
+                                                    {Array.from({ length: count }).map((_, i) => (
+                                                        <motion.span
+                                                            key={i}
+                                                            initial={{ scale: 0 }}
+                                                            animate={{ scale: 1 }}
+                                                            transition={{ delay: (rowIdx * 10 + i) * 0.05 }}
+                                                            className="text-xl"
+                                                        >
+                                                            ⭐
+                                                        </motion.span>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-center text-gray-400 text-xs mt-2">
+                                            গণো — মোট {num}টি তারা!
+                                        </p>
+                                    </div>
+                                )
+                            })()}
                             <p className="text-gray-400 text-sm mb-4">{lesson.wordEn}</p>
                             <button onClick={() => speak(currentEx.voiceText, lesson.lang)}
                                 className={`bg-linear-to-r ${lesson.color} text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg mb-5 mx-auto flex items-center gap-2`}
@@ -988,7 +1023,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                         for (let i = 3; i < pixels.length; i += 4) {
                                             if (pixels[i] > 128) filledPixels++
                                         }
-                                        if (filledPixels < 1500) {
+                                        if (filledPixels < 3000) {
                                             alert('আরেকটু বড় করে লেখো! ✍️')
                                             return
                                         }
@@ -1011,7 +1046,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({
                                                     imageBase64: base64,
-                                                    expectedLetter: currentEx?.content,
+                                                    expectedLetter: `${currentEx?.content} (${lesson.word})`,
                                                     language: lesson.lang,
                                                 }),
                                             })

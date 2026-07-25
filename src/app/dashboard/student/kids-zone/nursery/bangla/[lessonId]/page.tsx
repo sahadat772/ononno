@@ -7,88 +7,536 @@ const lessons: Record<string, LessonConfig> = {
 
     // ─── স্বরবর্ণ ───────────────────────────────────────────────
     'swarabarna-a': {
-        id: 'swarabarna-a', letter: 'অ', word: 'অজগর', wordEn: 'Python', emoji: '🐍',
-        color: 'from-red-400 to-rose-500', lang: 'bn-BD',
+        id: 'swarabarna-a',
+        letter: 'অ',
+        word: 'অজগর',
+        wordEn: 'Python',
+        emoji: '🐍',
+        color: 'from-red-400 to-rose-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'অ দিয়ে অজগর', content: 'অ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — অজগর', voiceText: 'অজগর', content: 'অজগর' },
-            { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'অ', content: 'অ' },
-            { id: 'e4', type: 'tap-correct', title: 'অ কোথায়?', voiceText: 'অ খুঁজে বের করো', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'অ বুদবুদ ফাটাও', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'অ', options: ['অ', 'আ', 'ই', 'ক'], correctAnswer: 'অ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'অজগর বানাও', content: 'অজগর', options: ['অ', 'জ', 'গ', 'র'], correctAnswer: 'অজগর' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'অ', options: ['অ-অজগর', 'আ-আম', 'ই-ইলিশ', 'ঈ-ঈগল'], correctAnswer: 'অ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — অ', voiceText: 'অ লেখো', content: 'অ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'অজগর কোন বর্ণ দিয়ে শুরু?', content: 'অ', options: ['আ', 'অ', 'ই', 'উ'], correctAnswer: 'অ' },
+
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'চলো আজ অ শিখি!',
+                voiceText: 'একদিন রিমা বনে ঘুরতে গিয়ে একটি বড় অজগর দেখল। অজগর শব্দটি অ দিয়ে শুরু হয়। আজ আমরা অ শিখব।',
+                content: 'অ'
+            },
+
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'আমার সাথে বলো',
+                voiceText: 'অ... অজগর',
+                content: 'অজগর'
+            },
+
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'জোরে বলো বন্ধু!',
+                voiceText: 'অ',
+                content: 'অ'
+            },
+
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'অ কোথায়?',
+                voiceText: 'অ বর্ণটি খুঁজে বের করো।',
+                content: 'অ',
+                options: ['অ', 'আ', 'ই', 'ক'],
+                correctAnswer: 'অ'
+            },
+
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'অ ধরো!',
+                voiceText: 'অ লেখা বুদবুদটি ফাটাও।',
+                content: 'অ',
+                options: ['অ', 'আ', 'ই', 'ক'],
+                correctAnswer: 'অ'
+            },
+
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'অজগর কোন বর্ণ দিয়ে শুরু?',
+                voiceText: 'অজগরের প্রথম বর্ণটি বেছে নাও।',
+                content: 'অ',
+                options: ['অ', 'আ', 'ই', 'উ'],
+                correctAnswer: 'অ'
+            },
+
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'শব্দ সাজাও',
+                voiceText: 'অজগর শব্দটি সাজাও।',
+                content: 'অজগর',
+                options: ['অ', 'জ', 'গ', 'র'],
+                correctAnswer: 'অজগর'
+            },
+
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'জোড়া মেলাও',
+                voiceText: 'বর্ণের সাথে শব্দ মিলিয়ে দাও।',
+                content: 'অ',
+                options: [
+                    'অ-অজগর',
+                    'আ-আম',
+                    'ই-ইলিশ',
+                    'ঈ-ঈগল'
+                ],
+                correctAnswer: 'অ'
+            },
+
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'চলো লিখি',
+                voiceText: 'এবার সুন্দর করে অ লেখো।',
+                content: 'অ'
+            },
+
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'শেষ প্রশ্ন',
+                voiceText: 'অজগর কোন বর্ণ দিয়ে শুরু হয়?',
+                content: 'অ',
+                options: ['আ', 'অ', 'ই', 'উ'],
+                correctAnswer: 'অ'
+            },
         ],
     },
     'swarabarna-aa': {
-        id: 'swarabarna-aa', letter: 'আ', word: 'আম', wordEn: 'Mango', emoji: '🥭',
-        color: 'from-orange-400 to-amber-500', lang: 'bn-BD',
+        id: 'swarabarna-aa',
+        letter: 'আ',
+        word: 'আম',
+        wordEn: 'Mango',
+        emoji: '🥭',
+        color: 'from-yellow-400 to-orange-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'আ দিয়ে আম', content: 'আ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — আম', voiceText: 'আম', content: 'আম' },
-            { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'আ', content: 'আ' },
-            { id: 'e4', type: 'tap-correct', title: 'আ কোথায়?', voiceText: 'আ খুঁজে বের করো', content: 'আ', options: ['অ', 'আ', 'ই', 'খ'], correctAnswer: 'আ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'আ বুদবুদ ফাটাও', content: 'আ', options: ['অ', 'আ', 'ই', 'খ'], correctAnswer: 'আ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'আ', options: ['অ', 'আ', 'ই', 'খ'], correctAnswer: 'আ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'আম বানাও', content: 'আম', options: ['আ', 'ম', 'অ', 'ন'], correctAnswer: 'আম' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'আ', options: ['অ-অজগর', 'আ-আম', 'ই-ইলিশ', 'ঈ-ঈগল'], correctAnswer: 'আ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — আ', voiceText: 'আ লেখো', content: 'আ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'আম কোন বর্ণ দিয়ে শুরু?', content: 'আ', options: ['অ', 'আ', 'ক', 'ঘ'], correctAnswer: 'আ' },
+
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'চলো আজ আ শিখি!',
+                voiceText: 'গরমের দিনে রিফাত গাছ থেকে একটি মিষ্টি আম পাড়ল। আম শব্দটি আ দিয়ে শুরু হয়। আজ আমরা আ শিখব।',
+                content: 'আ'
+            },
+
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'আমার সাথে বলো',
+                voiceText: 'আ... আম',
+                content: 'আম'
+            },
+
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'জোরে বলো বন্ধু!',
+                voiceText: 'আ',
+                content: 'আ'
+            },
+
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'আ কোথায়?',
+                voiceText: 'আ বর্ণটি খুঁজে বের করো।',
+                content: 'আ',
+                options: ['অ', 'আ', 'ই', 'ঈ'],
+                correctAnswer: 'আ'
+            },
+
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'আম ধরো!',
+                voiceText: 'আ লেখা বুদবুদটি ফাটাও।',
+                content: 'আ',
+                options: ['অ', 'আ', 'ই', 'ঈ'],
+                correctAnswer: 'আ'
+            },
+
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'আম কোন বর্ণ দিয়ে শুরু?',
+                voiceText: 'আমের প্রথম বর্ণটি বেছে নাও।',
+                content: 'আ',
+                options: ['অ', 'আ', 'ই', 'ঈ'],
+                correctAnswer: 'আ'
+            },
+
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'শব্দ সাজাও',
+                voiceText: 'আম শব্দটি সাজাও।',
+                content: 'আম',
+                options: ['আ', 'ম'],
+                correctAnswer: 'আম'
+            },
+
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'জোড়া মেলাও',
+                voiceText: 'বর্ণের সাথে শব্দ মিলিয়ে দাও।',
+                content: 'আ',
+                options: ['অ-অজগর', 'আ-আম', 'ই-ইলিশ', 'ঈ-ঈদ'],
+                correctAnswer: 'আ'
+            },
+
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'চলো লিখি',
+                voiceText: 'এবার সুন্দর করে আ লেখো।',
+                content: 'আ'
+            },
+
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'শেষ প্রশ্ন',
+                voiceText: 'আম কোন বর্ণ দিয়ে শুরু হয়?',
+                content: 'আ',
+                options: ['অ', 'আ', 'ই', 'ঈ'],
+                correctAnswer: 'আ'
+            },
         ],
     },
+
     'swarabarna-i': {
-        id: 'swarabarna-i', letter: 'ই', word: 'ইলিশ', wordEn: 'Hilsa Fish', emoji: '🐟',
-        color: 'from-yellow-400 to-lime-500', lang: 'bn-BD',
+        id: 'swarabarna-i',
+        letter: 'ই',
+        word: 'ইলিশ',
+        wordEn: 'Hilsa',
+        emoji: '🐟',
+        color: 'from-cyan-400 to-blue-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'ই দিয়ে ইলিশ', content: 'ই' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — ইলিশ', voiceText: 'ইলিশ', content: 'ইলিশ' },
-            { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'ই', content: 'ই' },
-            { id: 'e4', type: 'tap-correct', title: 'ই কোথায়?', voiceText: 'ই খুঁজে বের করো', content: 'ই', options: ['ঈ', 'উ', 'ই', 'চ'], correctAnswer: 'ই' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'ই বুদবুদ ফাটাও', content: 'ই', options: ['ঈ', 'উ', 'ই', 'চ'], correctAnswer: 'ই' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'ই', options: ['ঈ', 'উ', 'ই', 'চ'], correctAnswer: 'ই' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'ইলিশ বানাও', content: 'ইলিশ', options: ['ই', 'ল', 'ি', 'শ'], correctAnswer: 'ইলিশ' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'ই', options: ['অ-অজগর', 'আ-আম', 'ই-ইলিশ', 'ঈ-ঈগল'], correctAnswer: 'ই' },
-            { id: 'e10', type: 'trace', title: 'লিখি — ই', voiceText: 'ই লেখো', content: 'ই' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'ইলিশ কোন বর্ণ দিয়ে শুরু?', content: 'ই', options: ['ঈ', 'উ', 'ই', 'অ'], correctAnswer: 'ই' },
+
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'চলো আজ ই শিখি!',
+                voiceText: 'বাংলাদেশের জাতীয় মাছ ইলিশ। ইলিশ শব্দটি ই দিয়ে শুরু হয়। আজ আমরা ই শিখব।',
+                content: 'ই'
+            },
+
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'আমার সাথে বলো',
+                voiceText: 'ই... ইলিশ',
+                content: 'ইলিশ'
+            },
+
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'জোরে বলো বন্ধু!',
+                voiceText: 'ই',
+                content: 'ই'
+            },
+
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'ই কোথায়?',
+                voiceText: 'ই বর্ণটি খুঁজে বের করো।',
+                content: 'ই',
+                options: ['আ', 'ই', 'ঈ', 'উ'],
+                correctAnswer: 'ই'
+            },
+
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'ই ধরো!',
+                voiceText: 'ই লেখা বুদবুদটি ফাটাও।',
+                content: 'ই',
+                options: ['আ', 'ই', 'ঈ', 'উ'],
+                correctAnswer: 'ই'
+            },
+
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'ইলিশ কোন বর্ণ দিয়ে শুরু?',
+                voiceText: 'ইলিশের প্রথম বর্ণটি বেছে নাও।',
+                content: 'ই',
+                options: ['আ', 'ই', 'ঈ', 'উ'],
+                correctAnswer: 'ই'
+            },
+
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'শব্দ সাজাও',
+                voiceText: 'ইলিশ শব্দটি সাজাও।',
+                content: 'ইলিশ',
+                options: ['ই', 'ল', 'ি', 'শ'],
+                correctAnswer: 'ইলিশ'
+            },
+
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'জোড়া মেলাও',
+                voiceText: 'বর্ণের সাথে শব্দ মিলিয়ে দাও।',
+                content: 'ই',
+                options: ['আ-আম', 'ই-ইলিশ', 'ঈ-ঈদ', 'উ-উট'],
+                correctAnswer: 'ই'
+            },
+
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'চলো লিখি',
+                voiceText: 'এবার সুন্দর করে ই লেখো।',
+                content: 'ই'
+            },
+
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'শেষ প্রশ্ন',
+                voiceText: 'ইলিশ কোন বর্ণ দিয়ে শুরু হয়?',
+                content: 'ই',
+                options: ['আ', 'ই', 'ঈ', 'উ'],
+                correctAnswer: 'ই'
+            },
         ],
     },
+
     'swarabarna-ii': {
-        id: 'swarabarna-ii', letter: 'ঈ', word: 'ঈগল', wordEn: 'Eagle', emoji: '🦅',
-        color: 'from-sky-400 to-blue-500', lang: 'bn-BD',
+        id: 'swarabarna-ii',
+        letter: 'ঈ',
+        word: 'ঈদ',
+        wordEn: 'Eid',
+        emoji: '🌙',
+        color: 'from-emerald-400 to-green-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'ঈ দিয়ে ঈগল', content: 'ঈ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — ঈগল', voiceText: 'ঈগল', content: 'ঈগল' },
-            { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'ঈ', content: 'ঈ' },
-            { id: 'e4', type: 'tap-correct', title: 'ঈ কোথায়?', voiceText: 'ঈ খুঁজে বের করো', content: 'ঈ', options: ['ই', 'ঈ', 'উ', 'ঊ'], correctAnswer: 'ঈ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'ঈ বুদবুদ ফাটাও', content: 'ঈ', options: ['ই', 'ঈ', 'উ', 'ঊ'], correctAnswer: 'ঈ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'ঈ', options: ['ই', 'ঈ', 'উ', 'ঊ'], correctAnswer: 'ঈ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'ঈগল বানাও', content: 'ঈগল', options: ['ঈ', 'গ', 'ল'], correctAnswer: 'ঈগল' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'ঈ', options: ['ই-ইলিশ', 'ঈ-ঈগল', 'উ-উট', 'ঊ-ঊষা'], correctAnswer: 'ঈ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — ঈ', voiceText: 'ঈ লেখো', content: 'ঈ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'ঈগল কোন বর্ণ দিয়ে শুরু?', content: 'ঈ', options: ['ই', 'ঈ', 'উ', 'ঊ'], correctAnswer: 'ঈ' },
+
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'চলো আজ ঈ শিখি!',
+                voiceText: 'ঈদের দিনে সবাই নতুন জামা পরে আনন্দ করে। ঈদ শব্দটি ঈ দিয়ে শুরু হয়। আজ আমরা ঈ শিখব।',
+                content: 'ঈ'
+            },
+
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'আমার সাথে বলো',
+                voiceText: 'ঈ... ঈদ',
+                content: 'ঈদ'
+            },
+
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'জোরে বলো বন্ধু!',
+                voiceText: 'ঈ',
+                content: 'ঈ'
+            },
+
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'ঈ কোথায়?',
+                voiceText: 'ঈ বর্ণটি খুঁজে বের করো।',
+                content: 'ঈ',
+                options: ['ই', 'ঈ', 'উ', 'ঊ'],
+                correctAnswer: 'ঈ'
+            },
+
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'ঈ ধরো!',
+                voiceText: 'ঈ লেখা বুদবুদটি ফাটাও।',
+                content: 'ঈ',
+                options: ['ই', 'ঈ', 'উ', 'ঊ'],
+                correctAnswer: 'ঈ'
+            },
+
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'ঈদ কোন বর্ণ দিয়ে শুরু?',
+                voiceText: 'ঈদের প্রথম বর্ণটি বেছে নাও।',
+                content: 'ঈ',
+                options: ['ই', 'ঈ', 'উ', 'ঊ'],
+                correctAnswer: 'ঈ'
+            },
+
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'শব্দ সাজাও',
+                voiceText: 'ঈদ শব্দটি সাজাও।',
+                content: 'ঈদ',
+                options: ['ঈ', 'দ'],
+                correctAnswer: 'ঈদ'
+            },
+
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'জোড়া মেলাও',
+                voiceText: 'বর্ণের সাথে শব্দ মিলিয়ে দাও।',
+                content: 'ঈ',
+                options: ['ই-ইলিশ', 'ঈ-ঈদ', 'উ-উট', 'আ-আম'],
+                correctAnswer: 'ঈ'
+            },
+
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'চলো লিখি',
+                voiceText: 'এবার সুন্দর করে ঈ লেখো।',
+                content: 'ঈ'
+            },
+
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'শেষ প্রশ্ন',
+                voiceText: 'ঈদ কোন বর্ণ দিয়ে শুরু হয়?',
+                content: 'ঈ',
+                options: ['ই', 'ঈ', 'উ', 'ঊ'],
+                correctAnswer: 'ঈ'
+            },
         ],
     },
+
     'swarabarna-u': {
-        id: 'swarabarna-u', letter: 'উ', word: 'উট', wordEn: 'Camel', emoji: '🐪',
-        color: 'from-amber-400 to-orange-500', lang: 'bn-BD',
+        id: 'swarabarna-u',
+        letter: 'উ',
+        word: 'উট',
+        wordEn: 'Camel',
+        emoji: '🐪',
+        color: 'from-orange-400 to-amber-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'উ দিয়ে উট', content: 'উ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — উট', voiceText: 'উট', content: 'উট' },
-            { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'উ', content: 'উ' },
-            { id: 'e4', type: 'tap-correct', title: 'উ কোথায়?', voiceText: 'উ খুঁজে বের করো', content: 'উ', options: ['ঈ', 'উ', 'ঊ', 'ঋ'], correctAnswer: 'উ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'উ বুদবুদ ফাটাও', content: 'উ', options: ['ঈ', 'উ', 'ঊ', 'ঋ'], correctAnswer: 'উ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'উ', options: ['ঈ', 'উ', 'ঊ', 'ঋ'], correctAnswer: 'উ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'উট বানাও', content: 'উট', options: ['উ', 'ট', 'আ', 'ম'], correctAnswer: 'উট' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'উ', options: ['ই-ইলিশ', 'ঈ-ঈগল', 'উ-উট', 'ঊ-ঊষা'], correctAnswer: 'উ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — উ', voiceText: 'উ লেখো', content: 'উ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'উট কোন বর্ণ দিয়ে শুরু?', content: 'উ', options: ['ই', 'উ', 'ঊ', 'ঋ'], correctAnswer: 'উ' },
+
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'চলো আজ উ শিখি!',
+                voiceText: 'মরুভূমিতে উট মানুষের বন্ধু। উট শব্দটি উ দিয়ে শুরু হয়। আজ আমরা উ শিখব।',
+                content: 'উ'
+            },
+
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'আমার সাথে বলো',
+                voiceText: 'উ... উট',
+                content: 'উট'
+            },
+
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'জোরে বলো বন্ধু!',
+                voiceText: 'উ',
+                content: 'উ'
+            },
+
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'উ কোথায়?',
+                voiceText: 'উ বর্ণটি খুঁজে বের করো।',
+                content: 'উ',
+                options: ['ঈ', 'উ', 'ঊ', 'এ'],
+                correctAnswer: 'উ'
+            },
+
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'উ ধরো!',
+                voiceText: 'উ লেখা বুদবুদটি ফাটাও।',
+                content: 'উ',
+                options: ['ঈ', 'উ', 'ঊ', 'এ'],
+                correctAnswer: 'উ'
+            },
+
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'উট কোন বর্ণ দিয়ে শুরু?',
+                voiceText: 'উটের প্রথম বর্ণটি বেছে নাও।',
+                content: 'উ',
+                options: ['ঈ', 'উ', 'ঊ', 'এ'],
+                correctAnswer: 'উ'
+            },
+
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'শব্দ সাজাও',
+                voiceText: 'উট শব্দটি সাজাও।',
+                content: 'উট',
+                options: ['উ', 'ট'],
+                correctAnswer: 'উট'
+            },
+
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'জোড়া মেলাও',
+                voiceText: 'বর্ণের সাথে শব্দ মিলিয়ে দাও।',
+                content: 'উ',
+                options: ['ঈ-ঈদ', 'উ-উট', 'আ-আম', 'ই-ইলিশ'],
+                correctAnswer: 'উ'
+            },
+
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'চলো লিখি',
+                voiceText: 'এবার সুন্দর করে উ লেখো।',
+                content: 'উ'
+            },
+
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'শেষ প্রশ্ন',
+                voiceText: 'উট কোন বর্ণ দিয়ে শুরু হয়?',
+                content: 'উ',
+                options: ['ঈ', 'উ', 'ঊ', 'এ'],
+                correctAnswer: 'উ'
+            },
         ],
     },
     'swarabarna-uu': {
@@ -195,88 +643,118 @@ const lessons: Record<string, LessonConfig> = {
     },
 
     // ─── ব্যঞ্জনবর্ণ ─────────────────────────────────────────────
-    'banjanbarna-ka': {
-        id: 'banjanbarna-ka', letter: 'ক', word: 'কলা', wordEn: 'Banana', emoji: '🍌',
-        color: 'from-yellow-400 to-amber-500', lang: 'bn-BD',
+    'banjonborno-ka': {
+        id: 'banjonborno-ka',
+        letter: 'ক',
+        word: 'কাক',
+        wordEn: 'Crow',
+        emoji: '🐦',
+        color: 'from-slate-500 to-gray-700',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'ক দিয়ে কলা', content: 'ক' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — কলা', voiceText: 'কলা', content: 'কলা' },
+            { id: 'e1', type: 'intro', title: 'চলো আজ ক শিখি!', voiceText: 'সকালে কাক কা কা করে ডাকছে। কাক শব্দটি ক দিয়ে শুরু হয়।', content: 'ক' },
+            { id: 'e2', type: 'listen-repeat', title: 'আমার সাথে বলো', voiceText: 'ক... কাক', content: 'কাক' },
             { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'ক', content: 'ক' },
-            { id: 'e4', type: 'tap-correct', title: 'ক কোথায়?', voiceText: 'ক খুঁজে বের করো', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'ক বুদবুদ ফাটাও', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'কলা বানাও', content: 'কলা', options: ['ক', 'ল', 'া', 'ম'], correctAnswer: 'কলা' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'ক', options: ['ক-কলা', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘড়ি'], correctAnswer: 'ক' },
-            { id: 'e10', type: 'trace', title: 'লিখি — ক', voiceText: 'ক লেখো', content: 'ক' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'কলা কোন বর্ণ দিয়ে শুরু?', content: 'ক', options: ['খ', 'ক', 'গ', 'চ'], correctAnswer: 'ক' },
+            { id: 'e4', type: 'tap-correct', title: 'ক কোথায়?', voiceText: 'ক বর্ণটি খুঁজে বের করো।', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
+            { id: 'e5', type: 'bubble-pop', title: 'ক ধরো!', voiceText: 'ক লেখা বুদবুদটি ফাটাও।', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
+            { id: 'e6', type: 'letter-puzzle', title: 'কাক কোন বর্ণ দিয়ে শুরু?', voiceText: 'কাকের প্রথম বর্ণটি বেছে নাও।', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
+            { id: 'e7', type: 'word-builder', title: 'শব্দ সাজাও', voiceText: 'কাক শব্দটি সাজাও।', content: 'কাক', options: ['ক', 'া', 'ক'], correctAnswer: 'কাক' },
+            { id: 'e8', type: 'matching', title: 'জোড়া মেলাও', voiceText: 'বর্ণের সাথে শব্দ মিলাও।', content: 'ক', options: ['ক-কাক', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘুড়ি'], correctAnswer: 'ক' },
+            { id: 'e9', type: 'trace', title: 'চলো লিখি', voiceText: 'সুন্দর করে ক লেখো।', content: 'ক' },
+            { id: 'e10', type: 'quiz', title: 'শেষ প্রশ্ন', voiceText: 'কাক কোন বর্ণ দিয়ে শুরু হয়?', content: 'ক', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ক' },
         ],
     },
-    'banjanbarna-kha': {
-        id: 'banjanbarna-kha', letter: 'খ', word: 'খরগোশ', wordEn: 'Rabbit', emoji: '🐰',
-        color: 'from-orange-400 to-red-500', lang: 'bn-BD',
+    'banjonborno-kha': {
+        id: 'banjonborno-kha',
+        letter: 'খ',
+        word: 'খরগোশ',
+        wordEn: 'Rabbit',
+        emoji: '🐇',
+        color: 'from-pink-400 to-rose-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'খ দিয়ে খরগোশ', content: 'খ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — খরগোশ', voiceText: 'খরগোশ', content: 'খরগোশ' },
+            { id: 'e1', type: 'intro', title: 'চলো আজ খ শিখি!', voiceText: 'ছোট্ট খরগোশ লাফিয়ে লাফিয়ে দৌড়ায়। খরগোশ শব্দটি খ দিয়ে শুরু হয়।', content: 'খ' },
+            { id: 'e2', type: 'listen-repeat', title: 'আমার সাথে বলো', voiceText: 'খ... খরগোশ', content: 'খরগোশ' },
             { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'খ', content: 'খ' },
-            { id: 'e4', type: 'tap-correct', title: 'খ কোথায়?', voiceText: 'খ খুঁজে বের করো', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'খ বুদবুদ ফাটাও', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'খরগোশ বানাও', content: 'খরগোশ', options: ['খ', 'র', 'গো', 'শ'], correctAnswer: 'খরগোশ' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'খ', options: ['ক-কলা', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘড়ি'], correctAnswer: 'খ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — খ', voiceText: 'খ লেখো', content: 'খ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'খরগোশ কোন বর্ণ দিয়ে শুরু?', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
+            { id: 'e4', type: 'tap-correct', title: 'খ কোথায়?', voiceText: 'খ বর্ণটি খুঁজে বের করো।', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
+            { id: 'e5', type: 'bubble-pop', title: 'খ ধরো!', voiceText: 'খ লেখা বুদবুদটি ফাটাও।', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
+            { id: 'e6', type: 'letter-puzzle', title: 'খরগোশ কোন বর্ণ দিয়ে শুরু?', voiceText: 'প্রথম বর্ণটি বেছে নাও।', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
+            { id: 'e7', type: 'word-builder', title: 'শব্দ সাজাও', voiceText: 'খরগোশ সাজাও।', content: 'খরগোশ', options: ['খ', 'র', 'গ', 'ো', 'শ'], correctAnswer: 'খরগোশ' },
+            { id: 'e8', type: 'matching', title: 'জোড়া মেলাও', voiceText: 'মিলিয়ে দাও।', content: 'খ', options: ['ক-কাক', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘুড়ি'], correctAnswer: 'খ' },
+            { id: 'e9', type: 'trace', title: 'চলো লিখি', voiceText: 'খ লেখো।', content: 'খ' },
+            { id: 'e10', type: 'quiz', title: 'শেষ প্রশ্ন', voiceText: 'খরগোশ কোন বর্ণ দিয়ে শুরু?', content: 'খ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'খ' },
         ],
     },
-    'banjanbarna-ga': {
-        id: 'banjanbarna-ga', letter: 'গ', word: 'গরু', wordEn: 'Cow', emoji: '🐄',
-        color: 'from-green-400 to-emerald-500', lang: 'bn-BD',
+    'banjonborno-ga': {
+        id: 'banjonborno-ga',
+        letter: 'গ',
+        word: 'গরু',
+        wordEn: 'Cow',
+        emoji: '🐄',
+        color: 'from-green-400 to-emerald-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'গ দিয়ে গরু', content: 'গ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — গরু', voiceText: 'গরু', content: 'গরু' },
+            { id: 'e1', type: 'intro', title: 'চলো আজ গ শিখি!', voiceText: 'মাঠে গরু ঘাস খাচ্ছে। গরু শব্দটি গ দিয়ে শুরু হয়।', content: 'গ' },
+            { id: 'e2', type: 'listen-repeat', title: 'আমার সাথে বলো', voiceText: 'গ... গরু', content: 'গরু' },
             { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'গ', content: 'গ' },
-            { id: 'e4', type: 'tap-correct', title: 'গ কোথায়?', voiceText: 'গ খুঁজে বের করো', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'গ বুদবুদ ফাটাও', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'গরু বানাও', content: 'গরু', options: ['গ', 'র', 'ু', 'ম'], correctAnswer: 'গরু' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'গ', options: ['ক-কলা', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘড়ি'], correctAnswer: 'গ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — গ', voiceText: 'গ লেখো', content: 'গ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'গরু কোন বর্ণ দিয়ে শুরু?', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
+            { id: 'e4', type: 'tap-correct', title: 'গ কোথায়?', voiceText: 'গ খুঁজে বের করো।', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
+            { id: 'e5', type: 'bubble-pop', title: 'গ ধরো!', voiceText: 'গ লেখা বুদবুদটি ফাটাও।', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
+            { id: 'e6', type: 'letter-puzzle', title: 'গরু কোন বর্ণ দিয়ে শুরু?', voiceText: 'সঠিক বর্ণটি বেছে নাও।', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
+            { id: 'e7', type: 'word-builder', title: 'শব্দ সাজাও', voiceText: 'গরু সাজাও।', content: 'গরু', options: ['গ', 'র', 'ু'], correctAnswer: 'গরু' },
+            { id: 'e8', type: 'matching', title: 'জোড়া মেলাও', voiceText: 'বর্ণের সাথে শব্দ মিলাও।', content: 'গ', options: ['ক-কাক', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘুড়ি'], correctAnswer: 'গ' },
+            { id: 'e9', type: 'trace', title: 'চলো লিখি', voiceText: 'গ লেখো।', content: 'গ' },
+            { id: 'e10', type: 'quiz', title: 'শেষ প্রশ্ন', voiceText: 'গরু কোন বর্ণ দিয়ে শুরু?', content: 'গ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'গ' },
         ],
     },
-    'banjanbarna-gha': {
-        id: 'banjanbarna-gha', letter: 'ঘ', word: 'ঘড়ি', wordEn: 'Clock', emoji: '⏰',
-        color: 'from-blue-400 to-indigo-500', lang: 'bn-BD',
+    'banjonborno-gha': {
+        id: 'banjonborno-gha',
+        letter: 'ঘ',
+        word: 'ঘুড়ি',
+        wordEn: 'Kite',
+        emoji: '🪁',
+        color: 'from-sky-400 to-cyan-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'ঘ দিয়ে ঘড়ি', content: 'ঘ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — ঘড়ি', voiceText: 'ঘড়ি', content: 'ঘড়ি' },
+            { id: 'e1', type: 'intro', title: 'চলো আজ ঘ শিখি!', voiceText: 'নীল আকাশে রঙিন ঘুড়ি উড়ছে। ঘুড়ি শব্দটি ঘ দিয়ে শুরু হয়।', content: 'ঘ' },
+            { id: 'e2', type: 'listen-repeat', title: 'আমার সাথে বলো', voiceText: 'ঘ... ঘুড়ি', content: 'ঘুড়ি' },
             { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'ঘ', content: 'ঘ' },
-            { id: 'e4', type: 'tap-correct', title: 'ঘ কোথায়?', voiceText: 'ঘ খুঁজে বের করো', content: 'ঘ', options: ['গ', 'ঘ', 'ঙ', 'চ'], correctAnswer: 'ঘ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'ঘ বুদবুদ ফাটাও', content: 'ঘ', options: ['গ', 'ঘ', 'ঙ', 'চ'], correctAnswer: 'ঘ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'ঘ', options: ['গ', 'ঘ', 'ঙ', 'চ'], correctAnswer: 'ঘ' },
-            { id: 'e8', type: 'word-builder', title: 'শব্দ বানাও!', voiceText: 'ঘড়ি বানাও', content: 'ঘড়ি', options: ['ঘ', 'ড়', 'ি', 'ম'], correctAnswer: 'ঘড়ি' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'ঘ', options: ['গ-গরু', 'ঘ-ঘড়ি', 'চ-চাঁদ', 'ছ-ছাগল'], correctAnswer: 'ঘ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — ঘ', voiceText: 'ঘ লেখো', content: 'ঘ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'ঘড়ি কোন বর্ণ দিয়ে শুরু?', content: 'ঘ', options: ['গ', 'ঘ', 'চ', 'ছ'], correctAnswer: 'ঘ' },
+            { id: 'e4', type: 'tap-correct', title: 'ঘ কোথায়?', voiceText: 'ঘ খুঁজে বের করো।', content: 'ঘ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ঘ' },
+            { id: 'e5', type: 'bubble-pop', title: 'ঘ ধরো!', voiceText: 'ঘ লেখা বুদবুদটি ফাটাও।', content: 'ঘ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ঘ' },
+            { id: 'e6', type: 'letter-puzzle', title: 'ঘুড়ি কোন বর্ণ দিয়ে শুরু?', voiceText: 'প্রথম বর্ণটি বেছে নাও।', content: 'ঘ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ঘ' },
+            { id: 'e7', type: 'word-builder', title: 'শব্দ সাজাও', voiceText: 'ঘুড়ি সাজাও।', content: 'ঘুড়ি', options: ['ঘ', 'ু', 'ড়', 'ি'], correctAnswer: 'ঘুড়ি' },
+            { id: 'e8', type: 'matching', title: 'জোড়া মেলাও', voiceText: 'বর্ণের সাথে শব্দ মিলাও।', content: 'ঘ', options: ['ক-কাক', 'খ-খরগোশ', 'গ-গরু', 'ঘ-ঘুড়ি'], correctAnswer: 'ঘ' },
+            { id: 'e9', type: 'trace', title: 'চলো লিখি', voiceText: 'ঘ লেখো।', content: 'ঘ' },
+            { id: 'e10', type: 'quiz', title: 'শেষ প্রশ্ন', voiceText: 'ঘুড়ি কোন বর্ণ দিয়ে শুরু?', content: 'ঘ', options: ['ক', 'খ', 'গ', 'ঘ'], correctAnswer: 'ঘ' },
         ],
     },
-    'banjanbarna-nga': {
-        id: 'banjanbarna-nga', letter: 'ঙ', word: 'বাংলা', wordEn: 'Bengali', emoji: '🇧🇩',
-        color: 'from-green-400 to-emerald-500', lang: 'bn-BD',
+    'banjonborno-nga': {
+        id: 'banjonborno-nga',
+        letter: 'ঙ',
+        word: 'ঙ',
+        wordEn: 'Nga',
+        emoji: '🔤',
+        color: 'from-indigo-400 to-violet-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/bangla',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'এটি কী?', voiceText: 'ঙ — বাংলা শব্দে আছে', content: 'ঙ' },
-            { id: 'e2', type: 'listen-repeat', title: 'বলো — বাংলা', voiceText: 'বাংলা', content: 'বাংলা' },
+            { id: 'e1', type: 'intro', title: 'চলো আজ ঙ শিখি!', voiceText: 'আজ আমরা নতুন একটি বর্ণ শিখব। এর নাম ঙ।', content: 'ঙ' },
+            { id: 'e2', type: 'listen-repeat', title: 'আমার সাথে বলো', voiceText: 'ঙ', content: 'ঙ' },
             { id: 'e3', type: 'pronounce', title: 'জোরে বলো!', voiceText: 'ঙ', content: 'ঙ' },
-            { id: 'e4', type: 'tap-correct', title: 'ঙ কোথায়?', voiceText: 'ঙ খুঁজে বের করো', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ন'], correctAnswer: 'ঙ' },
-            { id: 'e5', type: 'bubble-pop', title: 'বুদবুদ ফাটাও!', voiceText: 'ঙ বুদবুদ ফাটাও', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ন'], correctAnswer: 'ঙ' },
-            { id: 'e7', type: 'letter-puzzle', title: 'ধাঁধা মেলাও!', voiceText: 'সঠিক বর্ণ বেছে নাও', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ন'], correctAnswer: 'ঙ' },
-            { id: 'e9', type: 'matching', title: 'মেলাও!', voiceText: 'বর্ণ আর শব্দ মেলাও', content: 'ঙ', options: ['ঘ-ঘড়ি', 'ঙ-বাংলা', 'চ-চাঁদ', 'ন-নৌকা'], correctAnswer: 'ঙ' },
-            { id: 'e10', type: 'trace', title: 'লিখি — ঙ', voiceText: 'ঙ লেখো', content: 'ঙ' },
-            { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'বাংলা শব্দে কোন বর্ণ আছে?', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ন'], correctAnswer: 'ঙ' },
+            { id: 'e4', type: 'tap-correct', title: 'ঙ কোথায়?', voiceText: 'ঙ বর্ণটি খুঁজে বের করো।', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ছ'], correctAnswer: 'ঙ' },
+            { id: 'e5', type: 'bubble-pop', title: 'ঙ ধরো!', voiceText: 'ঙ লেখা বুদবুদটি ফাটাও।', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ছ'], correctAnswer: 'ঙ' },
+            { id: 'e6', type: 'letter-puzzle', title: 'সঠিক বর্ণ বেছে নাও', voiceText: 'ঙ বেছে নাও।', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ছ'], correctAnswer: 'ঙ' },
+            { id: 'e7', type: 'matching', title: 'জোড়া মেলাও', voiceText: 'ঙ বর্ণের সাথে মিলাও।', content: 'ঙ', options: ['ঘ-ঘুড়ি', 'ঙ-ঙ', 'চ-চাল', 'ছ-ছাতা'], correctAnswer: 'ঙ' },
+            { id: 'e8', type: 'trace', title: 'চলো লিখি', voiceText: 'এবার ঙ লেখো।', content: 'ঙ' },
+            { id: 'e9', type: 'quiz', title: 'শেষ প্রশ্ন', voiceText: 'এটি কোন বর্ণ?', content: 'ঙ', options: ['ঘ', 'ঙ', 'চ', 'ছ'], correctAnswer: 'ঙ' },
         ],
     },
     'banjanbarna-cha': {
@@ -534,7 +1012,7 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'নৌকা কোন বর্ণ দিয়ে শুরু?', content: 'ন', options: ['ড', 'ণ', 'ন', 'প'], correctAnswer: 'ন' },
         ],
     },
-    
+
 
     // ─── ব্যঞ্জনবর্ণ ২ ──────────────────────────────────────────
     'banjanbarna2-pa': {
@@ -622,8 +1100,8 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'মাছ কোন বর্ণ দিয়ে শুরু?', content: 'ম', options: ['ভ', 'ম', 'য', 'র'], correctAnswer: 'ম' },
         ],
     },
-    
-    
+
+
 
     // ─── ব্যঞ্জনবর্ণ ৩ ──────────────────────────────────────────
     'banjanbarna3-ya': {
@@ -677,7 +1155,7 @@ const lessons: Record<string, LessonConfig> = {
             { id: 'e11', type: 'quiz', title: 'শেষ প্রশ্ন!', voiceText: 'লাউ কোন বর্ণ দিয়ে শুরু?', content: 'ল', options: ['র', 'ল', 'শ', 'ষ'], correctAnswer: 'ল' },
         ],
     },
-    
+
     'banjanbarna3-sha': {
         id: 'banjanbarna3-sha', letter: 'শ', word: 'শিয়াল', wordEn: 'Fox', emoji: '🦊',
         color: 'from-orange-400 to-red-500', lang: 'bn-BD',

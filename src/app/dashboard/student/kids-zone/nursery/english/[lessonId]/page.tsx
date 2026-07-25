@@ -5,94 +5,494 @@ import LessonEngine, { LessonConfig } from '@/components/kids/LessonEngine'
 
 const lessons: Record<string, LessonConfig> = {
     'english-a': {
-        id: 'english-a', letter: 'A', word: 'Apple', wordEn: 'Apple', emoji: '🍎',
-        color: 'from-violet-400 to-purple-500', lang: 'bn-BD',
+        id: 'english-a',
+        letter: 'A',
+        word: 'Apple',
+        wordEn: 'Apple',
+        emoji: '🍎',
+        color: 'from-violet-400 to-purple-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
+
         exercises: [
-            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'A for Apple', content: 'A' },
-            { id: 'e2', type: 'listen-repeat', title: 'Say — Apple', voiceText: 'Apple', content: 'Apple' },
-            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'A for Apple', content: 'A' },
-            { id: 'e4', type: 'tap-correct', title: 'Find A!', voiceText: 'Find the letter A', content: 'A', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A' },
-            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'A', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A' },
-            // { id: 'e6', type: 'archery-target', title: 'Hit the target!', voiceText: 'Hit the correct letter', content: 'A', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A' },
-            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'A', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A' },
-            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Apple', content: 'Apple', options: ['A', 'p', 'p', 'l', 'e'], correctAnswer: 'Apple' },
-            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'A', options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'], correctAnswer: 'A' },
-            { id: 'e10', type: 'trace', title: 'Write A', voiceText: 'Write the letter A', content: 'A' },
-            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Apple starts with which letter?', content: 'A', options: ['B', 'A', 'C', 'D'], correctAnswer: 'A' },
-        ],
+
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'Meet Apple! 🍎',
+                voiceText: 'Hello little friend! This is an Apple. Apple starts with the letter A.',
+                content: '🍎 Apple'
+            },
+
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'Listen & Repeat',
+                voiceText: 'A... Apple. Say with me. A... Apple.',
+                content: 'A'
+            },
+
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'Say it loudly!',
+                voiceText: 'A for Apple!',
+                content: 'A'
+            },
+
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'Where is A?',
+                voiceText: 'Can you find the letter A?',
+                content: '🔍',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'A'
+            },
+
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'Pop A!',
+                voiceText: 'Pop the bubble with letter A.',
+                content: '🫧',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'A'
+            },
+
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'Find the first letter',
+                voiceText: 'Apple starts with which letter?',
+                content: '🍎 Apple',
+                options: ['A', 'B', 'P', 'E'],
+                correctAnswer: 'A'
+            },
+
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'Build Apple',
+                voiceText: 'Let&s build the word Apple.',
+                content: 'Apple',
+                options: ['A', 'p', 'p', 'l', 'e'],
+                correctAnswer: 'Apple'
+            },
+
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'Match Together',
+                voiceText: 'Match the correct pair.',
+                content: 'A',
+                options: [
+                    'A-Apple',
+                    'B-Ball',
+                    'C-Cat',
+                    'D-Dog'
+                ],
+                correctAnswer: 'A'
+            },
+
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'Let&s Write A',
+                voiceText: 'Now write the letter A.',
+                content: 'A'
+            },
+
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'Final Challenge',
+                voiceText: 'Apple starts with which letter?',
+                content: '🍎',
+                options: ['B', 'A', 'C', 'D'],
+                correctAnswer: 'A'
+            }
+
+        ]
     },
     'english-b': {
-        id: 'english-b', letter: 'B', word: 'Ball', wordEn: 'Ball', emoji: '⚽',
-        color: 'from-blue-400 to-cyan-500', lang: 'bn-BD',
+        id: 'english-b',
+        letter: 'B',
+        word: 'Ball',
+        wordEn: 'Ball',
+        emoji: '⚽',
+        color: 'from-sky-400 to-blue-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
-            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'B for Ball', content: 'B' },
-            { id: 'e2', type: 'listen-repeat', title: 'Say — Ball', voiceText: 'Ball', content: 'Ball' },
-            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'B for Ball', content: 'B' },
-            { id: 'e4', type: 'tap-correct', title: 'Find B!', voiceText: 'Find the letter B', content: 'B', options: ['A', 'B', 'D', 'P'], correctAnswer: 'B' },
-            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'B', options: ['A', 'B', 'D', 'P'], correctAnswer: 'B' },
-            // { id: 'e6', type: 'archery-target', title: 'Hit the target!', voiceText: 'Hit the correct letter', content: 'B', options: ['A', 'B', 'D', 'P'], correctAnswer: 'B' },
-            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'B', options: ['A', 'B', 'D', 'P'], correctAnswer: 'B' },
-            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Ball', content: 'Ball', options: ['B', 'a', 'l', 'l'], correctAnswer: 'Ball' },
-            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'B', options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'], correctAnswer: 'B' },
-            { id: 'e10', type: 'trace', title: 'Write B', voiceText: 'Write the letter B', content: 'B' },
-            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Ball starts with which letter?', content: 'B', options: ['A', 'B', 'D', 'P'], correctAnswer: 'B' },
-        ],
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'Meet Ball! ⚽',
+                voiceText: 'Hello little friend! This is a Ball. Ball starts with the letter B.',
+                content: '⚽ Ball'
+            },
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'Listen & Repeat',
+                voiceText: 'B... Ball. Say with me. B... Ball.',
+                content: 'B'
+            },
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'Say it loudly!',
+                voiceText: 'B for Ball!',
+                content: 'B'
+            },
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'Where is B?',
+                voiceText: 'Can you find the letter B?',
+                content: '🔍',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'B'
+            },
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'Pop B!',
+                voiceText: 'Pop the bubble with letter B.',
+                content: '🫧',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'B'
+            },
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'Find the first letter',
+                voiceText: 'Ball starts with which letter?',
+                content: '⚽ Ball',
+                options: ['B', 'A', 'C', 'D'],
+                correctAnswer: 'B'
+            },
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'Build Ball',
+                voiceText: 'Let&s build the word Ball.',
+            content: 'Ball',
+                options: ['B', 'a', 'l', 'l'],
+                correctAnswer: 'Ball'
+            },
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'Match Together',
+                voiceText: 'Match the correct pair.',
+                content: 'B',
+                options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'],
+                correctAnswer: 'B'
+            },
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'Let&s Write B',
+            voiceText: 'Now write the letter B.',
+                content: 'B'
+            },
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'Final Challenge',
+                voiceText: 'Ball starts with which letter?',
+                content: '⚽',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'B'
+            }
+        ]
     },
+
     'english-c': {
-        id: 'english-c', letter: 'C', word: 'Cat', wordEn: 'Cat', emoji: '🐱',
-        color: 'from-amber-400 to-orange-500', lang: 'bn-BD',
+        id: 'english-c',
+        letter: 'C',
+        word: 'Cat',
+        wordEn: 'Cat',
+        emoji: '🐱',
+        color: 'from-orange-400 to-amber-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
-            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'C for Cat', content: 'C' },
-            { id: 'e2', type: 'listen-repeat', title: 'Say — Cat', voiceText: 'Cat', content: 'Cat' },
-            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'C for Cat', content: 'C' },
-            { id: 'e4', type: 'tap-correct', title: 'Find C!', voiceText: 'Find the letter C', content: 'C', options: ['A', 'C', 'G', 'O'], correctAnswer: 'C' },
-            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'C', options: ['A', 'C', 'G', 'O'], correctAnswer: 'C' },
-            // { id: 'e6', type: 'archery-target', title: 'Hit the target!', voiceText: 'Hit the correct letter', content: 'C', options: ['A', 'C', 'G', 'O'], correctAnswer: 'C' },
-            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'C', options: ['A', 'C', 'G', 'O'], correctAnswer: 'C' },
-            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Cat', content: 'Cat', options: ['C', 'a', 't', 'D'], correctAnswer: 'Cat' },
-            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'C', options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'], correctAnswer: 'C' },
-            { id: 'e10', type: 'trace', title: 'Write C', voiceText: 'Write the letter C', content: 'C' },
-            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Cat starts with which letter?', content: 'C', options: ['A', 'G', 'C', 'O'], correctAnswer: 'C' },
-        ],
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'Meet Cat! 🐱',
+                voiceText: 'Hello little friend! This is a Cat. Cat starts with the letter C.',
+                content: '🐱 Cat'
+            },
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'Listen & Repeat',
+                voiceText: 'C... Cat. Say with me. C... Cat.',
+                content: 'C'
+            },
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'Say it loudly!',
+                voiceText: 'C for Cat!',
+                content: 'C'
+            },
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'Where is C?',
+                voiceText: 'Can you find the letter C?',
+                content: '🔍',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'C'
+            },
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'Pop C!',
+                voiceText: 'Pop the bubble with letter C.',
+                content: '🫧',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'C'
+            },
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'Find the first letter',
+                voiceText: 'Cat starts with which letter?',
+                content: '🐱 Cat',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'C'
+            },
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'Build Cat',
+                voiceText: 'Let&s build the word Cat.',
+            content: 'Cat',
+                options: ['C', 'a', 't'],
+                correctAnswer: 'Cat'
+            },
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'Match Together',
+                voiceText: 'Match the correct pair.',
+                content: 'C',
+                options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'],
+                correctAnswer: 'C'
+            },
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'Let&s Write C',
+            voiceText: 'Now write the letter C.',
+                content: 'C'
+            },
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'Final Challenge',
+                voiceText: 'Cat starts with which letter?',
+                content: '🐱',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'C'
+            }
+        ]
     },
+
     'english-d': {
-        id: 'english-d', letter: 'D', word: 'Dog', wordEn: 'Dog', emoji: '🐶',
-        color: 'from-rose-400 to-pink-500', lang: 'bn-BD',
+        id: 'english-d',
+        letter: 'D',
+        word: 'Dog',
+        wordEn: 'Dog',
+        emoji: '🐶',
+        color: 'from-yellow-400 to-orange-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
-            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'D for Dog', content: 'D' },
-            { id: 'e2', type: 'listen-repeat', title: 'Say — Dog', voiceText: 'Dog', content: 'Dog' },
-            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'D for Dog', content: 'D' },
-            { id: 'e4', type: 'tap-correct', title: 'Find D!', voiceText: 'Find the letter D', content: 'D', options: ['B', 'D', 'P', 'Q'], correctAnswer: 'D' },
-            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'D', options: ['B', 'D', 'P', 'Q'], correctAnswer: 'D' },
-            // { id: 'e6', type: 'archery-target', title: 'Hit the target!', voiceText: 'Hit the correct letter', content: 'D', options: ['B', 'D', 'P', 'Q'], correctAnswer: 'D' },
-            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'D', options: ['B', 'D', 'P', 'Q'], correctAnswer: 'D' },
-            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Dog', content: 'Dog', options: ['D', 'o', 'g', 'B'], correctAnswer: 'Dog' },
-            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'D', options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'], correctAnswer: 'D' },
-            { id: 'e10', type: 'trace', title: 'Write D', voiceText: 'Write the letter D', content: 'D' },
-            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Dog starts with which letter?', content: 'D', options: ['B', 'P', 'D', 'Q'], correctAnswer: 'D' },
-        ],
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'Meet Dog! 🐶',
+                voiceText: 'Hello little friend! This is a Dog. Dog starts with the letter D.',
+                content: '🐶 Dog'
+            },
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'Listen & Repeat',
+                voiceText: 'D... Dog. Say with me. D... Dog.',
+                content: 'D'
+            },
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'Say it loudly!',
+                voiceText: 'D for Dog!',
+                content: 'D'
+            },
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'Where is D?',
+                voiceText: 'Can you find the letter D?',
+                content: '🔍',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'D'
+            },
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'Pop D!',
+                voiceText: 'Pop the bubble with letter D.',
+                content: '🫧',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'D'
+            },
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'Find the first letter',
+                voiceText: 'Dog starts with which letter?',
+                content: '🐶 Dog',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'D'
+            },
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'Build Dog',
+                voiceText: 'Let&s build the word Dog.',
+            content: 'Dog',
+                options: ['D', 'o', 'g'],
+                correctAnswer: 'Dog'
+            },
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'Match Together',
+                voiceText: 'Match the correct pair.',
+                content: 'D',
+                options: ['A-Apple', 'B-Ball', 'C-Cat', 'D-Dog'],
+                correctAnswer: 'D'
+            },
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'Let&s Write D',
+            voiceText: 'Now write the letter D.',
+                content: 'D'
+            },
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'Final Challenge',
+                voiceText: 'Dog starts with which letter?',
+                content: '🐶',
+                options: ['A', 'B', 'C', 'D'],
+                correctAnswer: 'D'
+            }
+        ]
     },
+
     'english-e': {
-        id: 'english-e', letter: 'E', word: 'Egg', wordEn: 'Egg', emoji: '🥚',
-        color: 'from-emerald-400 to-teal-500', lang: 'bn-BD',
+        id: 'english-e',
+        letter: 'E',
+        word: 'Egg',
+        wordEn: 'Egg',
+        emoji: '🥚',
+        color: 'from-emerald-400 to-green-500',
+        lang: 'bn-BD',
         backHref: '/dashboard/student/kids-zone/nursery/english',
         exercises: [
-            { id: 'e1', type: 'intro', title: 'What is this?', voiceText: 'E for Egg', content: 'E' },
-            { id: 'e2', type: 'listen-repeat', title: 'Say — Egg', voiceText: 'Egg', content: 'Egg' },
-            { id: 'e3', type: 'pronounce', title: 'Say it loud!', voiceText: 'E for Egg', content: 'E' },
-            { id: 'e4', type: 'tap-correct', title: 'Find E!', voiceText: 'Find the letter E', content: 'E', options: ['E', 'F', 'B', 'L'], correctAnswer: 'E' },
-            { id: 'e5', type: 'bubble-pop', title: 'Pop the bubble!', voiceText: 'Pop the correct bubble', content: 'E', options: ['E', 'F', 'B', 'L'], correctAnswer: 'E' },
-            // { id: 'e6', type: 'archery-target', title: 'Hit the target!', voiceText: 'Hit the correct letter', content: 'E', options: ['E', 'F', 'B', 'L'], correctAnswer: 'E' },
-            { id: 'e7', type: 'letter-puzzle', title: 'Solve it!', voiceText: 'Pick the correct letter', content: 'E', options: ['E', 'F', 'B', 'L'], correctAnswer: 'E' },
-            { id: 'e8', type: 'word-builder', title: 'Build the word!', voiceText: 'Build the word Egg', content: 'Egg', options: ['E', 'g', 'g', 'F'], correctAnswer: 'Egg' },
-            { id: 'e9', type: 'matching', title: 'Match them!', voiceText: 'Match the letters with words', content: 'E', options: ['E-Egg', 'F-Fish', 'G-Goat', 'H-Hat'], correctAnswer: 'E' },
-            { id: 'e10', type: 'trace', title: 'Write E', voiceText: 'Write the letter E', content: 'E' },
-            { id: 'e11', type: 'quiz', title: 'Final question!', voiceText: 'Egg starts with which letter?', content: 'E', options: ['F', 'E', 'B', 'L'], correctAnswer: 'E' },
-        ],
+            {
+                id: 'e1',
+                type: 'intro',
+                title: 'Meet Egg! 🥚',
+                voiceText: 'Hello little friend! This is an Egg. Egg starts with the letter E.',
+                content: '🥚 Egg'
+            },
+            {
+                id: 'e2',
+                type: 'listen-repeat',
+                title: 'Listen & Repeat',
+                voiceText: 'E... Egg. Say with me. E... Egg.',
+                content: 'E'
+            },
+            {
+                id: 'e3',
+                type: 'pronounce',
+                title: 'Say it loudly!',
+                voiceText: 'E for Egg!',
+                content: 'E'
+            },
+            {
+                id: 'e4',
+                type: 'tap-correct',
+                title: 'Where is E?',
+                voiceText: 'Can you find the letter E?',
+                content: '🔍',
+                options: ['E', 'F', 'G', 'H'],
+                correctAnswer: 'E'
+            },
+            {
+                id: 'e5',
+                type: 'bubble-pop',
+                title: 'Pop E!',
+                voiceText: 'Pop the bubble with letter E.',
+                content: '🫧',
+                options: ['E', 'F', 'G', 'H'],
+                correctAnswer: 'E'
+            },
+            {
+                id: 'e6',
+                type: 'letter-puzzle',
+                title: 'Find the first letter',
+                voiceText: 'Egg starts with which letter?',
+                content: '🥚 Egg',
+                options: ['E', 'A', 'G', 'F'],
+                correctAnswer: 'E'
+            },
+            {
+                id: 'e7',
+                type: 'word-builder',
+                title: 'Build Egg',
+                voiceText: 'Let&s build the word Egg.',
+            content: 'Egg',
+                options: ['E', 'g', 'g'],
+                correctAnswer: 'Egg'
+            },
+            {
+                id: 'e8',
+                type: 'matching',
+                title: 'Match Together',
+                voiceText: 'Match the correct pair.',
+                content: 'E',
+                options: ['E-Egg', 'F-Fish', 'G-Goat', 'H-Hen'],
+                correctAnswer: 'E'
+            },
+            {
+                id: 'e9',
+                type: 'trace',
+                title: 'Let&s Write E',
+            voiceText: 'Now write the letter E.',
+                content: 'E'
+            },
+            {
+                id: 'e10',
+                type: 'quiz',
+                title: 'Final Challenge',
+                voiceText: 'Egg starts with which letter?',
+                content: '🥚',
+                options: ['F', 'E', 'G', 'H'],
+                correctAnswer: 'E'
+            }
+        ]
     },
     'english-f': {
         id: 'english-f', letter: 'F', word: 'Fish', wordEn: 'Fish', emoji: '🐠',

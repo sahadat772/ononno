@@ -39,7 +39,13 @@ const units = [
         lessons: [
             { id: 'math-11', title: '১১ — এগারো', icon: '১১', xp: 10 },
             { id: 'math-12', title: '১২ — বারো', icon: '১২', xp: 10 },
+            { id: 'math-13', title: '১৩ — তেরো', icon: '১৩', xp: 10 },
+            { id: 'math-14', title: '১৪ — চৌদ্দ', icon: '১৪', xp: 10 },
             { id: 'math-15', title: '১৫ — পনেরো', icon: '১৫', xp: 10 },
+            { id: 'math-16', title: '১৬ — ষোলো', icon: '১৬', xp: 10 },
+            { id: 'math-17', title: '১৭ — সতেরো', icon: '১৭', xp: 10 },
+            { id: 'math-18', title: '১৮ — আঠারো', icon: '১৮', xp: 10 },
+            { id: 'math-19', title: '১৯ — উনিশ', icon: '১৯', xp: 10 },
             { id: 'math-20', title: '২০ — বিশ', icon: '২০', xp: 10 },
         ],
         bossQuiz: { id: 'boss-math-2', title: '১১–২০ Boss Quiz 👑', xp: 50 },
@@ -286,10 +292,10 @@ export default function NurseryMathPage() {
                                                         <Link
                                                             href={isUnlocked ? `/dashboard/student/kids-zone/nursery/math/${lesson.id}` : '#'}
                                                             className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold transition-all shadow-lg shrink-0 ${isCompleted
-                                                                    ? `bg-linear-to-br ${unit.color} text-white`
-                                                                    : isUnlocked
-                                                                        ? `bg-linear-to-br ${unit.color} text-white ring-4 ring-white/20 animate-pulse`
-                                                                        : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+                                                                ? `bg-linear-to-br ${unit.color} text-white`
+                                                                : isUnlocked
+                                                                    ? `bg-linear-to-br ${unit.color} text-white ring-4 ring-white/20 animate-pulse`
+                                                                    : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
                                                                 }`}
                                                         >
                                                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}

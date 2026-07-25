@@ -107,120 +107,193 @@ export default function RegisterPage() {
         }
     }
 
-    const inputCls = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:bg-white/8 transition-all placeholder:text-gray-600'
-    const selectCls = inputCls + ' cursor-pointer'
+    const inputCls = 'w-full h-14 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl px-12 pr-4 text-white placeholder:text-gray-600 transition-all duration-300 focus:border-emerald-400 focus:bg-white/[0.06] focus:ring-4 focus:ring-emerald-500/10 focus:outline-none'
+    const selectCls = inputCls + ' appearance-none cursor-pointer'
 
     return (
         <main className="min-h-screen bg-[#07071a] flex items-center justify-center px-4 py-10 relative overflow-hidden">
 
-            {/* Ambient */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-500/6 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-                <div className="absolute inset-0 opacity-[0.015]"
-                    style={{ backgroundImage: 'linear-linear(rgba(255,255,255,1) 1px, transparent 1px), linear-linear(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '64px 64px' }}
+            {/* Premium Background */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#050816] via-[#0b1024] to-[#050816]" />
+                <motion.div
+                    animate={{ x: [0, 40, -20, 0], y: [0, -20, 20, 0] }}
+                    transition={{ duration: 20, repeat: Infinity }}
+                    className="absolute -top-24 left-1/4 w-[420px] h-[420px] rounded-full bg-emerald-500/15 blur-[120px]"
                 />
+                <motion.div
+                    animate={{ x: [0, -50, 30, 0], y: [0, 30, -20, 0] }}
+                    transition={{ duration: 25, repeat: Infinity }}
+                    className="absolute bottom-0 right-1/4 w-[380px] h-[380px] rounded-full bg-violet-500/15 blur-[120px]"
+                />
+                <div className="absolute inset-0 opacity-[0.03]"
+                    style={{
+                        backgroundImage: 'linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px)',
+                        backgroundSize: '70px 70px',
+                    }}
+                />
+                {[...Array(10)].map((_, i) => (
+                    <motion.div
+                        key={i}
+                        animate={{ y: [0, -20, 0], opacity: [0.2, 0.8, 0.2] }}
+                        transition={{ duration: 4 + i, repeat: Infinity }}
+                        className="absolute rounded-full bg-white/10"
+                        style={{ width: 6 + i, height: 6 + i, left: `${10 + i * 8}%`, top: `${10 + (i % 5) * 18}%` }}
+                    />
+                ))}
             </div>
 
-            <div className="w-full max-w-md relative z-10">
+            <div className="relative z-10 w-full max-w-lg">
 
                 {/* Logo */}
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center mb-8"
-                >
-                    <Link href="/" className="inline-flex items-center gap-2.5 mb-4">
-                        <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-lg font-black shadow-lg shadow-emerald-500/30">
-                            অ
+                <div className="text-center mb-8">
+                    <Link href="/" className="inline-flex items-center gap-3 mb-4">
+                        <div className="relative">
+                            <div className="absolute inset-0 rounded-3xl bg-emerald-500 blur-xl opacity-40" />
+                            <div className="relative w-14 h-14 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-2xl font-black text-white shadow-xl">
+                                অ
+                            </div>
                         </div>
-                        <span className="font-black text-white text-2xl tracking-tight">অনন্য</span>
+                        <div className="text-left">
+                            <h1 className="text-3xl font-black text-white">অনন্য</h1>
+                            <p className="text-xs text-emerald-300 tracking-wider uppercase">AI Learning Platform</p>
+                        </div>
                     </Link>
-                    <p className="text-gray-500 text-sm">নতুন অ্যাকাউন্ট তৈরি করো</p>
-                </motion.div>
+                    <span className="inline-block rounded-full border border-emerald-500/20 bg-emerald-500/10 px-5 py-2 text-xs font-semibold text-emerald-300 mb-4">
+                        ✨ বাংলাদেশের স্মার্ট শিক্ষা প্ল্যাটফর্ম
+                    </span>
+                    <h2 className="text-2xl font-black text-white">নতুন অ্যাকাউন্ট তৈরি করো</h2>
+                    <p className="text-gray-400 mt-2 text-sm">Nursery থেকে Masters পর্যন্ত AI Learning শুরু করো।</p>
+                </div>
 
                 {/* Step Indicator */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-2 mb-6"
-                >
-                    {[1, 2].map(s => (
-                        <div key={s} className="flex items-center gap-2 flex-1">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step >= s
-                                ? 'bg-linear-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30'
-                                : 'bg-white/10 text-gray-500 border border-white/10'
-                                }`}>
+                <div className="mb-6 flex items-center">
+                    {[1, 2].map((s) => (
+                        <div key={s} className="flex items-center flex-1">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold transition-all duration-300 ${step >= s ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-white/5 border border-white/10 text-gray-500'}`}>
                                 {step > s ? '✓' : s}
                             </div>
-                            {s < 2 && (
-                                <div className={`flex-1 h-0.5 rounded-full transition-all ${step > s ? 'bg-linear-to-r from-emerald-500 to-teal-500' : 'bg-white/10'}`} />
+                            {s !== 2 && (
+                                <div className={`flex-1 h-1 mx-3 rounded-full transition-all ${step > s ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-white/10'}`} />
                             )}
                         </div>
                     ))}
-                </motion.div>
+                </div>
 
                 {/* Card */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white/[0.04] border border-white/[0.08] rounded-3xl p-8 shadow-2xl backdrop-blur-sm"
+                    className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.05] backdrop-blur-2xl shadow-[0_25px_80px_rgba(16,185,129,.15)] p-8 hover:border-emerald-500/20 transition-all"
                 >
+                    <div className="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
+                    <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-violet-400/20 to-transparent" />
+
+                    {/* Loading Overlay */}
+                    <AnimatePresence>
+                        {loading && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center"
+                            >
+                                <div className="rounded-3xl bg-[#111827] border border-white/10 p-8 text-center">
+                                    <div className="w-14 h-14 border-4 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin mx-auto" />
+                                    <p className="mt-5 text-white font-semibold">অপেক্ষা করুন...</p>
+                                    <p className="text-gray-400 text-sm mt-2">আপনার অ্যাকাউন্ট তৈরি করা হচ্ছে</p>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Error */}
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="mb-4 bg-red-500/10 border border-red-500/25 text-red-400 text-sm px-4 py-3 rounded-xl"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     <form onSubmit={handleRegister} className="space-y-4">
-
-                        {/* Error */}
-                        <AnimatePresence>
-                            {error && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -8 }}
-                                    className="bg-red-500/10 border border-red-500/25 text-red-400 text-sm px-4 py-3 rounded-xl"
-                                >
-                                    {error}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* ── STEP 1 ── */}
                         <AnimatePresence mode="wait">
+
+                            {/* STEP 1 */}
                             {step === 1 && (
                                 <motion.div
                                     key="step1"
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
+                                    initial={{ opacity: 0, scale: .97, y: 25 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: .97, y: -20 }}
+                                    transition={{ duration: .35 }}
                                     className="space-y-4"
                                 >
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">পুরো নাম</label>
-                                        <input type="text" name="full_name" value={formData.full_name} onChange={handleChange}
-                                            placeholder="তোমার পুরো নাম লেখো" required className={inputCls} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">ইমেইল</label>
-                                        <input type="email" name="email" value={formData.email} onChange={handleChange}
-                                            placeholder="example@email.com" required className={inputCls} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">পাসওয়ার্ড</label>
+                                    {/* Full Name */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold tracking-wider uppercase text-gray-400">👤 পুরো নাম</label>
                                         <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">👤</span>
+                                            <input type="text" name="full_name" value={formData.full_name} onChange={handleChange}
+                                                placeholder="তোমার পুরো নাম" required className={inputCls} />
+                                        </div>
+                                    </div>
+
+                                    {/* Email */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold tracking-wider uppercase text-gray-400">✉️ ইমেইল</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2">✉️</span>
+                                            <input type="email" name="email" value={formData.email} onChange={handleChange}
+                                                placeholder="example@email.com" required className={inputCls} />
+                                        </div>
+                                    </div>
+
+                                    {/* Password */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold tracking-wider uppercase text-gray-400">🔒 পাসওয়ার্ড</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">🔒</span>
                                             <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password}
                                                 onChange={handleChange} placeholder="কমপক্ষে ৬ অক্ষর" required minLength={6}
                                                 className={inputCls + ' pr-12'} />
                                             <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors text-lg">
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-xl text-gray-500 hover:text-white transition">
                                                 {showPassword ? '🙈' : '👁️'}
                                             </button>
                                         </div>
+                                        {/* Password Strength */}
+                                        {formData.password.length > 0 && (
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1">
+                                                    <span className="text-gray-500">Password Strength</span>
+                                                    <span className={formData.password.length >= 10 ? 'text-green-400' : formData.password.length >= 6 ? 'text-yellow-400' : 'text-red-400'}>
+                                                        {formData.password.length >= 10 ? 'Strong' : formData.password.length >= 6 ? 'Medium' : 'Weak'}
+                                                    </span>
+                                                </div>
+                                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                                    <div className={`h-full rounded-full transition-all ${formData.password.length >= 10 ? 'w-full bg-green-500' : formData.password.length >= 6 ? 'w-2/3 bg-yellow-500' : 'w-1/3 bg-red-500'}`} />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">
-                                            ফোন নম্বর <span className="text-gray-600 normal-case">(ঐচ্ছিক)</span>
+
+                                    {/* Phone */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold tracking-wider uppercase text-gray-400">
+                                            📱 ফোন <span className="text-gray-600 normal-case">(ঐচ্ছিক)</span>
                                         </label>
-                                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange}
-                                            placeholder="01XXXXXXXXX" className={inputCls} />
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">📱</span>
+                                            <input type="tel" name="phone" value={formData.phone} onChange={handleChange}
+                                                placeholder="01XXXXXXXXX" className={inputCls} />
+                                        </div>
                                     </div>
 
                                     <motion.button
@@ -235,38 +308,37 @@ export default function RegisterPage() {
                                         }}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        className="w-full bg-linear-to-r from-emerald-500 to-teal-500 text-white py-3.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all"
+                                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-4 rounded-2xl text-sm font-bold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all"
                                     >
                                         পরের ধাপ →
                                     </motion.button>
                                 </motion.div>
                             )}
 
-                            {/* ── STEP 2 ── */}
+                            {/* STEP 2 */}
                             {step === 2 && (
                                 <motion.div
                                     key="step2"
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
+                                    initial={{ opacity: 0, scale: .97, y: 25 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: .97, y: -20 }}
+                                    transition={{ duration: .35 }}
                                     className="space-y-4"
                                 >
-                                    {/* Role Select */}
+                                    {/* Role */}
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">তুমি কে?</label>
+                                        <label className="block text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wide">তুমি কে?</label>
                                         <div className="grid grid-cols-2 gap-2">
                                             {roles.map(r => (
-                                                <button
-                                                    key={r.value}
-                                                    type="button"
+                                                <button key={r.value} type="button"
                                                     onClick={() => setFormData(p => ({ ...p, role: r.value as UserRole }))}
-                                                    className={`p-3 rounded-xl border text-left transition-all ${formData.role === r.value
-                                                        ? 'bg-emerald-500/15 border-emerald-500/40 text-white'
-                                                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/8'
+                                                    className={`relative overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 ${formData.role === r.value
+                                                        ? 'border-emerald-400 bg-emerald-500/15 shadow-lg shadow-emerald-500/20 scale-[1.02]'
+                                                        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
                                                         }`}
                                                 >
-                                                    <p className="text-xs font-bold">{r.label}</p>
-                                                    <p className="text-[10px] text-gray-500 mt-0.5">{r.desc}</p>
+                                                    <p className="font-bold text-white text-sm">{r.label}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{r.desc}</p>
                                                 </button>
                                             ))}
                                         </div>
@@ -276,7 +348,7 @@ export default function RegisterPage() {
                                     {formData.role === 'student' && (
                                         <div>
                                             <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">শ্রেণী</label>
-                                            <select name="class_level" aria-label='class-level' value={formData.class_level} onChange={handleChange} className={selectCls}>
+                                            <select name="class_level" aria-label="class-level" value={formData.class_level} onChange={handleChange} className={selectCls}>
                                                 {classLevels.map(c => (
                                                     <option key={c.value} value={c.value} className="bg-[#0f0f2a]">{c.label}</option>
                                                 ))}
@@ -287,7 +359,7 @@ export default function RegisterPage() {
                                     {/* Religion */}
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">ধর্ম</label>
-                                        <select name="religion" aria-label='religion' value={formData.religion} onChange={handleChange} className={selectCls}>
+                                        <select name="religion" aria-label="religion" value={formData.religion} onChange={handleChange} className={selectCls}>
                                             <option value="muslim" className="bg-[#0f0f2a]">মুসলিম</option>
                                             <option value="hindu" className="bg-[#0f0f2a]">হিন্দু</option>
                                             <option value="christian" className="bg-[#0f0f2a]">খ্রিস্টান</option>
@@ -299,14 +371,23 @@ export default function RegisterPage() {
                                     {/* Gender */}
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">লিঙ্গ</label>
-                                        <select name="gender" aria-label='gender' value={formData.gender} onChange={handleChange} className={selectCls}>
+                                        <select name="gender" aria-label="gender" value={formData.gender} onChange={handleChange} className={selectCls}>
                                             <option value="" className="bg-[#0f0f2a]">নির্বাচন করো</option>
                                             <option value="male" className="bg-[#0f0f2a]">ছেলে</option>
                                             <option value="female" className="bg-[#0f0f2a]">মেয়ে</option>
                                         </select>
                                     </div>
 
-                                    <div className="flex gap-3 pt-1">
+                                    {/* Security note */}
+                                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-gray-300 flex gap-3">
+                                        <span className="text-xl shrink-0">🔒</span>
+                                        <div>
+                                            <b className="text-white">আপনার তথ্য নিরাপদ</b>
+                                            <p className="mt-1 text-gray-400 text-xs">আপনার সকল তথ্য নিরাপদভাবে সংরক্ষণ করা হবে।</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
                                         <button type="button" onClick={() => setStep(1)}
                                             className="flex-1 border border-white/10 text-gray-400 py-3 rounded-xl text-sm font-medium hover:bg-white/5 transition-all">
                                             ← পেছনে
@@ -314,16 +395,20 @@ export default function RegisterPage() {
                                         <motion.button
                                             type="submit"
                                             disabled={loading}
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            className="flex-1 bg-linear-to-r from-emerald-500 to-teal-500 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/25 disabled:opacity-50 transition-all"
+                                            whileHover={{ scale: 1.02, boxShadow: '0 20px 50px rgba(16,185,129,.35)' }}
+                                            whileTap={{ scale: .98 }}
+                                            className="flex-1 relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 py-4 font-bold text-white shadow-xl transition disabled:opacity-60"
                                         >
-                                            {loading ? (
-                                                <span className="flex items-center justify-center gap-2">
-                                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                    তৈরি হচ্ছে...
-                                                </span>
-                                            ) : '✅ অ্যাকাউন্ট তৈরি করো'}
+                                            <span className="relative flex items-center justify-center gap-2">
+                                                {loading ? (
+                                                    <>
+                                                        <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                                                        তৈরি হচ্ছে...
+                                                    </>
+                                                ) : (
+                                                    <>✨ রেজিস্ট্রেশন সম্পন্ন করুন →</>
+                                                )}
+                                            </span>
                                         </motion.button>
                                     </div>
                                 </motion.div>
@@ -340,18 +425,39 @@ export default function RegisterPage() {
                 </motion.div>
 
                 {/* Free access */}
-                <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-center text-xs text-gray-600 mt-6"
-                >
+                <p className="text-center text-xs text-gray-600 mt-6">
                     এতিম, দরিদ্র ও প্রতিবন্ধী শিক্ষার্থীরা{' '}
                     <Link href="/free-access" className="text-emerald-400 hover:text-emerald-300 transition-colors">
                         এখানে আবেদন করো
                     </Link>
-                </motion.p>
+                </p>
+
+                {/* Bottom badges */}
+                <div className="grid grid-cols-3 gap-3 mt-6">
+                    {[
+                        { icon: '🔐', label: 'Secure' },
+                        { icon: '⚡', label: 'Fast' },
+                        { icon: '🎓', label: 'Education' },
+                    ].map((b, i) => (
+                        <div key={i} className="rounded-2xl bg-white/[0.04] p-4 text-center">
+                            <div className="text-2xl">{b.icon}</div>
+                            <p className="text-xs mt-2 text-gray-400">{b.label}</p>
+                        </div>
+                    ))}
+                </div>
             </div>
+
+            {/* Ambient orbs */}
+            <motion.div
+                animate={{ y: [0, -20, 0], x: [0, 20, 0] }}
+                transition={{ repeat: Infinity, duration: 8 }}
+                className="absolute top-20 right-10 w-40 h-40 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none"
+            />
+            <motion.div
+                animate={{ y: [0, 25, 0] }}
+                transition={{ repeat: Infinity, duration: 10 }}
+                className="absolute bottom-20 left-0 w-60 h-60 rounded-full bg-violet-500/10 blur-3xl pointer-events-none"
+            />
         </main>
     )
 }
