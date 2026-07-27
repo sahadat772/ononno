@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
+import { requireRole } from '@/lib/api-auth'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 export async function POST(req: NextRequest) {
     try {
+        const auth = await requireRole(['admin'])
+        if ('error' in auth) return auth.error
+
         const { subjectName, chapterTitle, lessonTitle, classLevel } = await req.json()
 
         if (!subjectName || !chapterTitle || !lessonTitle) {

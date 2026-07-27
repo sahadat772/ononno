@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
+import { requireRole } from '@/lib/api-auth'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 export async function POST(req: NextRequest) {
     try {
+        const auth = await requireRole(['admin'])
+        if ('error' in auth) return auth.error
+
         const { imageBase64, subjectName, classLevel } = await req.json()
 
         if (!imageBase64 || !subjectName) {
             return NextResponse.json({ error: 'Missing data' }, { status: 400 })
+        }
+
+        if (typeof imageBase64 !== 'string' || imageBase64.length > 8_000_000) {
+            return NextResponse.json({ error: 'ছবিটি খুব বড়। 6 MB-এর কম ছবি দিয়ে আবার চেষ্টা করুন।' }, { status: 413 })
         }
 
         const classLevelBn: Record<string, string> = {

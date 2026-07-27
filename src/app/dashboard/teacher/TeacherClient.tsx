@@ -371,7 +371,6 @@ export default function TeacherClient({ teacher }: TeacherClientProps) {
                         <div className="max-w-md mx-auto">
                             <CreateAccountForm
                                 role="teacher"
-                                creatorId={teacher.id}
                                 onSuccess={handleStudentCreated}
                             />
                         </div>

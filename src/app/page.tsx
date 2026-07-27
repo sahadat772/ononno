@@ -1,562 +1,127 @@
 'use client'
 
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { useRef } from 'react'
-import TypewriterText from '@/components/ui/TypewriterText'
-import StatsCounter from '@/components/ui/StatsCounter'
-
-const features = [
-    {
-        icon: '🕌',
-        title: 'ইসলামিক শিক্ষা',
-        desc: 'কুরআন তিলাওয়াত AI, হাদিস, ফিকহ — সকল মুসলিম শিক্ষার্থীর জন্য।',
-        linear: 'from-emerald-500 to-teal-400',
-        border: 'border-emerald-500/20',
-        glow: 'rgba(16,185,129,0.08)',
-    },
-    {
-        icon: '🎓',
-        title: 'একাডেমিক শিক্ষা',
-        desc: 'Nursery থেকে Masters — NCTB curriculum অনুযায়ী সম্পূর্ণ পাঠ্যক্রম।',
-        linear: 'from-blue-500 to-cyan-400',
-        border: 'border-blue-500/20',
-        glow: 'rgba(59,130,246,0.08)',
-    },
-    {
-        icon: '🧠',
-        title: 'AI ক্যারিয়ার গাইড',
-        desc: 'ML দিয়ে তোমার মনস্তত্ত্ব বিশ্লেষণ করে সেরা career path suggest করবে।',
-        linear: 'from-violet-500 to-purple-400',
-        border: 'border-violet-500/20',
-        glow: 'rgba(139,92,246,0.08)',
-    },
-    {
-        icon: '💹',
-        title: 'Stock Market Training',
-        desc: 'শেয়ার বাজার থেকে হালাল বিনিয়োগ — সম্পূর্ণ practical training।',
-        linear: 'from-amber-500 to-orange-400',
-        border: 'border-amber-500/20',
-        glow: 'rgba(245,158,11,0.08)',
-    },
-    {
-        icon: '💻',
-        title: 'Skill Development',
-        desc: 'Web, App, AI, Marketing, Business — সব training এক platform এ।',
-        linear: 'from-cyan-500 to-blue-400',
-        border: 'border-cyan-500/20',
-        glow: 'rgba(6,182,212,0.08)',
-    },
-    {
-        icon: '👨‍👩‍👧',
-        title: 'Parent Dashboard',
-        desc: 'সন্তানের Islamic ও academic progress real-time এ monitor করুন।',
-        linear: 'from-rose-500 to-pink-400',
-        border: 'border-rose-500/20',
-        glow: 'rgba(244,63,94,0.08)',
-    },
-]
+import {
+    ArrowRight,
+    BookOpen,
+    BrainCircuit,
+    Check,
+    ChevronRight,
+    CirclePlay,
+    HeartHandshake,
+    Menu,
+    Rocket,
+    ShieldCheck,
+    Sparkles,
+    Star,
+} from 'lucide-react'
 
 const learningPaths = [
-    { icon: '🧒', label: 'Kids Zone', sub: 'Nursery & KG', color: 'from-yellow-400 to-orange-400' },
-    { icon: '📚', label: 'Primary', sub: 'Class 1–5', color: 'from-green-400 to-emerald-500' },
-    { icon: '🏫', label: 'Secondary', sub: 'Class 6–10', color: 'from-blue-400 to-cyan-500' },
-    { icon: '🏛️', label: 'HSC', sub: 'Class 11–12', color: 'from-violet-400 to-purple-500' },
-    { icon: '🎓', label: 'University', sub: 'Honors & Masters', color: 'from-rose-400 to-pink-500' },
+    { icon: '🧒', title: 'কিডস জোন', subtitle: 'নার্সারি ও কেজি', tone: 'bg-amber-50 text-amber-600 border-amber-100' },
+    { icon: '📚', title: 'প্রাইমারি', subtitle: '১ম – ৫ম শ্রেণি', tone: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+    { icon: '🏫', title: 'সেকেন্ডারি', subtitle: '৬ষ্ঠ – ১০ম শ্রেণি', tone: 'bg-sky-50 text-sky-600 border-sky-100' },
+    { icon: '🎯', title: 'উচ্চ মাধ্যমিক', subtitle: 'একাদশ – দ্বাদশ', tone: 'bg-violet-50 text-violet-600 border-violet-100' },
+    { icon: '🎓', title: 'বিশ্ববিদ্যালয়', subtitle: 'অনার্স ও মাস্টার্স', tone: 'bg-rose-50 text-rose-600 border-rose-100' },
 ]
 
+const features = [
+    { icon: BookOpen, title: 'এক জায়গায় সব শিক্ষা', description: 'একাডেমিক, ইসলামিক জ্ঞান, ক্যারিয়ার গাইডলাইন ও স্কিল ডেভেলপমেন্ট—সবকিছু একই প্ল্যাটফর্মে।', color: 'bg-emerald-100 text-emerald-700' },
+    { icon: BrainCircuit, title: 'তোমার জন্য ব্যক্তিগত AI', description: 'তোমার শেখার গতি ও প্রয়োজন বুঝে AI Tutor সাজেস্ট করবে সঠিক পরবর্তী ধাপ।', color: 'bg-violet-100 text-violet-700' },
+    { icon: HeartHandshake, title: 'অভিভাবকও থাকবেন সঙ্গে', description: 'সন্তানের progress ও শেখার অভ্যাস সহজেই দেখুন Parent Dashboard থেকে।', color: 'bg-rose-100 text-rose-700' },
+]
+
+const plans = [
+    { name: 'নার্সারি', price: '৯৯', tag: 'শেখার প্রথম বন্ধু' },
+    { name: 'প্রাইমারি', price: '১৯৯', tag: '১ম – ৫ম শ্রেণি' },
+    { name: 'সেকেন্ডারি', price: '২৯৯', tag: '৬ষ্ঠ – ১০ম শ্রেণি', featured: true },
+    { name: 'কলেজ', price: '৪৯৯', tag: 'একাদশ – দ্বাদশ' },
+]
+
+const fadeUp = {
+    initial: { opacity: 0, y: 24 },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, amount: 0.2 },
+}
+
 export default function Home() {
-    const heroRef = useRef(null)
-    const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
-    const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
-    const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0])
-
     return (
-        <main className="min-h-screen bg-[#07071a] text-white overflow-x-hidden">
+        <main className="min-h-screen overflow-x-hidden bg-[#fbfdfc] text-slate-900">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[50rem] bg-[radial-gradient(circle_at_7%_10%,rgba(16,185,129,0.16),transparent_24%),radial-gradient(circle_at_90%_15%,rgba(99,102,241,0.13),transparent_22%),linear-gradient(180deg,#f1fcf6_0%,#fbfdfc_80%)]" />
 
-            {/* ── AMBIENT BACKGROUND ── */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-0 left-1/4 width: 600px; height: 600px; bg-emerald-500/5 rounded-full blur-3xl" />
-                <div className="absolute top-1/3 right-0 width: 500px; height: 500px; bg-violet-500/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 width: 400px; height: 400px; bg-blue-500/4 rounded-full blur-3xl" />
-                <div className="absolute inset-0 opacity-[0.018]"
-                    style={{
-                        backgroundImage: 'linear-linear(rgba(255,255,255,1) 1px, transparent 1px), linear-linear(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
-                        backgroundSize: '72px 72px',
-                    }}
-                />
-            </div>
-
-            {/* ── NAVBAR ── */}
-            <motion.nav
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/[0.06] bg-[#07071a]/80 backdrop-blur-2xl"
-            >
-                <div className="max-w-6xl mx-auto h-full px-5 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-base font-black shadow-lg shadow-emerald-500/30">
-                            অ
-                        </div>
-                        <span className="font-black text-white text-xl tracking-tight">অনন্য</span>
-                    </Link>
-
-                    <div className="hidden md:flex items-center gap-6">
-                        {[
-                            { label: 'বৈশিষ্ট্য', href: '#features' },
-                            { label: 'মূল্য', href: '#pricing' },
-                            { label: 'যোগাযোগ', href: '/contact' },
-                            { label: '🤲 বিনামূল্যে আবেদন', href: '/free-access' },
-                        ].map((item, i) => (
-                            <a key={i} href={item.href}
-                                className={`text-sm font-medium transition-colors ${item.label.includes('আবেদন')
-                                    ? 'text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full bg-emerald-500/10'
-                                    : 'text-gray-400 hover:text-white'
-                                    }`}>
-                                {item.label}
-                            </a>
-                        ))}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <Link href="/login"
-                            className="text-sm font-medium text-gray-400 hover:text-white px-4 py-2 rounded-xl hover:bg-white/5 transition-all">
-                            লগইন
-                        </Link>
-                        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-                            <Link href="/register"
-                                className="text-sm font-semibold bg-linear-to-r from-emerald-500 to-teal-500 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all">
-                                শুরু করো →
-                            </Link>
-                        </motion.div>
-                    </div>
+            <header className="relative z-20 mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
+                <Link href="/" className="flex items-center gap-2.5">
+                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-black text-white shadow-lg shadow-emerald-600/20">অ</span>
+                    <span className="text-xl font-black tracking-tight">অনন্য</span>
+                </Link>
+                <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 lg:flex">
+                    <a href="#path" className="transition hover:text-emerald-700">শেখার পথ</a>
+                    <a href="#features" className="transition hover:text-emerald-700">কেন অনন্য</a>
+                    <a href="#pricing" className="transition hover:text-emerald-700">মূল্য</a>
+                    <Link href="/contact" className="transition hover:text-emerald-700">যোগাযোগ</Link>
+                </nav>
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <Link href="/login" className="hidden rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-white sm:block">লগইন</Link>
+                    <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 sm:px-5">শুরু করুন <ArrowRight className="h-4 w-4" /></Link>
+                    <button className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 lg:hidden" aria-label="মেনু খুলুন"><Menu className="h-5 w-5" /></button>
                 </div>
-            </motion.nav>
+            </header>
 
-            {/* ── HERO ── */}
-            <section ref={heroRef} className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
-                <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative z-10 max-w-5xl mx-auto px-5 text-center">
-
-                    {/* Badge */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5 }}
-                        className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-sm font-medium px-5 py-2 rounded-full mb-8"
-                    >
-                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                        Nursery থেকে Masters পর্যন্ত — বাংলাদেশের প্রথম AI EdTech
+            <section className="relative mx-auto max-w-7xl px-5 pb-20 pt-14 sm:px-8 lg:px-10 lg:pb-28 lg:pt-20">
+                <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+                    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
+                        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-sm"><Sparkles className="h-3.5 w-3.5" /> বাংলাদেশের স্মার্ট লার্নিং প্ল্যাটফর্ম</div>
+                        <h1 className="max-w-3xl text-4xl font-black leading-[1.12] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">শিক্ষার প্রতিটি ধাপে <span className="text-emerald-600">অনন্য</span> সঙ্গী</h1>
+                        <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">নার্সারি থেকে মাস্টার্স—একাডেমিক পড়াশোনা, ইসলামিক শিক্ষা, AI guidance এবং প্রয়োজনীয় দক্ষতা গড়ার একটি নির্ভরযোগ্য জায়গা।</p>
+                        <div className="mt-8 flex flex-wrap gap-3">
+                            <Link href="/register" className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-600/20 transition hover:-translate-y-0.5"><Rocket className="h-4 w-4" /> বিনামূল্যে শুরু করুন</Link>
+                            <a href="#path" className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"><CirclePlay className="h-4 w-4 text-emerald-600" /> কীভাবে কাজ করে</a>
+                        </div>
+                        <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-medium text-slate-500">
+                            <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-600" /> নিরাপদ শিক্ষার পরিবেশ</span>
+                            <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" /> বাংলা ও NCTB-friendly</span>
+                        </div>
                     </motion.div>
 
-                    {/* Headline */}
-                    <motion.h1
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7, delay: 0.1 }}
-                        className="text-5xl md:text-7xl font-black text-white mb-6 leading-[1.1] tracking-tight"
-                    >
-                        শিক্ষায়{' '}
-                        <span className="bg-linear-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-                            অনন্য
-                        </span>
-                        <br />
-                        <span className="text-3xl md:text-5xl font-bold text-gray-400 mt-2 block">
-                            <TypewriterText
-                                texts={['AI দিয়ে শেখো', 'ক্যারিয়ার গড়ো', 'কুরআন শিখো', 'দক্ষ হও']}
-                                className="bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent"
-                            />
-                        </span>
-                    </motion.h1>
-
-                    {/* Description */}
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7, delay: 0.2 }}
-                        className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed"
-                    >
-                        একাডেমিক শিক্ষা, ইসলামিক জ্ঞান, ক্যারিয়ার গাইডেন্স এবং স্কিল ট্রেনিং —
-                        সব এক জায়গায়। AI তোমাকে তোমার মতো করে শেখাবে।
-                    </motion.p>
-
-                    {/* CTA Buttons */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7, delay: 0.3 }}
-                        className="flex items-center justify-center gap-4 flex-wrap mb-16"
-                    >
-                        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-                            <Link href="/register"
-                                className="inline-flex items-center gap-2 bg-linear-to-r from-emerald-500 to-teal-500 text-white px-8 py-4 rounded-2xl text-base font-bold shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all">
-                                বিনামূল্যে শুরু করো →
-                            </Link>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-                            <Link href="#features"
-                                className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-gray-300 px-8 py-4 rounded-2xl text-base font-medium hover:bg-white/10 hover:border-white/20 transition-all">
-                                আরো জানো
-                            </Link>
-                        </motion.div>
-                    </motion.div>
-
-                    {/* Learning Path Cards */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.5 }}
-                        className="flex items-center justify-center gap-3 flex-wrap"
-                    >
-                        {learningPaths.map((path, i) => (
-                            <motion.div
-                                key={path.label}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.6 + i * 0.08 }}
-                                whileHover={{ y: -6, scale: 1.05 }}
-                                className="bg-white/[0.05] border border-white/[0.08] backdrop-blur-sm rounded-2xl px-5 py-4 cursor-pointer transition-all hover:bg-white/[0.08] hover:border-white/15 min-width: 100px;"
-                            >
-                                <div className={`text-2xl mb-1.5 bg-linear-to-br ${path.color} bg-clip-text`}>{path.icon}</div>
-                                <div className="text-white text-xs font-bold">{path.label}</div>
-                                <div className="text-gray-500 text-[10px] mt-0.5">{path.sub}</div>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </motion.div>
-
-                {/* Bottom fade */}
-                <div className="absolute bottom-0 left-0 right-0 h-40 bg-linear-to-t from-[#07071a] to-transparent pointer-events-none" />
-            </section>
-
-            {/* ── STATS ── */}
-            <section className="py-16 border-y border-white/[0.06] bg-white/[0.02]">
-                <div className="max-w-5xl mx-auto px-5">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                        {[
-                            { value: 4, suffix: '+', label: 'বছর বয়স থেকে শেখা যায়', linear: 'from-emerald-400 to-teal-400' },
-                            { value: 6, suffix: '', label: 'AI/ML ইঞ্জিন একসাথে', linear: 'from-cyan-400 to-blue-400' },
-                            { value: 12, suffix: '+', label: 'ট্রেনিং মডিউল', linear: 'from-amber-400 to-orange-400' },
-                            { value: 0, prefix: '৳', suffix: '', label: 'শুরু করতে কোনো খরচ নেই', linear: 'from-emerald-400 to-teal-400' },
-                        ].map((stat, i) => (
-                            <motion.div
-                                key={stat.label}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.1 }}
-                                className="group"
-                            >
-                                <div className={`text-4xl md:text-5xl font-black mb-2 bg-linear-to-r ${stat.linear} bg-clip-text text-transparent`}>
-                                    <StatsCounter value={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
+                    <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.65, delay: 0.1 }} className="relative mx-auto w-full max-w-xl">
+                        <div className="rounded-[2rem] border border-white bg-white p-5 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] sm:p-7">
+                            <div className="flex items-center justify-between">
+                                <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-600">আজকের শেখা</p><h2 className="mt-1 text-xl font-black">তোমার Learning Journey</h2></div>
+                                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-100 text-xl">🌱</span>
+                            </div>
+                            <div className="mt-7 rounded-2xl bg-slate-50 p-5">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-violet-100 text-violet-700"><BookOpen className="h-5 w-5" /></span><div><p className="font-bold text-slate-800">আজকের পাঠ</p><p className="mt-0.5 text-xs text-slate-500">গণিত · অধ্যায় ৩</p></div></div>
+                                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">চলছে</span>
                                 </div>
-                                <div className="text-sm text-gray-500 font-medium">{stat.label}</div>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── FEATURES ── */}
-            <section id="features" className="py-28">
-                <div className="max-w-6xl mx-auto px-5">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center mb-16"
-                    >
-                        <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium px-4 py-2 rounded-full mb-4">
-                            ✨ সব এক জায়গায়
+                                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full w-[72%] rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" /></div>
+                                <p className="mt-2 text-right text-xs font-semibold text-slate-500">৭২% সম্পন্ন</p>
+                            </div>
+                            <div className="mt-4 grid grid-cols-2 gap-4"><div className="rounded-2xl bg-amber-50 p-4"><p className="text-2xl font-black text-amber-600">১২</p><p className="mt-1 text-xs font-semibold text-amber-900/70">দিনের স্ট্রিক 🔥</p></div><div className="rounded-2xl bg-sky-50 p-4"><p className="text-2xl font-black text-sky-600">৪.৯</p><p className="mt-1 text-xs font-semibold text-sky-900/70">শিক্ষার্থী রেটিং ★</p></div></div>
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4">
-                            একটি platform,{' '}
-                            <span className="bg-linear-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-                                সব সমাধান
-                            </span>
-                        </h2>
-                        <p className="text-gray-400 max-w-xl mx-auto text-lg">
-                            শিশু থেকে বয়স্ক, ছাত্র থেকে উদ্যোক্তা — সবার জন্য আলাদা learning path
-                        </p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {features.map((feature, i) => (
-                            <motion.div
-                                key={feature.title}
-                                initial={{ opacity: 0, y: 24 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.07 }}
-                                whileHover={{ y: -6 }}
-                                className={`relative rounded-2xl border ${feature.border} bg-white/[0.03] hover:bg-white/[0.06] p-6 transition-all duration-300 overflow-hidden group cursor-pointer`}
-                                style={{ boxShadow: `0 0 40px ${feature.glow}` }}
-                            >
-                                <div className={`absolute inset-0 bg-linear-to-br ${feature.linear} opacity-0 group-hover:opacity-[0.04] transition-opacity`} />
-                                <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${feature.linear} flex items-center justify-center text-3xl mb-5 shadow-lg group-hover:scale-110 transition-transform`}>
-                                    {feature.icon}
-                                </div>
-                                <h3 className="font-bold text-white text-lg mb-2">{feature.title}</h3>
-                                <p className="text-sm text-gray-500 leading-relaxed">{feature.desc}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── FREE ACCESS BANNER ── */}
-            <section className="py-16 px-5">
-                <div className="max-w-4xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="relative rounded-3xl overflow-hidden border border-emerald-500/20 p-8 md:p-12 text-center"
-                    >
-                        <div className="absolute inset-0 bg-linear-to-br from-emerald-500/8 via-teal-500/5 to-transparent" />
-                        <div className="relative z-10">
-                            <div className="text-4xl mb-4">🤲</div>
-                            <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
-                                এতিম, দরিদ্র ও প্রতিবন্ধী শিক্ষার্থীদের জন্য সর্বদা বিনামূল্যে
-                            </h3>
-                            <p className="text-gray-400 mb-6 max-w-xl mx-auto">
-                                আমরা বিশ্বাস করি শিক্ষা সবার অধিকার। আর্থিক সংকট কখনো শেখার বাধা হবে না।
-                            </p>
-                            <Link href="/free-access"
-                                className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-xl font-semibold hover:bg-emerald-500/30 transition-all text-sm">
-                                এখানে আবেদন করো →
-                            </Link>
-                        </div>
-                    </motion.div>
-                </div>
-            </section>
-            {/* ── PRICING ── */}
-            <section id="pricing" className="py-28">
-                <div className="max-w-6xl mx-auto px-5">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center mb-16"
-                    >
-                        <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium px-4 py-2 rounded-full mb-4">
-                            💳 সাশ্রয়ী মূল্য
-                        </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4">
-                            তোমার বাজেটে{' '}
-                            <span className="bg-linear-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
-                                সেরা প্ল্যান
-                            </span>
-                        </h2>
-                        <p className="text-gray-400 max-w-xl mx-auto text-lg">
-                            মাত্র ৳৯৯ থেকে শুরু — শ্রেণী অনুযায়ী প্ল্যান বেছে নাও
-                        </p>
-                    </motion.div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-                        {[
-                            { icon: '🌱', name: 'নার্সারি', price: '৳৯৯', color: 'from-green-400 to-emerald-500' },
-                            { icon: '📚', name: 'শ্রেণী ৩-৫', price: '৳১৯৯', color: 'from-blue-400 to-cyan-500' },
-                            { icon: '📖', name: 'শ্রেণী ৬-৮', price: '৳২৯৯', color: 'from-violet-400 to-purple-500' },
-                            { icon: '🎯', name: 'শ্রেণী ৯-১০', price: '৳৩৯৯', color: 'from-amber-400 to-orange-500' },
-                            { icon: '🏆', name: 'শ্রেণী ১১-১২', price: '৳৪৯৯', color: 'from-rose-400 to-pink-500' },
-                            { icon: '🎓', name: 'বিশ্ববিদ্যালয়', price: '৳৫৯৯', color: 'from-indigo-400 to-blue-500' },
-                            { icon: '🚀', name: 'Skill Pro', price: '৳৭৯৯', color: 'from-purple-400 to-violet-500' },
-                            { icon: '👨‍👩‍👧', name: 'পারিবারিক', price: '৳৯৯৯', color: 'from-emerald-400 to-teal-500' },
-                        ].map((plan, i) => (
-                            <motion.div
-                                key={plan.name}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.07 }}
-                                whileHover={{ y: -6 }}
-                                className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 text-center hover:bg-white/[0.06] transition-all"
-                            >
-                                <div className={`w-12 h-12 rounded-2xl bg-linear-to-br ${plan.color} flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg`}>
-                                    {plan.icon}
-                                </div>
-                                <p className="text-white font-bold text-sm mb-1">{plan.name}</p>
-                                <p className={`text-xl font-black bg-linear-to-r ${plan.color} bg-clip-text text-transparent`}>
-                                    {plan.price}
-                                </p>
-                                <p className="text-gray-600 text-xs mt-1">প্রতি মাস</p>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    <div className="text-center">
-                        <p className="text-gray-500 text-sm mb-4">
-                            বার্ষিক plan এ ৩০% ছাড় পাবে!
-                        </p>
-                        <Link href="/register"
-                            className="inline-flex items-center gap-2 bg-linear-to-r from-amber-500 to-orange-500 text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg shadow-amber-500/25">
-                            বিনামূল্যে শুরু করো →
-                        </Link>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── ABOUT ── */}
-            <section id="about" className="py-28 border-t border-white/[0.06]">
-                <div className="max-w-5xl mx-auto px-5">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center mb-16"
-                    >
-                        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium px-4 py-2 rounded-full mb-4">
-                            🤝 আমাদের সম্পর্কে
-                        </div>
-                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4">
-                            কেন{' '}
-                            <span className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                                অনন্য?
-                            </span>
-                        </h2>
-                        <p className="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
-                            আমরা বিশ্বাস করি প্রতিটি শিশু অনন্য। তাই আমাদের AI প্রতিটি শিক্ষার্থীর
-                            শেখার ধরন বুঝে তাকে সেভাবে শেখায়। আপনার সন্তান শিখবে তার মতো করে, তার গতিতে। আমরা শুধু content দিই না, আমরা শেখার অভিজ্ঞতা তৈরি করি।
-                            বর্তমান শিক্ষাব্যবস্থা যেখানে standardized, সেখানে অনন্য personalized। আমরা শুধু শিক্ষাই দিই না, আমরা Islamic মূল্যবোধও শেখাই। কুরআন ও সুন্নাহ আমাদের পথ দেখায়।
-                        </p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-3 gap-6 mb-16">
-                        {[
-                            {
-                                icon: '🕌',
-                                title: 'ইসলামিক মূল্যবোধ',
-                                desc: 'প্রতিটি content ইসলামিক দৃষ্টিভঙ্গিতে তৈরি। কুরআন ও সুন্নাহ আমাদের পথ দেখায়।',
-                                color: 'from-emerald-400 to-teal-400',
-                                border: 'border-emerald-500/20',
-                            },
-                            {
-                                icon: '🇧🇩',
-                                title: 'বাংলাদেশের জন্য',
-                                desc: 'NCTB curriculum অনুসরণ করে বাংলায় তৈরি — বাংলাদেশের শিক্ষার্থীদের কথা মাথায় রেখে।',
-                                color: 'from-blue-400 to-cyan-400',
-                                border: 'border-blue-500/20',
-                            },
-                            {
-                                icon: '🤖',
-                                title: 'AI-Powered',
-                                desc: 'Groq, LLaMA, Whisper — সর্বাধুনিক AI দিয়ে personalized শিক্ষার অভিজ্ঞতা।',
-                                color: 'from-violet-400 to-purple-400',
-                                border: 'border-violet-500/20',
-                            },
-                        ].map((item, i) => (
-                            <motion.div
-                                key={item.title}
-                                initial={{ opacity: 0, y: 24 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.1 }}
-                                className={`rounded-2xl border ${item.border} bg-white/[0.03] p-6 text-center`}
-                            >
-                                <div className={`w-16 h-16 rounded-2xl bg-linear-to-br ${item.color} flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg`}>
-                                    {item.icon}
-                                </div>
-                                <h3 className="font-bold text-white text-lg mb-2">{item.title}</h3>
-                                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    {/* Mission Statement */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-8 md:p-12 text-center"
-                    >
-                        <div className="text-4xl mb-4">🎯</div>
-                        <h3 className="text-2xl md:text-3xl font-black text-white mb-4">
-                            আমাদের লক্ষ্য
-                        </h3>
-                        <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed text-lg">
-                            ২০৩০ সালের মধ্যে বাংলাদেশের প্রতিটি শিক্ষার্থীর হাতে
-                            মানসম্পন্ন শিক্ষা পৌঁছে দেওয়া — প্রযুক্তি ও ইসলামিক মূল্যবোধের সমন্বয়ে।
-                            আপনারকে আমরা স্বাগত জানাই এই যাত্রায়। একসাথে আমরা শিক্ষার landscape পরিবর্তন করতে পারি।
-                        </p>
-                        <div className="mt-6 flex items-center justify-center gap-8 flex-wrap">
-                            {[
-                                { value: '৳৯৯', label: 'থেকে শুরু' },
-                                { value: '১০০%', label: 'বাংলায়' },
-                                { value: '২৪/৭', label: 'AI Tutor' },
-                            ].map((stat, i) => (
-                                <div key={i} className="text-center">
-                                    <p className="text-2xl font-black text-white">{stat.value}</p>
-                                    <p className="text-gray-500 text-sm">{stat.label}</p>
-                                </div>
-                            ))}
-                        </div>
+                        <div className="absolute -bottom-5 -left-4 hidden items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3.5 shadow-lg sm:flex"><span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><BrainCircuit className="h-5 w-5" /></span><span><b className="block text-sm">AI Tutor</b><small className="text-xs text-slate-500">তোমার জন্য সাজানো</small></span></div>
                     </motion.div>
                 </div>
             </section>
 
-            {/* ── CTA ── */}
-            <section className="py-28 relative overflow-hidden">
-                <div className="absolute inset-0 bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600" />
-                <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse" />
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 animate-pulse" />
-                <div className="absolute inset-0 opacity-[0.03]"
-                    style={{
-                        backgroundImage: 'linear-linear(rgba(255,255,255,1) 1px, transparent 1px), linear-linear(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
-                        backgroundSize: '40px 40px',
-                    }}
-                />
+            <section className="border-y border-emerald-100 bg-white/75"><div className="mx-auto grid max-w-6xl grid-cols-2 gap-y-6 px-5 py-7 text-center sm:grid-cols-4"><Stat value="৪+" label="বছর বয়স থেকে" /><Stat value="১০০%" label="বাংলা কনটেন্ট" /><Stat value="২৪/৭" label="AI সহায়তা" /><Stat value="৳০" label="শুরু করতে খরচ নেই" /></div></section>
 
-                <div className="relative z-10 max-w-3xl mx-auto px-5 text-center">
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.7 }}
-                    >
-                        <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-5 py-2 mb-6">
-                            <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                            <span className="text-white text-sm font-medium">সীমিত সময়ের অফার</span>
-                        </div>
-                        <h2 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
-                            আজই শুরু করো
-                            <br />
-                            <span className="text-white/80 text-3xl md:text-4xl">সম্পূর্ণ বিনামূল্যে</span>
-                        </h2>
-                        <p className="text-emerald-100 mb-10 text-lg">
-                            লক্ষাধিক শিক্ষার্থী ইতোমধ্যে শিখছে — তুমিও শুরু করো আজই!
-                        </p>
-                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
-                            <Link href="/register"
-                                className="inline-flex items-center gap-3 bg-white text-emerald-700 px-10 py-4 rounded-2xl font-black text-lg shadow-2xl hover:shadow-white/20 transition-all">
-                                এখনই রেজিস্ট্রেশন করো →
-                            </Link>
-                        </motion.div>
-                    </motion.div>
-                </div>
+            <section id="path" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+                <motion.div {...fadeUp} className="mx-auto mb-11 max-w-2xl text-center"><p className="text-sm font-bold text-emerald-600">একটি প্ল্যাটফর্ম, প্রতিটি ধাপ</p><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">তোমার বয়স, তোমার শেখার পথ</h2><p className="mt-4 leading-7 text-slate-600">তোমার বর্তমান স্তর বেছে নাও, আর শুরু করো নিজের গতিতে শেখা।</p></motion.div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{learningPaths.map((path, index) => <motion.div {...fadeUp} transition={{ delay: index * 0.06 }} key={path.title} whileHover={{ y: -6 }} className={`group cursor-default rounded-2xl border p-5 transition-shadow hover:shadow-lg ${path.tone}`}><span className="text-3xl">{path.icon}</span><h3 className="mt-5 font-black text-slate-800">{path.title}</h3><p className="mt-1 text-sm text-slate-500">{path.subtitle}</p><span className="mt-5 inline-flex items-center gap-1 text-xs font-bold">শুরু করুন <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span></motion.div>)}</div>
             </section>
 
+            <section id="features" className="bg-slate-900 px-5 py-20 text-white sm:px-8 lg:py-28"><div className="mx-auto max-w-7xl"><motion.div {...fadeUp} className="mb-12 max-w-2xl"><p className="text-sm font-bold text-emerald-400">শুধু ক্লাস নয়, সম্পূর্ণ সহায়তা</p><h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">শেখা হবে সহজ,<br />লক্ষ্য হবে আরও কাছে</h2></motion.div><div className="grid gap-5 md:grid-cols-3">{features.map((feature, index) => { const Icon = feature.icon; return <motion.article {...fadeUp} transition={{ delay: index * 0.08 }} key={feature.title} className="rounded-3xl border border-white/10 bg-white/5 p-7"><span className={`grid h-12 w-12 place-items-center rounded-2xl ${feature.color}`}><Icon className="h-6 w-6" /></span><h3 className="mt-6 text-xl font-black">{feature.title}</h3><p className="mt-3 text-sm leading-7 text-slate-300">{feature.description}</p></motion.article> })}</div></div></section>
 
-            {/* ── FOOTER ── */}
-            < footer className="py-12 border-t border-white/[0.06] bg-[#05050f]" >
-                <div className="max-w-6xl mx-auto px-5 text-center">
-                    <div className="flex items-center justify-center gap-2.5 mb-4">
-                        <div className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-black">
-                            অ
-                        </div>
-                        <span className="font-black text-white text-xl">অনন্য</span>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-4">© 2026 অনন্য · শিক্ষায় অনন্য — Made with ❤️ in Bangladesh</p>
-                    <div className="flex justify-center gap-6">
-                        {['গোপনীয়তা', 'শর্তাবলী', 'যোগাযোগ'].map((item, i) => (
-                            <Link key={i} href="#"
-                                className="text-gray-600 hover:text-gray-400 text-xs transition-colors">
-                                {item}
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </ footer>
-        </main >
+            <section id="pricing" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28"><motion.div {...fadeUp} className="mx-auto mb-11 max-w-2xl text-center"><p className="text-sm font-bold text-emerald-600">সবার জন্য সহজ মূল্য</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">তোমার প্রয়োজনের প্ল্যান বেছে নাও</h2><p className="mt-4 leading-7 text-slate-600">বার্ষিক প্ল্যানে থাকছে বিশেষ ছাড়। শুরু করার জন্য কোনো বাধ্যবাধকতা নেই।</p></motion.div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{plans.map((plan, index) => <motion.div {...fadeUp} transition={{ delay: index * 0.07 }} key={plan.name} className={`relative rounded-3xl border p-6 ${plan.featured ? 'border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-600/10' : 'border-slate-200 bg-white'}`}>{plan.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">সবচেয়ে জনপ্রিয়</span>}<h3 className="font-black text-slate-800">{plan.name}</h3><p className="mt-2 text-sm text-slate-500">{plan.tag}</p><p className="mt-6 text-4xl font-black text-slate-900"><span className="text-xl">৳</span>{plan.price}<span className="ml-1 text-sm font-medium text-slate-500">/মাস</span></p><Link href="/register" className="mt-6 flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700">প্ল্যানটি নিন</Link></motion.div>)}</div></section>
+
+            <section className="px-5 pb-20 sm:px-8 lg:pb-28"><motion.div {...fadeUp} className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 px-6 py-14 text-center text-white shadow-xl sm:px-12"><div className="pointer-events-none absolute -left-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" /><div className="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-white/10 blur-2xl" /><div className="relative"><span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold"><Star className="h-3.5 w-3.5 fill-current" /> আজই শেখা শুরু করুন</span><h2 className="mx-auto mt-5 max-w-2xl text-3xl font-black leading-tight sm:text-4xl">ভালো ভবিষ্যৎ গড়ার<br />শুরুটা হোক আজ থেকেই</h2><p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-emerald-50 sm:text-base">হাজারো শিক্ষার্থী ও অভিভাবকের সঙ্গে যুক্ত হোন। অনন্য আপনার শেখার পথ সহজ করে দেবে।</p><Link href="/register" className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-black text-emerald-700 shadow-lg transition hover:-translate-y-0.5">এখনই রেজিস্ট্রেশন করুন <ArrowRight className="h-4 w-4" /></Link></div></motion.div></section>
+
+            <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-5 py-8 text-center sm:flex-row sm:px-8 sm:text-left lg:px-10"><Link href="/" className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-600 text-sm font-black text-white">অ</span><span className="font-black">অনন্য</span></Link><p className="text-xs text-slate-500">© {new Date().getFullYear()} অনন্য · বাংলাদেশের শিক্ষার্থীদের জন্য</p><div className="flex gap-4 text-xs font-semibold text-slate-500"><Link href="/contact" className="hover:text-emerald-700">যোগাযোগ</Link><Link href="/login" className="hover:text-emerald-700">লগইন</Link></div></div></footer>
+        </main>
     )
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+    return <div><p className="text-2xl font-black text-emerald-600 sm:text-3xl">{value}</p><p className="mt-1 text-xs font-semibold text-slate-500 sm:text-sm">{label}</p></div>
 }

@@ -1,11 +1,14 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireRole } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
     try {
-        const supabase =await createServerSupabaseClient()
+        const auth = await requireRole(['admin', 'teacher', 'parent'])
+        if ('error' in auth) return auth.error
+
+        const { supabase, user, role } = auth
         const body = await req.json()
-        const { recipient_id, sender_id, type, title, body: notifBody } = body
+        const { recipient_id, type, title, body: notifBody } = body
 
         if (!recipient_id || !type || !title) {
             return NextResponse.json(
@@ -14,13 +17,33 @@ export async function POST(req: NextRequest) {
             )
         }
 
+        const recipientIds = typeof recipient_id === 'string' ? [recipient_id] : recipient_id
+        if (!Array.isArray(recipientIds) || recipientIds.length === 0 || recipientIds.length > 100 || !recipientIds.every((id) => typeof id === 'string')) {
+            return NextResponse.json({ error: 'সঠিক প্রাপক নির্বাচন করুন।' }, { status: 400 })
+        }
+
+        if (role === 'teacher' || role === 'parent') {
+            const relationTable = role === 'teacher' ? 'teacher_students' : 'parent_children'
+            const ownerColumn = role === 'teacher' ? 'teacher_id' : 'parent_id'
+            const childColumn = role === 'teacher' ? 'student_id' : 'child_id'
+            const { data: relations, error: relationError } = await supabase
+                .from(relationTable)
+                .select(childColumn)
+                .eq(ownerColumn, user.id)
+                .in(childColumn, recipientIds)
+
+            if (relationError || !relations || relations.length !== recipientIds.length) {
+                return NextResponse.json({ error: 'আপনি শুধু নিজের শিক্ষার্থী বা সন্তানের কাছে বার্তা পাঠাতে পারবেন।' }, { status: 403 })
+            }
+        }
+
         // Single notification
         if (typeof recipient_id === 'string') {
             const { data, error } = await supabase
                 .from('notifications')
                 .insert({
                     recipient_id,
-                    sender_id: sender_id || null,
+                    sender_id: user.id,
                     type,
                     title,
                     body: notifBody || null,
@@ -49,7 +72,7 @@ export async function POST(req: NextRequest) {
                 .insert(
                     recipient_id.map((id: string) => ({
                         recipient_id: id,
-                        sender_id: sender_id || null,
+                        sender_id: user.id,
                         type,
                         title,
                         body: notifBody || null,

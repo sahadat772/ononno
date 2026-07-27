@@ -19,7 +19,6 @@ export default async function CreateChildPage() {
 
     return (
         <CreateChildClient
-            parentId={profile.id}
             parentName={profile.full_name}
         />
     )

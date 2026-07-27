@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 
 interface CreateAccountFormProps {
     role: 'teacher' | 'parent'
-    creatorId: string
     onSuccess?: (studentId: string) => void
 }
 
@@ -23,7 +22,6 @@ const CLASS_LEVELS = [
 
 export default function CreateAccountForm({
     role,
-    creatorId,
     onSuccess,
 }: CreateAccountFormProps) {
     const [formData, setFormData] = useState({
@@ -57,16 +55,11 @@ export default function CreateAccountForm({
                 ? '/api/teacher/create-student'
                 : '/api/parent/create-child'
 
-        const payload =
-            role === 'teacher'
-                ? { teacher_id: creatorId, ...formData }
-                : { parent_id: creatorId, ...formData }
-
         try {
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formData),
             })
 
             const data = await res.json()
@@ -171,7 +164,7 @@ export default function CreateAccountForm({
                         onChange={handleChange}
                         required
                         placeholder="কমপক্ষে ৬ অক্ষর"
-                        minLength={6}
+                        minLength={8}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500 transition"
                     />
                 </div>

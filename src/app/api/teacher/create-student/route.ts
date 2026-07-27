@@ -1,15 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireRole } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
     try {
+        const auth = await requireRole(['teacher'])
+        if ('error' in auth) return auth.error
+
         const adminSupabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
         const body = await req.json()
         const {
-            teacher_id,
             email,
             password,
             full_name,
@@ -17,11 +20,15 @@ export async function POST(req: NextRequest) {
             phone,
         } = body
 
-        if (!teacher_id || !email || !password || !full_name || !class_level) {
+        if (!email || !password || !full_name || !class_level) {
             return NextResponse.json(
-                { error: 'teacher_id, email, password, full_name, class_level required' },
+                { error: 'ইমেইল, পাসওয়ার্ড, নাম ও শ্রেণি দেওয়া প্রয়োজন।' },
                 { status: 400 }
             )
+        }
+
+        if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || password.length < 8) {
+            return NextResponse.json({ error: 'সঠিক ইমেইল এবং কমপক্ষে ৮ অক্ষরের পাসওয়ার্ড দিন।' }, { status: 400 })
         }
 
         // Supabase Auth এ নতুন user বানাও
@@ -85,7 +92,7 @@ export async function POST(req: NextRequest) {
         const { error: relationError } = await adminSupabase
             .from('teacher_students')
             .insert({
-                teacher_id,
+                teacher_id: auth.user.id,
                 student_id: newUserId,
             })
 
@@ -99,7 +106,7 @@ export async function POST(req: NextRequest) {
         // Welcome notification child কে
         await adminSupabase.from('notifications').insert({
             recipient_id: newUserId,
-            sender_id: teacher_id,
+            sender_id: auth.user.id,
             type: 'welcome',
             title: 'স্বাগতম!',
             body: `${full_name}, তোমার account তৈরি হয়েছে। শেখা শুরু করো!`,
@@ -108,7 +115,7 @@ export async function POST(req: NextRequest) {
 
         // Parent কেও notification
         await adminSupabase.from('notifications').insert({
-            recipient_id: teacher_id,
+            recipient_id: auth.user.id,
             sender_id: newUserId,
             type: 'child_created',
             title: 'Child Account তৈরি হয়েছে',

@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation'
 import CreateAccountForm from '@/components/shared/CreateAccountForm'
 
 interface CreateChildClientProps {
-    parentId: string
     parentName: string
 }
 
 export default function CreateChildClient({
-    parentId,
     parentName,
 }: CreateChildClientProps) {
     const router = useRouter()
@@ -43,7 +41,6 @@ export default function CreateChildClient({
             <div className="max-w-2xl mx-auto px-4 py-6">
                 <CreateAccountForm
                     role="parent"
-                    creatorId={parentId}
                     onSuccess={() => handleSuccess()}
                 />
             </div>
