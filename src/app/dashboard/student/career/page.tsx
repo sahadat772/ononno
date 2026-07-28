@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import AnimatedCard from '@/components/ui/AnimatedCard'
+import Image from 'next/image'
 
 const steps = [
     { id: 1, title: 'ব্যক্তিত্ব বিশ্লেষণ', icon: '🧠' },
@@ -196,7 +197,14 @@ export default function CareerPage() {
             <nav className="glass fixed top-0 left-0 right-0 z-50 border-b border-white/50 px-6 py-4">
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <Link href="/dashboard/student" className="text-gray-400 hover:text-gray-600">←</Link>
+                        <Link href="/dashboard/student" className="text-gray-400 hover:text-gray-600">
+                            <Image
+                                src="/icons/logo-icon.png"
+                                alt="অনন্য"
+                                width={40}
+                                height={40}
+                                className="rounded-xl"
+                            />←</Link>
                         <div className="text-lg font-bold text-gradient-primary">ক্যারিয়ার পাথ AI</div>
                     </div>
                     {!isComplete && (
@@ -221,10 +229,10 @@ export default function CareerPage() {
                                 <div key={step.id} className="flex items-center gap-2 flex-1">
                                     <div className={`flex items-center gap-2 ${i <= getStepIndex() ? 'text-green-700' : 'text-gray-300'}`}>
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 transition-all ${i < getStepIndex()
-                                                ? 'bg-green-500 border-green-500 text-white'
-                                                : i === getStepIndex()
-                                                    ? 'border-green-500 bg-green-50'
-                                                    : 'border-gray-200 bg-white'
+                                            ? 'bg-green-500 border-green-500 text-white'
+                                            : i === getStepIndex()
+                                                ? 'border-green-500 bg-green-50'
+                                                : 'border-gray-200 bg-white'
                                             }`}>
                                             {i < getStepIndex() ? '✓' : step.icon}
                                         </div>
@@ -273,8 +281,8 @@ export default function CareerPage() {
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => handleAnswer(option.value)}
                                                 className={`p-4 rounded-2xl border-2 text-left transition-all font-medium text-sm ${answers[currentQuestion.id] === option.value
-                                                        ? 'border-green-500 bg-green-50 text-green-700'
-                                                        : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-green-200 hover:bg-green-50/50'
+                                                    ? 'border-green-500 bg-green-50 text-green-700'
+                                                    : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-green-200 hover:bg-green-50/50'
                                                     }`}
                                             >
                                                 {option.label}

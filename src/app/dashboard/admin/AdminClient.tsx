@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import LogoutButton from '@/components/shared/LogoutButton'
+import Image from 'next/image'
 
 interface Props {
   profile: Record<string, string> | null
@@ -71,9 +72,16 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
           {/* Logo */}
           <Link href="/dashboard/admin" className="flex items-center gap-3 shrink-0">
             <div className="relative">
-              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center text-base font-black shadow-lg shadow-red-500/30">
+              {/* <div className="w-9 h-9 rounded-xl bg-linear-to-br from-red-500 to-rose-600 flex items-center justify-center text-base font-black shadow-lg shadow-red-500/30">
                 অ
-              </div>
+              </div> */}
+              <Image
+                src="/icons/logo-icon.png"
+                alt="অনন্য"
+                width={40}
+                height={40}
+                className="rounded-xl"
+              />
               <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#07071a] animate-pulse" />
             </div>
             <div className="hidden sm:block">

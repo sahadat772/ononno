@@ -40,6 +40,15 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
                         >
                             {isNurseryLevel ? '🌟' : '📚'}
                         </motion.div>
+                        <Link href="/">
+                        <Image
+                            src="/icons/logo-icon.png"
+                            alt="অনন্য"
+                            width={40}
+                            height={40}
+                            className="rounded-xl"
+                        />
+                        </Link>
                         <span className="font-bold text-white text-base md:text-lg">অনন্য</span>
                         {isNurseryLevel && (
                             <span className="hidden sm:inline text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded-full">

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
+import Image from 'next/image'
 
 export default function LoginPage() {
     const router = useRouter()
@@ -159,7 +160,14 @@ export default function LoginPage() {
                             "
                         >
 
-                            অ
+                            {/* অ */}
+                            <Image
+                                src="/icons/logo-icon.png"
+                                alt="অনন্য"
+                                width={40}
+                                height={40}
+                                className="rounded-xl"
+                            />
 
                         </motion.div>
 
@@ -551,7 +559,7 @@ export default function LoginPage() {
                         <div className="flex-1 h-px bg-liner-to-r from-transparent via-white/20 to-transparent" />
 
                     </div>
-                    
+
 
                     {/* Register link */}
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center">

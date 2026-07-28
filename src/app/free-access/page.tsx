@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import Image from 'next/image'
 
 const categories = [
     { id: 'orphan', label: '🤲 এতিম', desc: 'পিতা বা মাতা বা উভয়কে হারিয়েছি' },
@@ -182,7 +183,7 @@ export default function FreeAccessPage() {
                 console.error(dbError)
                 setError(dbError.message)
                 return
-            } 
+            }
 
             setStep('success')
 
@@ -238,9 +239,16 @@ export default function FreeAccessPage() {
             <nav className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-white/[0.06] bg-[#07071a]/80 backdrop-blur-2xl">
                 <div className="max-w-6xl mx-auto h-full px-5 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-base font-black">
+                        {/* <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-base font-black">
                             অ
-                        </div>
+                        </div> */}
+                        <Image
+                            src="/icons/logo-icon.png"
+                            alt="অনন্য"
+                            width={40}
+                            height={40}
+                            className="rounded-xl"
+                        />
                         <span className="font-black text-white text-xl">অনন্য</span>
                     </Link>
                     <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">

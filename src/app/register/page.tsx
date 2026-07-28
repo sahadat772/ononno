@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { ClassLevel, UserRole } from '@/types/database'
+import Image from 'next/image'
 
 const roles = [
     { value: 'student', label: '🎓 শিক্ষার্থী', desc: 'Nursery থেকে Masters' },
@@ -150,9 +151,16 @@ export default function RegisterPage() {
                     <Link href="/" className="inline-flex items-center gap-3 mb-4">
                         <div className="relative">
                             <div className="absolute inset-0 rounded-3xl bg-emerald-500 blur-xl opacity-40" />
-                            <div className="relative w-14 h-14 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-2xl font-black text-white shadow-xl">
+                            {/* <div className="relative w-14 h-14 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-2xl font-black text-white shadow-xl">
                                 অ
-                            </div>
+                            </div> */}
+                            <Image
+                                src="/icons/logo-icon.png"
+                                alt="অনন্য"
+                                width={40}
+                                height={40}
+                                className="rounded-xl"
+                            />
                         </div>
                         <div className="text-left">
                             <h1 className="text-3xl font-black text-white">অনন্য</h1>

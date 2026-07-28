@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
     ArrowLeft,
     ArrowRight,
@@ -63,7 +64,14 @@ export default function ContactPage() {
             <section className="relative mx-auto w-full max-w-6xl px-5 pb-16 pt-6 sm:px-8 lg:px-10">
                 <nav className="flex items-center justify-between" aria-label="প্রধান নেভিগেশন">
                     <Link href="/" className="group inline-flex items-center gap-2.5">
-                        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-black text-white shadow-lg shadow-emerald-600/20">অ</span>
+                        {/* <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-black text-white shadow-lg shadow-emerald-600/20">অ</span> */}
+                        <Image
+                            src="/icons/logo-icon.png"
+                            alt="অনন্য"
+                            width={40}
+                            height={40}
+                            className="rounded-xl"
+                        />
                         <span className="text-xl font-black tracking-tight text-slate-900">অনন্য</span>
                     </Link>
                     <Link href="/" className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-emerald-700">

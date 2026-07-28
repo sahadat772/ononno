@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
     ArrowRight,
     BookOpen,
@@ -51,7 +52,14 @@ export default function Home() {
 
             <header className="relative z-20 mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
                 <Link href="/" className="flex items-center gap-2.5">
-                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-black text-white shadow-lg shadow-emerald-600/20">অ</span>
+                    {/* <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-black text-white shadow-lg shadow-emerald-600/20">অ </span> */}
+                    <Image
+                        src="/icons/logo-icon.png"
+                        alt="অনন্য"
+                        width={40}
+                        height={40}
+                        className="rounded-xl"
+                    />
                     <span className="text-xl font-black tracking-tight">অনন্য</span>
                 </Link>
                 <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 lg:flex">
