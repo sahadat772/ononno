@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 import { requireRole } from '@/lib/api-auth'
+import { GenerateLessonSchema, validateBody } from '@/lib/validation'
+import { audit } from '@/lib/audit'
+import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -9,11 +12,13 @@ export async function POST(req: NextRequest) {
         const auth = await requireRole(['admin'])
         if ('error' in auth) return auth.error
 
-        const { subjectName, chapterTitle, lessonTitle, classLevel } = await req.json()
+        const rateError = await rateLimit(`admin-generate-lesson:${auth.user.id}`, rateLimitDefaults.adminAI)
+        if (rateError) return rateError
 
-        if (!subjectName || !chapterTitle || !lessonTitle) {
-            return NextResponse.json({ error: 'Missing data' }, { status: 400 })
-        }
+        const body = await validateBody(GenerateLessonSchema, req)
+        if (body instanceof NextResponse) return body
+
+        const { subjectName, chapterTitle, lessonTitle, classLevel } = body
 
         const classLevelBn: Record<string, string> = {
             nursery: 'নার্সারি', kg: 'কেজি',
@@ -61,11 +66,19 @@ export async function POST(req: NextRequest) {
                     content: prompt,
                 }
             ],
-            max_tokens: 2000,
+            max_tokens: 1500,
             temperature: 0.7,
         })
 
         const content = response.choices[0]?.message?.content || ''
+
+        await audit('generate_lesson', auth.user.id, {
+            subjectName,
+            chapterTitle,
+            lessonTitle,
+            classLevel,
+            contentLength: content.length,
+        })
 
         return NextResponse.json({ content })
     } catch (e) {

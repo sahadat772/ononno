@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 import { requireRole } from '@/lib/api-auth'
+import { ExtractSyllabusSchema, validateBody } from '@/lib/validation'
+import { audit } from '@/lib/audit'
+import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -9,13 +12,15 @@ export async function POST(req: NextRequest) {
         const auth = await requireRole(['admin'])
         if ('error' in auth) return auth.error
 
-        const { imageBase64, subjectName, classLevel } = await req.json()
+        const rateError = await rateLimit(`admin-extract-syllabus:${auth.user.id}`, rateLimitDefaults.adminAI)
+        if (rateError) return rateError
 
-        if (!imageBase64 || !subjectName) {
-            return NextResponse.json({ error: 'Missing data' }, { status: 400 })
-        }
+        const body = await validateBody(ExtractSyllabusSchema, req)
+        if (body instanceof NextResponse) return body
 
-        if (typeof imageBase64 !== 'string' || imageBase64.length > 8_000_000) {
+        const { imageBase64, subjectName, classLevel } = body
+
+        if (imageBase64.length > 8_000_000) {
             return NextResponse.json({ error: 'ছবিটি খুব বড়। 6 MB-এর কম ছবি দিয়ে আবার চেষ্টা করুন।' }, { status: 413 })
         }
 
@@ -71,19 +76,25 @@ export async function POST(req: NextRequest) {
                     ],
                 },
             ],
-            max_tokens: 3000,
+            max_tokens: 2500,
             temperature: 0.3,
         })
 
         const raw = response.choices[0]?.message?.content || ''
 
-        // JSON parse করো
         const jsonMatch = raw.match(/\{[\s\S]*\}/)
         if (!jsonMatch) {
             return NextResponse.json({ error: 'Could not parse syllabus' }, { status: 422 })
         }
 
         const parsed = JSON.parse(jsonMatch[0])
+
+        await audit('extract_syllabus', auth.user.id, {
+            subjectName,
+            classLevel,
+            payloadSize: imageBase64.length,
+        })
+
         return NextResponse.json(parsed)
 
     } catch (e) {

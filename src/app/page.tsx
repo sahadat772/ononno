@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -45,7 +46,18 @@ const fadeUp = {
     viewport: { once: true, amount: 0.2 },
 }
 
+
 export default function Home() {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+    const mobileMenuItems = [
+        { label: 'শেখার পথ', href: '#path' },
+        { label: 'কেন অনন্য', href: '#features' },
+        { label: 'মূল্য', href: '#pricing' },
+        { label: 'যোগাযোগ', href: '/contact' },
+        { label: '🤲 বিনামূল্যে আবেদন', href: '/free-access' },
+    ]
+
     return (
         <main className="min-h-screen overflow-x-hidden bg-[#fbfdfc] text-slate-900">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[50rem] bg-[radial-gradient(circle_at_7%_10%,rgba(16,185,129,0.16),transparent_24%),radial-gradient(circle_at_90%_15%,rgba(99,102,241,0.13),transparent_22%),linear-gradient(180deg,#f1fcf6_0%,#fbfdfc_80%)]" />
@@ -67,13 +79,68 @@ export default function Home() {
                     <a href="#features" className="transition hover:text-emerald-700">কেন অনন্য</a>
                     <a href="#pricing" className="transition hover:text-emerald-700">মূল্য</a>
                     <Link href="/contact" className="transition hover:text-emerald-700">যোগাযোগ</Link>
+
                 </nav>
+
                 <div className="flex items-center gap-2 sm:gap-3">
                     <Link href="/login" className="hidden rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-white sm:block">লগইন</Link>
                     <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 sm:px-5">শুরু করুন <ArrowRight className="h-4 w-4" /></Link>
-                    <button className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 lg:hidden" aria-label="মেনু খুলুন"><Menu className="h-5 w-5" /></button>
+                    <button
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 lg:hidden"
+                        aria-label="মেনু খুলুন"
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
                 </div>
+
             </header>
+
+            {/* Mobile Menu */}
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-40 lg:hidden">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setMobileMenuOpen(false)}
+                    />
+                    {/* Menu Panel */}
+                    <div className="absolute top-0 right-0 h-full w-72 bg-white shadow-2xl p-6 flex flex-col gap-6">
+                        <div className="flex items-center justify-between">
+                            <span className="font-black text-slate-800 text-xl">অনন্য</span>
+                            <button
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-slate-500 hover:text-slate-800 text-2xl"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <nav className="flex flex-col gap-4">
+                            {mobileMenuItems.map((item) => (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="text-slate-600 hover:text-slate-900 font-semibold text-base py-2 border-b border-slate-100"
+                                >
+                                    {item.label}
+                                </Link>
+                            ))}
+                        </nav>
+                    <div className="flex flex-col gap-3 mt-auto">
+                        <a href="/login"
+                            className="w-full text-center py-3 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition">
+                            লগইন
+                        </a>
+                        <a href="/register"
+                            className="w-full text-center py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg">
+                            শুরু করো →
+                        </a>
+                    </div>
+                </div>
+    </div>
+    )
+}
 
             <section className="relative mx-auto max-w-7xl px-5 pb-20 pt-14 sm:px-8 lg:px-10 lg:pb-28 lg:pt-20">
                 <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
@@ -126,7 +193,7 @@ export default function Home() {
             <section className="px-5 pb-20 sm:px-8 lg:pb-28"><motion.div {...fadeUp} className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 px-6 py-14 text-center text-white shadow-xl sm:px-12"><div className="pointer-events-none absolute -left-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" /><div className="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-white/10 blur-2xl" /><div className="relative"><span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold"><Star className="h-3.5 w-3.5 fill-current" /> আজই শেখা শুরু করুন</span><h2 className="mx-auto mt-5 max-w-2xl text-3xl font-black leading-tight sm:text-4xl">ভালো ভবিষ্যৎ গড়ার<br />শুরুটা হোক আজ থেকেই</h2><p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-emerald-50 sm:text-base">হাজারো শিক্ষার্থী ও অভিভাবকের সঙ্গে যুক্ত হোন। অনন্য আপনার শেখার পথ সহজ করে দেবে।</p><Link href="/register" className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-black text-emerald-700 shadow-lg transition hover:-translate-y-0.5">এখনই রেজিস্ট্রেশন করুন <ArrowRight className="h-4 w-4" /></Link></div></motion.div></section>
 
             <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-5 py-8 text-center sm:flex-row sm:px-8 sm:text-left lg:px-10"><Link href="/" className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-600 text-sm font-black text-white">অ</span><span className="font-black">অনন্য</span></Link><p className="text-xs text-slate-500">© {new Date().getFullYear()} অনন্য · বাংলাদেশের শিক্ষার্থীদের জন্য</p><div className="flex gap-4 text-xs font-semibold text-slate-500"><Link href="/contact" className="hover:text-emerald-700">যোগাযোগ</Link><Link href="/login" className="hover:text-emerald-700">লগইন</Link></div></div></footer>
-        </main>
+        </main >
     )
 }
 

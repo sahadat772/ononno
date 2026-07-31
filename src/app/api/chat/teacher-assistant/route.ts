@@ -1,25 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { chat } from '@/lib/groq'
+import { requireRole } from '@/lib/api-auth'
+import { TeacherAssistantSchema, validateBody } from '@/lib/validation'
+import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
+import { audit } from '@/lib/audit'
 
 export async function POST(req: NextRequest) {
     try {
+        const auth = await requireRole(['teacher'])
+        if ('error' in auth) return auth.error
+
+        const rateError = await rateLimit(`teacher-ai-assistant:${auth.user.id}`, { ...rateLimitDefaults.adminAI, tokens: 100 })
+        if (rateError) return rateError
+
+        const body = await validateBody(TeacherAssistantSchema, req)
+        if (body instanceof NextResponse) return body
+
+        const { question, conversation_history = [] } = body
+        const teacher_id = auth.user.id
         const adminSupabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
 
-        const body = await req.json()
-        const { teacher_id, question, conversation_history = [] } = body
-
-        if (!teacher_id || !question) {
-            return NextResponse.json(
-                { error: 'teacher_id and question required' },
-                { status: 400 }
-            )
-        }
-
-        // Teacher এর students fetch
         const { data: teacherStudents } = await adminSupabase
             .from('teacher_students')
             .select('student_id')
@@ -118,6 +122,11 @@ ${JSON.stringify(studentsSummary, null, 2)}
         ]
 
         const response = await chat(messages, systemPrompt)
+
+        await audit('teacher_ai_assistant', auth.user.id, {
+            studentCount: studentsSummary.length,
+            questionLength: question.length,
+        })
 
         return NextResponse.json({
             answer: response,

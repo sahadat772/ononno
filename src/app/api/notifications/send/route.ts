@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/api-auth'
+import { NotificationSendSchema, validateBody } from '@/lib/validation'
+import { audit } from '@/lib/audit'
+import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
 
 export async function POST(req: NextRequest) {
     try {
         const auth = await requireRole(['admin', 'teacher', 'parent'])
         if ('error' in auth) return auth.error
 
+        const rateError = await rateLimit(`notifications-send:${auth.user.id}`, rateLimitDefaults.notificationSend)
+        if (rateError) return rateError
+
         const { supabase, user, role } = auth
-        const body = await req.json()
+        const body = await validateBody(NotificationSendSchema, req)
+        if (body instanceof NextResponse) return body
+
         const { recipient_id, type, title, body: notifBody } = body
 
         if (!recipient_id || !type || !title) {
@@ -18,8 +26,8 @@ export async function POST(req: NextRequest) {
         }
 
         const recipientIds = typeof recipient_id === 'string' ? [recipient_id] : recipient_id
-        if (!Array.isArray(recipientIds) || recipientIds.length === 0 || recipientIds.length > 100 || !recipientIds.every((id) => typeof id === 'string')) {
-            return NextResponse.json({ error: 'সঠিক প্রাপক নির্বাচন করুন।' }, { status: 400 })
+        if (recipientIds.length === 0 || recipientIds.length > 100) {
+            return NextResponse.json({ error: 'সর্বোচ্চ ১০০ জন প্রাপক নির্বাচন করা যাবে।' }, { status: 400 })
         }
 
         if (role === 'teacher' || role === 'parent') {
@@ -36,6 +44,13 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'আপনি শুধু নিজের শিক্ষার্থী বা সন্তানের কাছে বার্তা পাঠাতে পারবেন।' }, { status: 403 })
             }
         }
+
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined
+        await audit('send_notification', auth.user.id, {
+            recipientCount: recipientIds.length,
+            type,
+            title,
+        }, ip)
 
         // Single notification
         if (typeof recipient_id === 'string') {

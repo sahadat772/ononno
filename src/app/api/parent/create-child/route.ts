@@ -1,37 +1,28 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/api-auth'
+import { CreateChildSchema, validateBody } from '@/lib/validation'
+import { audit } from '@/lib/audit'
+import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
 
 export async function POST(req: NextRequest) {
     try {
         const auth = await requireRole(['parent'])
         if ('error' in auth) return auth.error
 
+        const rateError = await rateLimit(`create-child:${auth.user.id}`, rateLimitDefaults.childCreate)
+        if (rateError) return rateError
+
+        const body = await validateBody(CreateChildSchema, req)
+        if (body instanceof NextResponse) return body
+
+        const { email, password, full_name, class_level, phone } = body
+
         const adminSupabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
-        const body = await req.json()
-        const {
-            email,
-            password,
-            full_name,
-            class_level,
-            phone,
-        } = body
 
-        if (!email || !password || !full_name || !class_level) {
-            return NextResponse.json(
-                { error: 'ইমেইল, পাসওয়ার্ড, নাম ও শ্রেণি দেওয়া প্রয়োজন।' },
-                { status: 400 }
-            )
-        }
-
-        if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || password.length < 8) {
-            return NextResponse.json({ error: 'সঠিক ইমেইল এবং কমপক্ষে ৮ অক্ষরের পাসওয়ার্ড দিন।' }, { status: 400 })
-        }
-
-        // Supabase Auth এ নতুন user বানাও
         const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
             email,
             password,
@@ -122,6 +113,13 @@ export async function POST(req: NextRequest) {
             body: `${full_name} এর account সফলভাবে তৈরি হয়েছে।`,
             is_read: false,
         })
+
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined
+        await audit('create_child', auth.user.id, {
+            newChildId: newUserId,
+            email,
+            class_level,
+        }, ip)
 
         return NextResponse.json({
             message: 'Child account created successfully',

@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
+import { requireRole } from '@/lib/api-auth'
+import { TraceVerifySchema, validateBody } from '@/lib/validation'
+import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
+import { audit } from '@/lib/audit'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 export async function POST(req: NextRequest) {
     try {
-        const { imageBase64, expectedLetter } = await req.json()
+        const auth = await requireRole(['student', 'teacher', 'parent', 'admin'])
+        if ('error' in auth) return auth.error
 
-        if (!imageBase64 || !expectedLetter) {
-            return NextResponse.json({ error: 'Missing data' }, { status: 400 })
-        }
+        const rateError = await rateLimit(`trace-verify:${auth.user.id}`, { ...rateLimitDefaults.adminAI, tokens: 50 })
+        if (rateError) return rateError
+
+        const body = await validateBody(TraceVerifySchema, req)
+        if (body instanceof NextResponse) return body
+
+        const { imageBase64, expectedLetter } = body
 
         const prompt = `তুমি একজন বাংলাদেশি শিশুদের শিক্ষক। একটা বাচ্চা "${expectedLetter}" লেখার চেষ্টা করেছে।
 
@@ -48,9 +57,7 @@ export async function POST(req: NextRequest) {
         })
 
         const rawAnswer = response.choices[0]?.message?.content || ''
-        console.log('Raw:', rawAnswer.slice(-100))
 
-        // thinking শেষ হওয়ার পর যা আসে সেটা নাও
         const afterThink = rawAnswer.includes('</think>')
             ? rawAnswer.split('</think>').pop() || ''
             : rawAnswer
@@ -60,16 +67,20 @@ export async function POST(req: NextRequest) {
             .toLowerCase()
             .trim()
 
-        console.log('Clean:', cleanAnswer)
-
         const isCorrect =
             cleanAnswer.includes('হ্যাঁ') ||
             cleanAnswer.includes('হা') ||
             cleanAnswer.startsWith('yes')
 
+        await audit('trace_verify', auth.user.id, {
+            expectedLetter,
+            payloadSize: imageBase64.length,
+            result: isCorrect ? 'yes' : 'no',
+        })
+
         return NextResponse.json({ isCorrect })
     } catch (e) {
         console.error('Trace verify error:', e)
-        return NextResponse.json({ isCorrect: false })
+        return NextResponse.json({ isCorrect: false }, { status: 500 })
     }
 }
