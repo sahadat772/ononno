@@ -1,0 +1,131 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/api-auth";
+import { validateBody, CreateCurriculumChapterSchema } from "@/lib/validation";
+import { audit } from "@/lib/audit";
+import { rateLimit, rateLimitDefaults } from "@/lib/rateLimiter";
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireRole(["admin"]);
+    if ("error" in auth) return auth.error;
+
+    const { searchParams } = new URL(req.url);
+    const subjectId = searchParams.get("subject_id");
+    const classId = searchParams.get("class_id");
+
+    let query = auth.supabase
+      .from("curriculum_chapters")
+      .select(
+        `
+                *,
+                curriculum_subjects(id, name, name_bn),
+                curriculum_classes(id, name)
+            `,
+      )
+      .eq("is_active", true)
+      .order("order_index", { ascending: true });
+
+    if (subjectId) query = query.eq("subject_id", subjectId);
+    if (classId) query = query.eq("class_id", classId);
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Chapters GET error:", error);
+      return NextResponse.json(
+        { error: "Chapter তালিকা আনা যায়নি।" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(data ?? []);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await requireRole(["admin"]);
+    if ("error" in auth) return auth.error;
+
+    const rateError = await rateLimit(
+      `admin-create-chapter:${auth.user.id}`,
+      rateLimitDefaults.adminAI,
+    );
+    if (rateError) return rateError;
+
+    const body = await validateBody(CreateCurriculumChapterSchema, req);
+    if (body instanceof NextResponse) return body;
+
+    const {
+      subjectId,
+      classId,
+      title,
+      titleBn,
+      slug,
+      description,
+      chapterNumber,
+      icon,
+      orderIndex,
+    } = body;
+
+    // Duplicate check
+    const { data: existing } = await auth.supabase
+      .from("curriculum_chapters")
+      .select("id")
+      .eq("subject_id", subjectId)
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "এই slug দিয়ে chapter আগে থেকেই আছে।" },
+        { status: 409 },
+      );
+    }
+
+    const { data, error } = await auth.supabase
+      .from("curriculum_chapters")
+      .insert({
+        subject_id: subjectId,
+        class_id: classId,
+        title,
+        title_bn: titleBn,
+        slug,
+        description,
+        chapter_number: chapterNumber ?? 1,
+        icon,
+        order_index: orderIndex ?? 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Chapter POST error:", error);
+      return NextResponse.json(
+        { error: "Chapter তৈরি করা যায়নি।" },
+        { status: 500 },
+      );
+    }
+
+    await audit("CREATE_CHAPTER", auth.user.id, {
+      title,
+      slug,
+      subjectId,
+      classId,
+    });
+
+    return NextResponse.json(data, { status: 201 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+}

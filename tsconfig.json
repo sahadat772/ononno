@@ -34,7 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+,     "src/data/curriculum/json/nctb/2026/class-1.json"  ],
   "exclude": [
     "node_modules"
   ]
