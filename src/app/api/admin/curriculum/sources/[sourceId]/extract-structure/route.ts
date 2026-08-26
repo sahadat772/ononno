@@ -25,24 +25,25 @@ interface ExtractedChapter {
  * POST /api/admin/curriculum/sources/[sourceId]/extract-structure
  *
  * Extract chapter/lesson structure from PDF with page mapping
- * 
+ *
  * Body:
  *   - start_page: number (optional, default 1)
  *   - end_page: number (optional, default all pages)
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ sourceId: string }> }
+  { params }: { params: Promise<{ sourceId: string }> },
 ) {
   const { sourceId } = await params;
 
-  try {
-    const auth = await requireRole(["admin"]);
-    if ("error" in auth) return auth.error;
+  // auth কে try-এর বাইরে রাখা — catch-এ ব্যবহারের জন্য
+  const auth = await requireRole(["admin"]);
+  if ("error" in auth) return auth.error;
 
+  try {
     const rateError = await rateLimit(
       `admin-extract-pdf:${auth.user.id}`,
-      rateLimitDefaults.adminAI
+      rateLimitDefaults.adminAI,
     );
     if (rateError) return rateError;
 
@@ -54,7 +55,7 @@ export async function POST(
         *,
         curriculum_classes(name),
         curriculum_subjects(name, name_bn)
-      `
+      `,
       )
       .eq("id", sourceId)
       .single();
@@ -62,7 +63,7 @@ export async function POST(
     if (sourceError || !source) {
       return NextResponse.json(
         { error: "PDF source পাওয়া যায়নি।" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -81,7 +82,7 @@ export async function POST(
         {
           error: `পেজ range invalid। পাওয়া যাচ্ছে: 1-${source.page_count || 100}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -93,7 +94,7 @@ export async function POST(
     if (!urlData?.signedUrl) {
       return NextResponse.json(
         { error: "PDF download URL তৈরি করা যায়নি।" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -137,7 +138,7 @@ export async function POST(
     // Call Gemini with PDF
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const response = await model.generateContent([
+    const result = await model.generateContent([
       {
         text: prompt,
       },
@@ -149,8 +150,7 @@ export async function POST(
       },
     ]);
 
-    const responseText =
-      response.content[0].type === "text" ? response.content[0].text : "";
+    const responseText = result.response.text();
 
     // Parse JSON response
     let extractedData: { chapters: ExtractedChapter[] };
@@ -160,7 +160,7 @@ export async function POST(
     } catch {
       return NextResponse.json(
         { error: "PDF থেকে structure extract করা যায়নি।" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -172,9 +172,10 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          error: "কোনো Chapter পাওয়া যায়নি। অন্য পেজ range দিয়ে চেষ্টা করুন।",
+          error:
+            "কোনো Chapter পাওয়া যায়নি। অন্য পেজ range দিয়ে চেষ্টা করুন।",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -187,7 +188,7 @@ export async function POST(
         total_chapters: extractedData.chapters.length,
         total_lessons: extractedData.chapters.reduce(
           (sum, ch) => sum + (ch.lessons?.length || 0),
-          0
+          0,
         ),
       })
       .eq("id", sourceId);
@@ -197,13 +198,14 @@ export async function POST(
       id: runId,
       source_id: sourceId,
       run_status: "completed",
-      extraction_type: endPage === (source.page_count || 100) ? "full" : "partial",
+      extraction_type:
+        endPage === (source.page_count || 100) ? "full" : "partial",
       start_page: startPage,
       end_page: endPage,
       chapters_found: extractedData.chapters.length,
       lessons_found: extractedData.chapters.reduce(
         (sum, ch) => sum + (ch.lessons?.length || 0),
-        0
+        0,
       ),
       created_by: auth.user.id,
       completed_at: new Date().toISOString(),
@@ -222,24 +224,28 @@ export async function POST(
       totalChapters: extractedData.chapters.length,
       totalLessons: extractedData.chapters.reduce(
         (sum, ch) => sum + (ch.lessons?.length || 0),
-        0
+        0,
       ),
     });
   } catch (error) {
     console.error("PDF extraction error:", error);
 
-    // Mark extraction as failed
-    await auth.supabase
-      .from("curriculum_sources")
-      .update({
-        source_status: "extraction_error",
-        last_error: String(error),
-      })
-      .eq("id", sourceId);
+    // Mark extraction as failed (auth এখন scope-এ আছে)
+    try {
+      await auth.supabase
+        .from("curriculum_sources")
+        .update({
+          source_status: "extraction_error",
+          last_error: String(error),
+        })
+        .eq("id", sourceId);
+    } catch (updateError) {
+      console.error("Failed to update source status:", updateError);
+    }
 
     return NextResponse.json(
       { error: "PDF extraction করা যায়নি। আবার চেষ্টা করুন।" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
