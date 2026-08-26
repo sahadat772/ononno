@@ -1,5 +1,2 @@
-﻿import { redirect } from "next/navigation";
-
-export default function VersionsPage() {
-  redirect("/dashboard/admin/curriculum");
-}
+import VersionsClient from "./VersionsClient";
+export default function VersionsPage() { return <VersionsClient />; }

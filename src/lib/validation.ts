@@ -292,3 +292,13 @@ export async function validateBody<T>(
 
   return result.data;
 }
+
+export const CreateCurriculumVersionSchema = z.object({
+  name: z.string().min(2).max(120),
+  slug: z.string().min(2).max(120).regex(/^[a-z0-9-]+$/),
+  year: z.number().int().min(2020).max(2100),
+  description: z.string().max(1000).optional(),
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  isActive: z.boolean().optional(),
+});
+export const UpdateCurriculumVersionSchema = CreateCurriculumVersionSchema.partial();

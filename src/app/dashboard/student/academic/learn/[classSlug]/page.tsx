@@ -9,7 +9,7 @@ import { useParams } from 'next/navigation'
 interface Subject {
     id: string
     name: string
-    name_en: string
+    name_bn: string
     icon: string
     color: string
     is_mandatory: boolean
@@ -20,13 +20,7 @@ interface ClassInfo {
     id: string
     name: string
     slug: string
-    level: string
-    sector_id: string
-    learning_sectors: {
-        name: string
-        slug: string
-        color: string
-    }
+    class_number: number
 }
 
 export default function ClassSubjectsPage() {
@@ -44,8 +38,8 @@ export default function ClassSubjectsPage() {
 
             // Class info আনো
             const { data: cls } = await supabase
-                .from('classes')
-                .select('*, learning_sectors(name, slug, color)')
+                .from('curriculum_classes')
+                .select('*')
                 .eq('slug', classSlug)
                 .single()
 
@@ -54,7 +48,7 @@ export default function ClassSubjectsPage() {
 
             // Subjects আনো
             const { data: subs } = await supabase
-                .from('class_subjects')
+                .from('curriculum_subjects')
                 .select('*')
                 .eq('class_id', cls.id)
                 .eq('is_active', true)
@@ -75,10 +69,7 @@ export default function ClassSubjectsPage() {
         'university': 'from-amber-400 to-yellow-500',
         'masters': 'from-indigo-400 to-blue-500',
     }
-
-    const sectorColor = classInfo?.learning_sectors?.slug
-        ? sectorColors[classInfo.learning_sectors.slug]
-        : 'from-blue-400 to-cyan-500'
+    const sectorColor = 'from-blue-400 to-cyan-500'
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
@@ -101,7 +92,7 @@ export default function ClassSubjectsPage() {
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
                                     <p className="text-gray-400 text-sm mb-1">
-                                        {classInfo.learning_sectors?.name}
+                                        NCTB Curriculum
                                     </p>
                                     <h1 className={`text-3xl font-bold bg-linear-to-r ${sectorColor} bg-clip-text text-transparent`}>
                                         {classInfo.name}
@@ -109,11 +100,7 @@ export default function ClassSubjectsPage() {
                                     <p className="text-gray-400 mt-1">{subjects.length}টি বিষয়</p>
                                 </div>
                                 <div className="text-6xl">
-                                    {classInfo.learning_sectors?.slug === 'kids-zone' ? '🧒' :
-                                        classInfo.learning_sectors?.slug === 'primary' ? '📚' :
-                                            classInfo.learning_sectors?.slug === 'high-school' ? '🏫' :
-                                                classInfo.learning_sectors?.slug === 'secondary' ? '🎯' :
-                                                    classInfo.learning_sectors?.slug === 'hsc' ? '🏛️' : '🎓'}
+                                    📚
                                 </div>
                             </div>
 
@@ -223,9 +210,9 @@ function SubjectCard({
 
                     {/* Name */}
                     <h3 className="font-bold text-white text-lg mb-0.5 group-hover:text-blue-400 transition-colors">
-                        {subject.name}
+                        {subject.name_bn || subject.name}
                     </h3>
-                    <p className="text-gray-500 text-sm mb-3">{subject.name_en}</p>
+                    <p className="text-gray-500 text-sm mb-3">{subject.name}</p>
 
                     {/* Progress Bar */}
                     <div className="w-full bg-white/10 rounded-full h-2 mb-3">
@@ -245,3 +232,6 @@ function SubjectCard({
         </motion.div>
     )
 }
+
+
+

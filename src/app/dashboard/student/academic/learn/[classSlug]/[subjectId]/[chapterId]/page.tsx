@@ -64,7 +64,7 @@ export default function LessonListPage() {
 
             // Chapter আনো
             const { data: chap } = await supabase
-                .from('chapters')
+                .from('curriculum_chapters')
                 .select('*')
                 .eq('id', chapterId)
                 .single()
@@ -72,10 +72,12 @@ export default function LessonListPage() {
 
             // Lessons আনো
             const { data: lsns } = await supabase
-                .from('class_lessons')
+                .from('curriculum_lessons')
                 .select('*')
                 .eq('chapter_id', chapterId)
                 .eq('is_active', true)
+                .eq('workflow_status', 'published')
+                .eq('is_published', true)
                 .order('order_index')
             if (lsns) setLessons(lsns)
 
@@ -318,3 +320,4 @@ export default function LessonListPage() {
         </div>
     )
 }
+

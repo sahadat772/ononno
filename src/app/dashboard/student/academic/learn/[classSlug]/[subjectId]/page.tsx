@@ -46,7 +46,7 @@ export default function ChapterListPage() {
 
             // Subject আনো
             const { data: sub } = await supabase
-                .from('class_subjects')
+                .from('curriculum_subjects')
                 .select('*')
                 .eq('id', subjectId)
                 .single()
@@ -54,10 +54,11 @@ export default function ChapterListPage() {
 
             // Chapters আনো
             const { data: chaps } = await supabase
-                .from('chapters')
+                .from('curriculum_chapters')
                 .select('*')
                 .eq('subject_id', subjectId)
                 .eq('is_active', true)
+                .eq('workflow_status', 'published')
                 .order('order_index')
             if (chaps) setChapters(chaps)
 
@@ -294,3 +295,4 @@ export default function ChapterListPage() {
         </div>
     )
 }
+

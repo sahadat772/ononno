@@ -52,11 +52,12 @@ export default function LessonContentPage() {
         const fetchLesson = async () => {
             const supabase = createClient()
             const { data } = await supabase
-                .from('class_lessons')
-                .select('*')
+                .from('curriculum_lessons')
+                .select('*, lesson_contents(main_content, overview, ai_explanation)')
                 .eq('id', lessonId)
+                .eq('is_published', true)
                 .single()
-            if (data) setLesson(data)
+            if (data) { const stored = data.lesson_contents as { main_content?: string; overview?: string; ai_explanation?: string } | null; setLesson({ ...data, lesson_type: "text", content: [stored?.overview, stored?.main_content, stored?.ai_explanation].filter(Boolean).join("\\n\\n") }); }
             setLoading(false)
         }
         fetchLesson()

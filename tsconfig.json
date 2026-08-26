@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2020",
     "lib": [
       "dom",
       "dom.iterable",
@@ -33,8 +33,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
-,     "src/data/curriculum/json/nctb/2026/class-1.json"  ],
+    ".next/dev/types/**/*.ts",
+    "src/data/curriculum/json/nctb/2026/class-1.json"  ],
   "exclude": [
     "node_modules"
   ]

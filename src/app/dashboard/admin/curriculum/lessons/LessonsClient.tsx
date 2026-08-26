@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { BookOpen, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Trash2, Zap } from 'lucide-react'
+import { BookOpen, CheckCircle2, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Send, Trash2, WandSparkles, Zap } from 'lucide-react'
 import AddLessonModal from './AddLessonModal'
 import EditLessonModal from './EditLessonModal'
 import DeleteLessonModal from './DeleteLessonModal'
@@ -26,6 +26,7 @@ type CurriculumLesson = {
     is_published: boolean
     is_active: boolean
     order_index: number
+    workflow_status?: "draft" | "extracted" | "reviewed" | "generating" | "generated" | "approved" | "published" | "archived"
     curriculum_chapters?: { id: string; title: string; title_bn: string } | null
     curriculum_subjects?: { id: string; name: string; name_bn: string } | null
     curriculum_classes?: { id: string; name: string; class_number: number } | null
@@ -38,9 +39,9 @@ type Props = {
     classes: CurriculumClass[]
 }
 
-function ActionButton({ label, children, danger, onClick }: { label: string; children: React.ReactNode; danger?: boolean; onClick?: () => void }) {
+function ActionButton({ label, children, danger, onClick, disabled }: { label: string; children: React.ReactNode; danger?: boolean; onClick?: () => void; disabled?: boolean }) {
     return (
-        <button type="button" aria-label={label} title={label} onClick={onClick}
+        <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled}
             className={`grid size-8 place-items-center rounded-full border transition ${danger
                 ? 'border-rose-500/35 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
                 : 'border-slate-600 bg-slate-800/70 text-slate-200 hover:border-violet-400 hover:text-white'
@@ -99,6 +100,7 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
     const [filterSubject, setFilterSubject] = useState('')
     const [filterChapter, setFilterChapter] = useState('')
     const [filterStatus, setFilterStatus] = useState('')
+    const [workflowBusy, setWorkflowBusy] = useState<string | null>(null)
 
     const filteredSubjects = useMemo(() =>
         !filterClass ? subjects : subjects.filter(s => s.class_id === filterClass),
@@ -133,6 +135,16 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
 
     const openEdit = (item: CurriculumLesson) => { setSelectedLesson(item); setEditOpen(true) }
     const openDelete = (item: CurriculumLesson) => { setSelectedLesson(item); setDeleteOpen(true) }
+    const runWorkflow = async (item: CurriculumLesson, action: "review" | "generate" | "approve" | "publish") => {
+        setWorkflowBusy(`${item.id}:${action}`)
+        try {
+            const response = await fetch(`/api/admin/curriculum/lessons/${item.id}/${action === "generate" ? "generate" : "workflow"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: action === "generate" ? undefined : JSON.stringify({ action }) })
+            const data = await response.json()
+            if (!response.ok) throw new Error(data.error ?? "Workflow update করা যায়নি।")
+            window.location.reload()
+        } catch (error) { window.alert(error instanceof Error ? error.message : "Workflow update করা যায়নি।") }
+        finally { setWorkflowBusy(null) }
+    }
 
     return (
         <main className="min-h-screen bg-[#030711] px-3 py-5 text-slate-100 sm:px-6 lg:px-8">
@@ -267,12 +279,12 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                 <Status active={item.is_active} published={item.is_published} />
                                 {/* Actions */}
                                 <div className="flex gap-2">
-                                    <ActionButton label="Edit lesson" onClick={() => openEdit(item)}>
-                                        <Pencil className="size-3.5" />
-                                    </ActionButton>
-                                    <ActionButton label="Delete lesson" danger onClick={() => openDelete(item)}>
-                                        <Trash2 className="size-3.5" />
-                                    </ActionButton>
+                                    {item.workflow_status === "extracted" && <ActionButton label="Mark lesson reviewed" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, "review")}><CheckCircle2 className="size-3.5" /></ActionButton>}
+                                    {item.workflow_status === "reviewed" && <ActionButton label="Generate lesson draft" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, "generate")}><WandSparkles className="size-3.5" /></ActionButton>}
+                                    {item.workflow_status === "generated" && <ActionButton label="Approve lesson" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, "approve")}><CheckCircle2 className="size-3.5" /></ActionButton>}
+                                    {item.workflow_status === "approved" && <ActionButton label="Publish lesson" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, "publish")}><Send className="size-3.5" /></ActionButton>}
+                                    <ActionButton label="Edit lesson" onClick={() => openEdit(item)}><Pencil className="size-3.5" /></ActionButton>
+                                    <ActionButton label="Delete lesson" danger onClick={() => openDelete(item)}><Trash2 className="size-3.5" /></ActionButton>
                                 </div>
                             </article>
                         ))}
@@ -328,3 +340,15 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
         </main>
     )
 }
+
+
+
+
+
+
+
+
+
+
+
+
