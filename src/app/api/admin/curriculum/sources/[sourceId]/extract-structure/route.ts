@@ -1,42 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireRole } from "@/lib/api-auth";
 import { rateLimit, rateLimitDefaults } from "@/lib/rateLimiter";
 import { audit } from "@/lib/audit";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  extractStructureFromGemini,
+  uploadPdfToGemini,
+} from "@/lib/curriculum-import";
+import { createSupabaseCurriculumStorage } from "@/lib/storage";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+const ExtractStructureBodySchema = z.object({
+  start_page: z.number().int().min(1).optional(),
+  end_page: z.number().int().min(1).optional(),
+});
 
-interface ExtractedLesson {
-  title: string;
-  title_bn: string;
-  page_start: number;
-  page_end: number;
-}
+type RouteContext = { params: Promise<{ sourceId: string }> };
 
-interface ExtractedChapter {
-  title: string;
-  title_bn: string;
-  page_start: number;
-  page_end: number;
-  lessons: ExtractedLesson[];
-}
-
-/**
- * POST /api/admin/curriculum/sources/[sourceId]/extract-structure
- *
- * Extract chapter/lesson structure from PDF with page mapping
- *
- * Body:
- *   - start_page: number (optional, default 1)
- *   - end_page: number (optional, default all pages)
- */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ sourceId: string }> },
-) {
-  const { sourceId } = await params;
-
-  // auth কে try-এর বাইরে রাখা — catch-এ ব্যবহারের জন্য
+export async function POST(req: NextRequest, context: RouteContext) {
+  const { sourceId } = await context.params;
   const auth = await requireRole(["admin"]);
   if ("error" in auth) return auth.error;
 
@@ -47,166 +28,119 @@ export async function POST(
     );
     if (rateError) return rateError;
 
-    // Get PDF source metadata
+    if (!z.string().uuid().safeParse(sourceId).success) {
+      return NextResponse.json(
+        { error: "SOURCE_NOT_FOUND", message: "Invalid source id." },
+        { status: 400 },
+      );
+    }
+
+    const rawBody = await req.json().catch(() => ({}));
+    const parsedBody = ExtractStructureBodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PAGE_RANGE",
+          message: parsedBody.error.issues.map((i) => i.message).join(" "),
+        },
+        { status: 400 },
+      );
+    }
+
     const { data: source, error: sourceError } = await auth.supabase
       .from("curriculum_sources")
-      .select(
-        `
-        *,
-        curriculum_classes(name),
-        curriculum_subjects(name, name_bn)
-      `,
-      )
+      .select(`*, curriculum_classes(name), curriculum_subjects(name, name_bn)`)
       .eq("id", sourceId)
       .single();
 
     if (sourceError || !source) {
       return NextResponse.json(
-        { error: "PDF source পাওয়া যায়নি।" },
+        { error: "SOURCE_NOT_FOUND", message: "PDF source পাওয়া যায়নি।" },
         { status: 404 },
       );
     }
 
-    // Parse request body
-    const body = await req.json().catch(() => ({}));
-    const startPage = body.start_page || 1;
-    const endPage = body.end_page || source.page_count || 100;
+    const startPage = parsedBody.data.start_page ?? 1;
+    const maxPage = source.page_count ?? 500;
+    const endPage = parsedBody.data.end_page ?? maxPage;
 
-    // Validate page range
-    if (
-      startPage < 1 ||
-      endPage < startPage ||
-      endPage > (source.page_count || 100)
-    ) {
+    if (startPage < 1 || endPage < startPage || endPage > maxPage) {
       return NextResponse.json(
         {
-          error: `পেজ range invalid। পাওয়া যাচ্ছে: 1-${source.page_count || 100}`,
+          error: "INVALID_PAGE_RANGE",
+          message: `পেজ range invalid। অনুমোদিত: 1-${maxPage}`,
         },
         { status: 400 },
       );
     }
 
-    // Get signed URL for private PDF
-    const { data: urlData } = await auth.supabase.storage
-      .from("curriculum-pdfs")
-      .createSignedUrl(source.storage_path, 3600); // 1 hour expiry
+    await auth.supabase
+      .from("curriculum_sources")
+      .update({ source_status: "extracting", extraction_error: null })
+      .eq("id", sourceId);
 
-    if (!urlData?.signedUrl) {
-      return NextResponse.json(
-        { error: "PDF download URL তৈরি করা যায়নি।" },
-        { status: 500 },
-      );
+    const storage = createSupabaseCurriculumStorage(auth.supabase);
+    let fileUri = source.gemini_file_uri as string | null;
+    let fileName = source.gemini_file_name as string | null;
+
+    if (!fileUri) {
+      const pdfBlob = await storage.download(source.storage_path);
+      const geminiFile = await uploadPdfToGemini({
+        pdf: pdfBlob,
+        displayName: source.file_name ?? source.title ?? "curriculum.pdf",
+      });
+      fileUri = geminiFile.uri!;
+      fileName = geminiFile.name ?? null;
+      await auth.supabase
+        .from("curriculum_sources")
+        .update({ gemini_file_uri: fileUri, gemini_file_name: fileName })
+        .eq("id", sourceId);
     }
 
-    // Create extraction run record
+    const className =
+      (source.curriculum_classes as { name?: string } | null)?.name ?? "Class";
+    const subjectName =
+      (source.curriculum_subjects as { name_bn?: string; name?: string } | null)
+        ?.name_bn ??
+      (source.curriculum_subjects as { name?: string } | null)?.name ??
+      "Subject";
+
+    const structure = await extractStructureFromGemini({
+      fileUri,
+      mimeType: source.mime_type ?? "application/pdf",
+      className,
+      subjectName,
+      startPage,
+      endPage,
+    });
+
     const runId = crypto.randomUUID();
+    const totalLessons = structure.totalLessons;
 
-    // Gemini extraction prompt
-    const prompt = `আপনি NCTB curriculum বিশ্লেষণে দক্ষ।
-
-এই PDF-টি "${source.curriculum_subjects.name_bn}" বিষয়ের "${source.curriculum_classes.name}" শ্রেণীর পাঠ্যবই।
-
-পৃষ্ঠা ${startPage}-${endPage} থেকে সব Chapter এবং Lesson বের করুন। প্রতিটি lesson-এর পৃষ্ঠা নাম্বার রাখুন।
-
-নিয়ম:
-1. প্রতিটি Chapter-এ lesson list সাজান।
-2. Lesson order preserve করুন।
-3. Page numbers অবশ্যই থাকবে (start_page, end_page)।
-4. বাংলা নাম exact রাখুন।
-5. English transliteration ব্যবহার করুন।
-
-শুধুমাত্র JSON format-এ উত্তর দিন:
-{
-  "chapters": [
-    {
-      "title": "Chapter English",
-      "title_bn": "অধ্যায় বাংলা",
-      "page_start": 2,
-      "page_end": 25,
-      "lessons": [
-        {
-          "title": "Lesson English",
-          "title_bn": "পাঠ বাংলা",
-          "page_start": 2,
-          "page_end": 8
-        }
-      ]
-    }
-  ]
-}`;
-
-    // Call Gemini with PDF
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const result = await model.generateContent([
-      {
-        text: prompt,
-      },
-      {
-        fileData: {
-          mimeType: "application/pdf",
-          fileUri: urlData.signedUrl,
-        },
-      },
-    ]);
-
-    const responseText = result.response.text();
-
-    // Parse JSON response
-    let extractedData: { chapters: ExtractedChapter[] };
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      extractedData = JSON.parse(jsonMatch?.[0] || responseText);
-    } catch {
-      return NextResponse.json(
-        { error: "PDF থেকে structure extract করা যায়নি।" },
-        { status: 500 },
-      );
-    }
-
-    // Validate extracted data
-    if (
-      !extractedData.chapters ||
-      !Array.isArray(extractedData.chapters) ||
-      extractedData.chapters.length === 0
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "কোনো Chapter পাওয়া যায়নি। অন্য পেজ range দিয়ে চেষ্টা করুন।",
-        },
-        { status: 400 },
-      );
-    }
-
-    // Update source status
     await auth.supabase
       .from("curriculum_sources")
       .update({
         source_status: "extracted",
+        workflow_status: "extracted",
         extraction_run_id: runId,
-        total_chapters: extractedData.chapters.length,
-        total_lessons: extractedData.chapters.reduce(
-          (sum, ch) => sum + (ch.lessons?.length || 0),
-          0,
-        ),
+        total_chapters: structure.chapters.length,
+        total_lessons: totalLessons,
+        extracted_structure: structure,
+        extraction_error: null,
+        last_error: null,
       })
       .eq("id", sourceId);
 
-    // Save extraction run
     await auth.supabase.from("curriculum_extraction_runs").insert({
       id: runId,
       source_id: sourceId,
       run_status: "completed",
       extraction_type:
-        endPage === (source.page_count || 100) ? "full" : "partial",
+        endPage === maxPage && startPage === 1 ? "full" : "partial",
       start_page: startPage,
       end_page: endPage,
-      chapters_found: extractedData.chapters.length,
-      lessons_found: extractedData.chapters.reduce(
-        (sum, ch) => sum + (ch.lessons?.length || 0),
-        0,
-      ),
+      chapters_found: structure.chapters.length,
+      lessons_found: totalLessons,
       created_by: auth.user.id,
       completed_at: new Date().toISOString(),
     });
@@ -214,38 +148,63 @@ export async function POST(
     await audit("EXTRACT_PDF_STRUCTURE", auth.user.id, {
       sourceId,
       pages: `${startPage}-${endPage}`,
-      chaptersFound: extractedData.chapters.length,
+      chaptersFound: structure.chapters.length,
+      lessonsFound: totalLessons,
     });
 
     return NextResponse.json({
       sourceId,
       runId,
-      chapters: extractedData.chapters,
-      totalChapters: extractedData.chapters.length,
-      totalLessons: extractedData.chapters.reduce(
-        (sum, ch) => sum + (ch.lessons?.length || 0),
-        0,
-      ),
+      structure,
+      chapters: structure.chapters.map((ch) => ({
+        title: ch.title,
+        title_bn: ch.titleBn,
+        page_start: ch.pageStart,
+        page_end: ch.pageEnd,
+        lessons: ch.lessons.map((ls) => ({
+          title: ls.title,
+          title_bn: ls.titleBn,
+          page_start: ls.pageStart,
+          page_end: ls.pageEnd,
+        })),
+      })),
+      totalChapters: structure.chapters.length,
+      totalLessons,
+      sourceConfidence: structure.sourceConfidence,
     });
   } catch (error) {
+    const code =
+      error instanceof Error ? error.message : "PDF_PROCESSING_FAILED";
+    const known = [
+      "INVALID_AI_JSON",
+      "STRUCTURE_VALIDATION_FAILED",
+      "GEMINI_CONFIGURATION_ERROR",
+      "GEMINI_REQUEST_FAILED",
+      "PDF_PROCESSING_FAILED",
+      "PDF_NOT_FOUND",
+    ];
+    const errorCode = known.includes(code) ? code : "PDF_PROCESSING_FAILED";
     console.error("PDF extraction error:", error);
-
-    // Mark extraction as failed (auth এখন scope-এ আছে)
     try {
       await auth.supabase
         .from("curriculum_sources")
         .update({
           source_status: "extraction_error",
-          last_error: String(error),
+          last_error: errorCode,
+          extraction_error: errorCode,
         })
         .eq("id", sourceId);
     } catch (updateError) {
       console.error("Failed to update source status:", updateError);
     }
-
+    const status =
+      errorCode === "INVALID_AI_JSON" ||
+      errorCode === "STRUCTURE_VALIDATION_FAILED"
+        ? 422
+        : 500;
     return NextResponse.json(
-      { error: "PDF extraction করা যায়নি। আবার চেষ্টা করুন।" },
-      { status: 500 },
+      { error: errorCode, message: "PDF structure extract করা যায়নি।" },
+      { status },
     );
   }
 }
