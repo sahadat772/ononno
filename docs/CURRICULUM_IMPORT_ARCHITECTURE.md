@@ -1,39 +1,35 @@
-# Curriculum Import Architecture
+# Curriculum Import Architecture (Phase 1 reconciled)
 
-## Source of truth
+## Canonical table
+`curriculum_sources` is the only curriculum PDF source table.
 
-`Curriculum Version → Class → Subject → Chapter → Lesson` is the authoritative curriculum hierarchy.
-`curriculum_sources` is the source layer. It records the original NCTB PDF without turning the PDF itself into a lesson.
+## Canonical API
+| Method | Path | Role |
+|--------|------|------|
+| GET/POST | `/api/admin/curriculum/sources` | Upload + list (canonical) |
+| POST | `/api/admin/curriculum/sources/[sourceId]/extract-structure` | Incremental structure extract |
+| POST | `/api/admin/curriculum/sources/[sourceId]/commit-structure` | Commit chapters/lessons |
+| POST | `/api/admin/curriculum/lessons/[id]/generate` | Study draft (reviewed only) |
+| POST | `/api/admin/curriculum/lessons/[id]/workflow` | review / approve / publish |
 
-## Controlled workflow
+`/api/admin/curriculum/pdf-sources` is **deprecated compatibility**.
 
-1. Admin uploads one official PDF to the `curriculum-pdfs` Storage bucket.
-2. The application creates a `curriculum_sources` record.
-3. Gemini Files API receives a reusable copy of the PDF and returns only the table-of-contents structure: chapter, lesson and page ranges.
-4. The structure is previewed in the admin workbench.
-5. Admin saves it as an `extracted` review draft. This creates chapter and lesson records, still unpublished.
-6. Admin reviews/edit records in the CMS.
-7. Each lesson is generated and approved individually before publication.
+## Page range mapping
+Application: `page_start` / `page_end`  
+DB dual-write: also `source_page_start` / `source_page_end`  
+Helpers: `src/lib/page-fields.ts`
 
-AI must never directly publish curriculum content. The source layer remains separate from learning content so that NCTB fact mapping can always be audited.
+## Gemini standard
+- SDK: `@google/genai` only
+- Key: `GEMINI_API_KEY` only
+- Client: `src/lib/gemini.ts`
+- Model: `gemini-2.5-flash`
 
-## Workflow states
+## Storage abstraction
+`src/lib/storage/` — Supabase provider active; Google Drive future.
 
-`draft → extracted → reviewed → generating → generated → approved → published`
+## Upload integrity
+SHA-256 → `content_hash`. Duplicate → 409 `DUPLICATE_SOURCE`.
 
-Only `published` records may be exposed to learners. `extracted` is a review state, not a student-visible state.
-
-## Operational prerequisites
-
-- Apply `supabase/migrations/20260816_curriculum_import_pipeline.sql` to the target Supabase project.
-- Create the `curriculum-pdfs` Storage bucket and use private access in production; the server route downloads the object and sends it to Gemini.
-- Configure `GEMINI_API_KEY` server-side only.
-- Gemini Files API copies are short-lived. The database persists the source PDF in Supabase Storage and caches the Gemini file URI only for reuse.
-- Add a background job/queue before processing large volumes. The current route is intentionally synchronous for a single-admin working model.
-
-## Safety rules
-
-- Extract only titles and page mapping that are supported by the uploaded source.
-- Keep source page ranges on chapter/lesson records.
-- Treat AI teaching content as a draft; retain source references and require admin approval.
-- Do not use public storage URLs for private textbook material unless licensing permits it.
+## Migration
+`supabase/migrations/20260829_curriculum_schema_reconciliation.sql` (additive only)
