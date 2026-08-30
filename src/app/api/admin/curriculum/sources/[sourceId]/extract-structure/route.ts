@@ -7,7 +7,7 @@ import {
   extractStructureFromGemini,
   uploadPdfToGemini,
 } from "@/lib/curriculum-import";
-import { createSupabaseCurriculumStorage } from "@/lib/storage";
+import { createCurriculumStorage } from "@/lib/storage";
 
 const ExtractStructureBodySchema = z.object({
   start_page: z.number().int().min(1).optional(),
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       .update({ source_status: "extracting", extraction_error: null })
       .eq("id", sourceId);
 
-    const storage = createSupabaseCurriculumStorage(auth.supabase);
+    const storage = createCurriculumStorage(auth.supabase);
     let fileUri = source.gemini_file_uri as string | null;
     let fileName = source.gemini_file_name as string | null;
 
@@ -182,6 +182,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       "GEMINI_REQUEST_FAILED",
       "PDF_PROCESSING_FAILED",
       "PDF_NOT_FOUND",
+      "STORAGE_NOT_FOUND",
     ];
     const errorCode = known.includes(code) ? code : "PDF_PROCESSING_FAILED";
     console.error("PDF extraction error:", error);
