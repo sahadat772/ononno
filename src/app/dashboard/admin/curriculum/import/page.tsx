@@ -2,10 +2,8 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import PdfPipelineClient from "./PdfPipelineClient";
 
 /**
- * Curriculum import — blueprint pipeline only:
- * PDF → Structure → Chapter → Lesson → Study → Review → Publish
- *
- * Legacy syllabus-image ImportClient intentionally not mounted.
+ * Curriculum import — catalog first (no PDF upload UI).
+ * Class → Subject → existing source → Structure → Commit → Lessons AI
  */
 export default async function ImportPage() {
   const supabase = await createServerSupabaseClient();
@@ -25,10 +23,10 @@ export default async function ImportPage() {
       supabase
         .from("curriculum_sources")
         .select(
-          "id, title, file_name, source_status, workflow_status, extracted_structure",
+          "id, title, file_name, class_id, subject_id, storage_path, storage_provider, source_status, workflow_status, extracted_structure",
         )
         .order("created_at", { ascending: false })
-        .limit(20),
+        .limit(50),
     ]);
 
   return (
