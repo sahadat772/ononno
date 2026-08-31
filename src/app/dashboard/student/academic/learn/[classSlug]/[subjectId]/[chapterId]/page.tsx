@@ -9,7 +9,8 @@ import { useParams } from 'next/navigation'
 interface Lesson {
     id: string
     title: string
-    lesson_type: string
+    title_bn?: string
+    lesson_type?: string
     duration_minutes: number
     xp_reward: number
     order_index: number
@@ -18,6 +19,7 @@ interface Lesson {
 interface Chapter {
     id: string
     title: string
+    title_bn?: string
     chapter_number: number
 }
 
@@ -62,7 +64,6 @@ export default function LessonListPage() {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
 
-            // Chapter আনো
             const { data: chap } = await supabase
                 .from('curriculum_chapters')
                 .select('*')
@@ -70,18 +71,16 @@ export default function LessonListPage() {
                 .single()
             if (chap) setChapter(chap)
 
-            // Lessons আনো
+            // Student sees published lessons only (is_published is source of truth)
             const { data: lsns } = await supabase
                 .from('curriculum_lessons')
                 .select('*')
                 .eq('chapter_id', chapterId)
                 .eq('is_active', true)
-                .eq('workflow_status', 'published')
                 .eq('is_published', true)
                 .order('order_index')
             if (lsns) setLessons(lsns)
 
-            // Progress আনো
             if (user) {
                 const { data: prog } = await supabase
                     .from('learning_progress')
@@ -113,7 +112,6 @@ export default function LessonListPage() {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white">
-            {/* Header */}
             <div className="sticky top-0 z-40 bg-[#0a0a1a]/90 backdrop-blur-xl border-b border-white/10 px-4 py-3">
                 <div className="max-w-2xl mx-auto flex items-center justify-between">
                     <Link
@@ -131,7 +129,6 @@ export default function LessonListPage() {
             </div>
 
             <div className="max-w-2xl mx-auto px-4 py-8">
-                {/* Chapter Header */}
                 {chapter && (
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
@@ -140,9 +137,8 @@ export default function LessonListPage() {
                     >
                         <div className="rounded-3xl bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-6">
                             <p className="text-gray-400 text-sm mb-1">অধ্যায় {chapter.chapter_number}</p>
-                            <h1 className="text-2xl font-bold text-white mb-4">{chapter.title}</h1>
+                            <h1 className="text-2xl font-bold text-white mb-4">{chapter.title_bn || chapter.title}</h1>
 
-                            {/* Stats */}
                             <div className="grid grid-cols-3 gap-3">
                                 {[
                                     { label: 'মোট lesson', value: lessons.length, icon: '📚' },
@@ -157,7 +153,6 @@ export default function LessonListPage() {
                                 ))}
                             </div>
 
-                            {/* Overall Progress */}
                             <div className="mt-4">
                                 <div className="flex justify-between text-xs text-gray-400 mb-1">
                                     <span>অগ্রগতি</span>
@@ -176,7 +171,6 @@ export default function LessonListPage() {
                     </motion.div>
                 )}
 
-                {/* Lessons — Duolingo Style */}
                 {loading ? (
                     <div className="space-y-4">
                         {[...Array(5)].map((_, i) => (
@@ -187,7 +181,7 @@ export default function LessonListPage() {
                     <div className="text-center py-16">
                         <div className="text-6xl mb-4">📝</div>
                         <h3 className="text-white font-bold text-xl mb-2">Lesson শীঘ্রই আসছে</h3>
-                        <p className="text-gray-400 text-sm">Admin এখনো lesson যোগ করেননি</p>
+                        <p className="text-gray-400 text-sm">Admin এখনো এই অধ্যায়ে published lesson নেই</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -196,6 +190,7 @@ export default function LessonListPage() {
                             const unlocked = isLessonUnlocked(index)
                             const completed = lessonProg?.status === 'completed'
                             const inProgress = lessonProg?.status === 'in_progress'
+                            const typeKey = lesson.lesson_type || 'text'
 
                             return (
                                 <motion.div
@@ -222,7 +217,6 @@ export default function LessonListPage() {
                                                             : 'border-white/10 bg-white/5 cursor-pointer hover:bg-white/10'
                                                 }`}
                                         >
-                                            {/* Status Icon */}
                                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${!unlocked
                                                     ? 'bg-white/5'
                                                     : completed
@@ -231,17 +225,16 @@ export default function LessonListPage() {
                                                             ? 'bg-blue-500/20'
                                                             : 'bg-white/10'
                                                 }`}>
-                                                {!unlocked ? '🔒' : completed ? '⭐' : lessonTypeIcons[lesson.lesson_type] || '📖'}
+                                                {!unlocked ? '🔒' : completed ? '⭐' : lessonTypeIcons[typeKey] || '📖'}
                                             </div>
 
-                                            {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${completed
                                                             ? 'bg-emerald-500/20 text-emerald-400'
                                                             : 'bg-white/10 text-gray-400'
                                                         }`}>
-                                                        {lessonTypeLabels[lesson.lesson_type] || 'পাঠ'}
+                                                        {lessonTypeLabels[typeKey] || 'পাঠ'}
                                                     </span>
                                                     {completed && lessonProg?.score && (
                                                         <span className="text-xs text-amber-400">
@@ -250,7 +243,7 @@ export default function LessonListPage() {
                                                     )}
                                                 </div>
                                                 <h3 className={`font-bold ${!unlocked ? 'text-gray-600' : 'text-white'}`}>
-                                                    {lesson.title}
+                                                    {lesson.title_bn || lesson.title}
                                                 </h3>
                                                 <div className="flex items-center gap-3 mt-1">
                                                     <span className="text-xs text-gray-500">
@@ -262,7 +255,6 @@ export default function LessonListPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Arrow/Status */}
                                             {unlocked && (
                                                 <div className="flex-shrink-0">
                                                     {completed ? (
@@ -277,47 +269,9 @@ export default function LessonListPage() {
                                 </motion.div>
                             )
                         })}
-
-                        {/* Revision & Exam at the end */}
-                        {completedCount === lessons.length && lessons.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="mt-6 space-y-3"
-                            >
-                                {/* Revision */}
-                                <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/revision`}>
-                                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-center gap-4 cursor-pointer hover:bg-amber-500/20 transition-all">
-                                        <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center text-2xl">
-                                            🔄
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-white">রিভিশন</h3>
-                                            <p className="text-amber-300/70 text-sm">সব lesson এর সারসংক্ষেপ</p>
-                                        </div>
-                                        <span className="text-amber-400">→</span>
-                                    </div>
-                                </Link>
-
-                                {/* Chapter Exam */}
-                                <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/exam`}>
-                                    <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center gap-4 cursor-pointer hover:bg-rose-500/20 transition-all">
-                                        <div className="w-14 h-14 rounded-2xl bg-rose-500/20 flex items-center justify-center text-2xl">
-                                            📝
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-white">অধ্যায় পরীক্ষা</h3>
-                                            <p className="text-rose-300/70 text-sm">এই অধ্যায়ের পরীক্ষা দাও</p>
-                                        </div>
-                                        <span className="text-rose-400">→</span>
-                                    </div>
-                                </Link>
-                            </motion.div>
-                        )}
                     </div>
                 )}
             </div>
         </div>
     )
 }
-
