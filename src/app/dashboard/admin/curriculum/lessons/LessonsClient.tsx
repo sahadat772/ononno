@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { BookOpen, CheckCircle2, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Send, Trash2, WandSparkles, Zap } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, BookOpen, CheckCircle2, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Send, Trash2, WandSparkles, Zap } from 'lucide-react'
 import AddLessonModal from './AddLessonModal'
 import EditLessonModal from './EditLessonModal'
 import DeleteLessonModal from './DeleteLessonModal'
@@ -42,7 +43,7 @@ type Props = {
 function ActionButton({ label, children, danger, onClick, disabled }: { label: string; children: React.ReactNode; danger?: boolean; onClick?: () => void; disabled?: boolean }) {
     return (
         <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled}
-            className={`grid size-8 place-items-center rounded-full border transition ${danger
+            className={`grid size-8 place-items-center rounded-full border transition disabled:opacity-40 ${danger
                 ? 'border-rose-500/35 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
                 : 'border-slate-600 bg-slate-800/70 text-slate-200 hover:border-violet-400 hover:text-white'
                 }`}>
@@ -51,20 +52,21 @@ function ActionButton({ label, children, danger, onClick, disabled }: { label: s
     )
 }
 
-function Status({ active, published }: { active: boolean; published: boolean }) {
-    if (!active) return (
-        <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold bg-slate-500/15 text-slate-400">
-            Inactive
-        </span>
-    )
-    if (published) return (
-        <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold bg-emerald-400/10 text-emerald-300">
-            Published
-        </span>
-    )
+function WorkflowBadge({ status }: { status?: string }) {
+    const map: Record<string, string> = {
+        draft: 'bg-slate-500/15 text-slate-300',
+        extracted: 'bg-sky-400/10 text-sky-300',
+        reviewed: 'bg-violet-400/10 text-violet-300',
+        generating: 'bg-amber-400/10 text-amber-300',
+        generated: 'bg-cyan-400/10 text-cyan-300',
+        approved: 'bg-emerald-400/10 text-emerald-300',
+        published: 'bg-emerald-500/20 text-emerald-200',
+        archived: 'bg-slate-600/20 text-slate-400',
+    }
+    const s = status || 'draft'
     return (
-        <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold bg-amber-400/10 text-amber-300">
-            Draft
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${map[s] ?? map.draft}`}>
+            {s}
         </span>
     )
 }
@@ -101,6 +103,8 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
     const [filterChapter, setFilterChapter] = useState('')
     const [filterStatus, setFilterStatus] = useState('')
     const [workflowBusy, setWorkflowBusy] = useState<string | null>(null)
+    const [lastGeneratedId, setLastGeneratedId] = useState<string | null>(null)
+    const [hint, setHint] = useState<string | null>(null)
 
     const filteredSubjects = useMemo(() =>
         !filterClass ? subjects : subjects.filter(s => s.class_id === filterClass),
@@ -125,32 +129,68 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
             const matchStatus = !filterStatus ||
                 (filterStatus === 'published' && item.is_published) ||
                 (filterStatus === 'draft' && !item.is_published && item.is_active) ||
-                (filterStatus === 'inactive' && !item.is_active)
+                (filterStatus === 'inactive' && !item.is_active) ||
+                (filterStatus === 'reviewed' && item.workflow_status === 'reviewed') ||
+                (filterStatus === 'generated' && item.workflow_status === 'generated')
             return matchSearch && matchClass && matchSubject && matchChapter && matchStatus
         })
     }, [lessons, search, filterClass, filterSubject, filterChapter, filterStatus])
 
     const publishedCount = lessons.filter(l => l.is_published).length
     const draftCount = lessons.filter(l => !l.is_published && l.is_active).length
+    const readyToGenerate = lessons.filter(l => l.workflow_status === 'reviewed').length
+
+    const nextAfterGenerated = useMemo(() => {
+        if (!lastGeneratedId) return null
+        const idx = lessons.findIndex(l => l.id === lastGeneratedId)
+        if (idx < 0) return null
+        return lessons.slice(idx + 1).find(l =>
+            l.workflow_status === 'reviewed' || l.workflow_status === 'extracted' || l.workflow_status === 'draft'
+        ) ?? null
+    }, [lastGeneratedId, lessons])
 
     const openEdit = (item: CurriculumLesson) => { setSelectedLesson(item); setEditOpen(true) }
     const openDelete = (item: CurriculumLesson) => { setSelectedLesson(item); setDeleteOpen(true) }
+
     const runWorkflow = async (item: CurriculumLesson, action: "review" | "generate" | "approve" | "publish") => {
         setWorkflowBusy(`${item.id}:${action}`)
+        setHint(null)
         try {
-            const response = await fetch(`/api/admin/curriculum/lessons/${item.id}/${action === "generate" ? "generate" : "workflow"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: action === "generate" ? undefined : JSON.stringify({ action }) })
+            const response = await fetch(`/api/admin/curriculum/lessons/${item.id}/${action === "generate" ? "generate" : "workflow"}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: action === "generate" ? undefined : JSON.stringify({ action }),
+            })
             const data = await response.json()
-            if (!response.ok) throw new Error(data.error ?? "Workflow update করা যায়নি।")
+            if (!response.ok) throw new Error(data.message || data.error || "Workflow update করা যায়নি।")
+
+            if (action === 'generate') {
+                setLastGeneratedId(item.id)
+                setHint('Study draft save হয়েছে (lesson_contents)। একই lesson বারবার generate করার দরকার নেই — Approve → Publish করুন। পরের lesson-এ যান।')
+            }
             window.location.reload()
-        } catch (error) { window.alert(error instanceof Error ? error.message : "Workflow update করা যায়নি।") }
-        finally { setWorkflowBusy(null) }
+        } catch (error) {
+            window.alert(error instanceof Error ? error.message : "Workflow update করা যায়নি।")
+        } finally {
+            setWorkflowBusy(null)
+        }
     }
 
     return (
         <main className="min-h-screen bg-[#030711] px-3 py-5 text-slate-100 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl space-y-5">
 
-                {/* Header */}
+                <div className="flex items-center gap-3">
+                    <Link href="/dashboard/admin/curriculum"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10">
+                        <ArrowLeft className="size-3.5" /> Curriculum
+                    </Link>
+                    <Link href="/dashboard/admin/curriculum/import"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-200 hover:bg-violet-500/20">
+                        Import PDF
+                    </Link>
+                </div>
+
                 <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                         <div className="grid size-12 place-items-center rounded-xl border border-amber-400/55 bg-amber-400/10 shadow-[0_0_26px_rgba(251,191,36,.18)]">
@@ -160,7 +200,9 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                             <h1 className="text-[clamp(1.65rem,3vw,2.55rem)] font-extrabold tracking-tight">
                                 Lesson <span className="bg-linear-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">Management</span>
                             </h1>
-                            <p className="mt-0.5 text-sm text-slate-400">Manage curriculum lessons for each chapter.</p>
+                            <p className="mt-0.5 text-sm text-slate-400">
+                                একবারে <strong className="text-amber-200">১টা lesson</strong> Generate → Approve → Publish। Student শুধু Published দেখে।
+                            </p>
                         </div>
                     </div>
                     <button onClick={() => setOpenModal(true)}
@@ -169,7 +211,25 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                     </button>
                 </header>
 
-                {/* Stats */}
+                <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 px-4 py-3 text-sm text-violet-100">
+                    <p className="font-semibold">AI workflow (plan অনুযায়ী)</p>
+                    <p className="mt-1 text-xs text-violet-200/80">
+                        Extract structure = শুধু heading/TOC · Study content = এখানে একটা করে Generate · Save = lesson_contents (পুনরায় generate লাগে না) · Student = শুধু Publish এর পর
+                    </p>
+                    <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate} lesson</p>
+                </div>
+
+                {hint && (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{hint}</div>
+                )}
+
+                {nextAfterGenerated && (
+                    <div className="rounded-xl border border-sky-400/30 bg-sky-950/30 px-4 py-3 text-sm text-sky-100">
+                        পরের lesson suggest: <strong>{nextAfterGenerated.title_bn || nextAfterGenerated.title}</strong>
+                        {' '}— প্রথমে Review (প্রয়োজন হলে) তারপর Generate।
+                    </div>
+                )}
+
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Total Lessons" value={lessons.length} text="All curriculum lessons" color="blue" icon={<BookOpen className="size-6" />} />
                     <StatCard label="Published" value={publishedCount} text="Live for students" color="green" icon={<Eye className="size-6" />} />
@@ -177,18 +237,14 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                     <StatCard label="Results" value={filteredLessons.length} text={search ? `Matching "${search}"` : 'All shown'} color="purple" icon={<Zap className="size-6" />} />
                 </section>
 
-                {/* Table */}
                 <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15] shadow-[0_15px_50px_rgba(0,0,0,.25)]">
                     <div className="flex flex-col gap-4 border-b border-slate-700/70 p-5">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                                <h2 className="flex items-center gap-2 text-lg font-bold">
-                                    <FolderOpen className="size-5 text-amber-300" /> Curriculum Lessons
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-400">Browse, edit and manage all lessons.</p>
-                            </div>
+                        <div>
+                            <h2 className="flex items-center gap-2 text-lg font-bold">
+                                <FolderOpen className="size-5 text-amber-300" /> Curriculum Lessons
+                            </h2>
+                            <p className="mt-1 text-xs text-slate-400">Actions: Review → Generate (1) → Approve → Publish</p>
                         </div>
-                        {/* Filters */}
                         <div className="flex gap-3 flex-wrap">
                             <select value={filterClass}
                                 onChange={(e) => { setFilterClass(e.target.value); setFilterSubject(''); setFilterChapter('') }}
@@ -214,6 +270,8 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                 <option value="">সব Status</option>
                                 <option value="published">Published</option>
                                 <option value="draft">Draft</option>
+                                <option value="reviewed">Reviewed (ready generate)</option>
+                                <option value="generated">Generated</option>
                                 <option value="inactive">Inactive</option>
                             </select>
                             <label className="relative">
@@ -225,18 +283,16 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                         </div>
                     </div>
 
-                    {/* Table Header */}
-                    <div className="hidden grid-cols-[60px_minmax(180px,1fr)_130px_130px_80px_100px_120px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
+                    <div className="hidden grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_140px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
                         <span>No.</span>
                         <span>Title</span>
                         <span>Chapter</span>
                         <span>Subject</span>
                         <span>XP</span>
-                        <span>Status</span>
+                        <span>Workflow</span>
                         <span>Actions</span>
                     </div>
 
-                    {/* Rows */}
                     <div className="divide-y divide-slate-800/90">
                         {filteredLessons.length === 0 ? (
                             <div className="py-16 text-center">
@@ -246,12 +302,10 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                             </div>
                         ) : filteredLessons.map((item) => (
                             <article key={item.id}
-                                className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_130px_130px_80px_100px_120px]">
-                                {/* Lesson Number */}
+                                className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_140px]">
                                 <div className="grid size-11 place-items-center rounded-xl border border-amber-400/45 bg-amber-400/10 text-lg font-black text-amber-300">
                                     {item.lesson_number}
                                 </div>
-                                {/* Title */}
                                 <div>
                                     <p className="font-bold text-white">{item.title_bn}</p>
                                     <p className="text-xs text-slate-400">{item.title}</p>
@@ -260,95 +314,51 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                             <span className="text-[10px] bg-blue-400/10 text-blue-300 px-2 py-0.5 rounded-full">Free Preview</span>
                                         )}
                                         <span className="text-[10px] text-slate-500">{item.duration_minutes} min</span>
+                                        {item.is_published && (
+                                            <span className="text-[10px] bg-emerald-400/10 text-emerald-300 px-2 py-0.5 rounded-full">Student live</span>
+                                        )}
                                     </div>
                                 </div>
-                                {/* Chapter */}
-                                <p className="text-sm text-slate-400 truncate">
-                                    {item.curriculum_chapters?.title_bn ?? '—'}
-                                </p>
-                                {/* Subject */}
-                                <p className="text-sm text-slate-400 truncate">
-                                    {item.curriculum_subjects?.name_bn ?? '—'}
-                                </p>
-                                {/* XP */}
+                                <p className="text-sm text-slate-400 truncate">{item.curriculum_chapters?.title_bn ?? '—'}</p>
+                                <p className="text-sm text-slate-400 truncate">{item.curriculum_subjects?.name_bn ?? '—'}</p>
                                 <div className="flex items-center gap-1">
                                     <Zap className="size-3 text-amber-400" />
                                     <span className="text-sm text-amber-300 font-bold">{item.xp_reward}</span>
                                 </div>
-                                {/* Status */}
-                                <Status active={item.is_active} published={item.is_published} />
-                                {/* Actions */}
-                                <div className="flex gap-2">
-                                    {item.workflow_status === "extracted" && <ActionButton label="Mark lesson reviewed" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, "review")}><CheckCircle2 className="size-3.5" /></ActionButton>}
-                                    {item.workflow_status === "reviewed" && <ActionButton label="Generate lesson draft" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, "generate")}><WandSparkles className="size-3.5" /></ActionButton>}
-                                    {item.workflow_status === "generated" && <ActionButton label="Approve lesson" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, "approve")}><CheckCircle2 className="size-3.5" /></ActionButton>}
-                                    {item.workflow_status === "approved" && <ActionButton label="Publish lesson" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, "publish")}><Send className="size-3.5" /></ActionButton>}
-                                    <ActionButton label="Edit lesson" onClick={() => openEdit(item)}><Pencil className="size-3.5" /></ActionButton>
-                                    <ActionButton label="Delete lesson" danger onClick={() => openDelete(item)}><Trash2 className="size-3.5" /></ActionButton>
+                                <WorkflowBadge status={item.workflow_status} />
+                                <div className="flex flex-wrap gap-2">
+                                    {(item.workflow_status === "extracted" || item.workflow_status === "draft") && (
+                                        <ActionButton label="Mark reviewed" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, "review")}>
+                                            <CheckCircle2 className="size-3.5" />
+                                        </ActionButton>
+                                    )}
+                                    {item.workflow_status === "reviewed" && (
+                                        <ActionButton label="Generate 1 lesson study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, "generate")}>
+                                            <WandSparkles className="size-3.5" />
+                                        </ActionButton>
+                                    )}
+                                    {item.workflow_status === "generated" && (
+                                        <ActionButton label="Approve" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, "approve")}>
+                                            <CheckCircle2 className="size-3.5" />
+                                        </ActionButton>
+                                    )}
+                                    {item.workflow_status === "approved" && (
+                                        <ActionButton label="Publish to students" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, "publish")}>
+                                            <Send className="size-3.5" />
+                                        </ActionButton>
+                                    )}
+                                    <ActionButton label="Edit" onClick={() => openEdit(item)}><Pencil className="size-3.5" /></ActionButton>
+                                    <ActionButton label="Delete" danger onClick={() => openDelete(item)}><Trash2 className="size-3.5" /></ActionButton>
                                 </div>
                             </article>
                         ))}
                     </div>
                 </section>
-
-                {/* Tips */}
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                        ['Lesson order', 'Keep a unique lesson number per chapter', '01'],
-                        ['Draft first', 'Create as draft, publish when ready', '✓'],
-                        ['Free Preview', 'Mark some lessons as free for students', '🆓'],
-                        ['XP & Coins', 'Reward students for completing lessons', '⚡'],
-                    ].map(([title, text, symbol]) => (
-                        <div key={title} className="rounded-xl border border-slate-700/80 bg-linear-to-br from-[#10192b] to-[#080c16] p-4">
-                            <div className="flex items-center gap-3">
-                                <span className="grid size-10 place-items-center rounded-lg border border-amber-400/40 bg-amber-400/10 text-sm font-bold text-amber-300">{symbol}</span>
-                                <div>
-                                    <p className="text-sm font-semibold">{title}</p>
-                                    <p className="mt-1 text-xs text-slate-400">{text}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </section>
             </div>
 
-            {/* Modals */}
-            <AddLessonModal
-                open={openModal}
-                chapters={chapters}
-                subjects={subjects}
-                classes={classes}
-                onClose={() => setOpenModal(false)}
-                onSuccess={() => window.location.reload()}
-            />
-            <EditLessonModal
-                key={selectedLesson?.id ?? 'edit'}
-                open={editOpen}
-                lesson={selectedLesson}
-                chapters={chapters}
-                subjects={subjects}
-                classes={classes}
-                onClose={() => setEditOpen(false)}
-                onSuccess={() => window.location.reload()}
-            />
-            <DeleteLessonModal
-                open={deleteOpen}
-                lesson={selectedLesson}
-                onClose={() => setDeleteOpen(false)}
-                onSuccess={() => window.location.reload()}
-            />
+            <AddLessonModal open={openModal} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setOpenModal(false)} onSuccess={() => window.location.reload()} />
+            <EditLessonModal key={selectedLesson?.id ?? 'edit'} open={editOpen} lesson={selectedLesson} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setEditOpen(false)} onSuccess={() => window.location.reload()} />
+            <DeleteLessonModal open={deleteOpen} lesson={selectedLesson} onClose={() => setDeleteOpen(false)} onSuccess={() => window.location.reload()} />
         </main>
     )
 }
-
-
-
-
-
-
-
-
-
-
-
-
