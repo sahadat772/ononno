@@ -6,6 +6,7 @@ import { ai, CURRICULUM_GEMINI_MODEL } from "@/lib/gemini";
 import { resolvePageRange } from "@/lib/page-fields";
 import { uploadPdfToGemini } from "@/lib/curriculum-import";
 import { createCurriculumStorage } from "@/lib/storage";
+import { createServiceRoleClient } from "@/lib/supabase-admin";
 
 type RouteContext = { params: Promise<{ id: string }> };
 type GeneratedContent = {
@@ -17,6 +18,15 @@ type GeneratedContent = {
   summary?: string;
   extra_notes?: string;
 };
+
+function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
+  try {
+    return createServiceRoleClient();
+  } catch (e) {
+    console.warn("[generate] service role unavailable, using user client", e);
+    return authSupabase;
+  }
+}
 
 export async function POST(_request: NextRequest, context: RouteContext) {
   const auth = await requireRole(["admin"]);
@@ -39,49 +49,73 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   }
 
   const { id } = await context.params;
+  const db = getDb(auth.supabase as never);
 
-  const { data: lesson, error: lessonError } = await auth.supabase
-    .from("curriculum_lessons")
-    .select(
-      "id, title, title_bn, workflow_status, is_published, page_start, page_end, source_page_start, source_page_end, source_id, class_id, subject_id",
-    )
-    .eq("id", id)
-    .maybeSingle();
+  // Minimal select first — avoid missing-column failures
+  let lesson: Record<string, unknown> | null = null;
+  let lessonError: { message: string } | null = null;
 
+  {
+    const res = await db
+      .from("curriculum_lessons")
+      .select("id, title, title_bn, workflow_status, is_published, page_start, page_end, source_id, class_id, subject_id")
+      .eq("id", id)
+      .maybeSingle();
+    lesson = res.data;
+    lessonError = res.error;
+  }
+
+  // Retry with page aliases if first query failed on unknown columns
   if (lessonError) {
-    console.error("generate lesson lookup error:", lessonError);
-    return NextResponse.json(
-      {
-        error: "SOURCE_NOT_FOUND",
-        message: "Lesson load করা যায়নি।",
-        details: lessonError.message,
-      },
-      { status: 500 },
-    );
+    console.error("generate lesson lookup error (primary):", lessonError);
+    const res2 = await db
+      .from("curriculum_lessons")
+      .select("id, title, title_bn, workflow_status, is_published, source_id, class_id, subject_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!res2.error && res2.data) {
+      lesson = res2.data;
+      lessonError = null;
+    } else {
+      return NextResponse.json(
+        {
+          error: "SOURCE_NOT_FOUND",
+          message: "Lesson load করা যায়নি।",
+          details: lessonError.message,
+          lessonId: id,
+        },
+        { status: 500 },
+      );
+    }
   }
 
   if (!lesson) {
     return NextResponse.json(
       {
         error: "SOURCE_NOT_FOUND",
-        message: "Lesson পাওয়া যায়নি। ID ঠিক আছে কি check করুন।",
+        message: `Lesson পাওয়া যায়নি। (id=${id})`,
+        lessonId: id,
+        hint: "Supabase Table Editor-এ curriculum_lessons-এ এই id আছে কি check করুন। RLS থাকলে SUPABASE_SERVICE_ROLE_KEY Vercel-এ set করুন।",
       },
       { status: 404 },
     );
   }
 
-  if (lesson.is_published || lesson.workflow_status === "published") {
+  const workflowStatus = String(lesson.workflow_status ?? "draft");
+  const isPublished = Boolean(lesson.is_published);
+
+  if (isPublished || workflowStatus === "published") {
     return NextResponse.json(
       {
         error: "ALREADY_PUBLISHED",
         message:
-          "Published lesson আবার generate করা যায় না। নতুন draft চাইলে return-to-review করুন।",
+          "Published lesson আবার generate করা যায় না। নতুন draft চাইলে unpublish/return-to-review করুন।",
       },
       { status: 409 },
     );
   }
 
-  if (lesson.workflow_status === "approved") {
+  if (workflowStatus === "approved") {
     return NextResponse.json(
       {
         error: "STRUCTURE_COMMIT_FAILED",
@@ -91,14 +125,13 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     );
   }
 
-  // Already generated content? return existing (no re-bill Gemini)
-  const { data: existingContent } = await auth.supabase
+  const { data: existingContent } = await db
     .from("lesson_contents")
     .select("*")
     .eq("lesson_id", id)
     .maybeSingle();
 
-  if (existingContent && lesson.workflow_status === "generated") {
+  if (existingContent && workflowStatus === "generated") {
     return NextResponse.json({
       lessonId: id,
       content: existingContent,
@@ -108,17 +141,16 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     });
   }
 
-  if (!["reviewed", "generated", "extracted", "draft"].includes(lesson.workflow_status ?? "draft")) {
+  if (!["reviewed", "generated", "extracted", "draft"].includes(workflowStatus)) {
     return NextResponse.json(
       {
         error: "STRUCTURE_VALIDATION_FAILED",
-        message: `বর্তমান status (${lesson.workflow_status}) এ generate করা যাবে না। আগে Review করুন।`,
+        message: `বর্তমান status (${workflowStatus}) এ generate করা যাবে না। আগে Review করুন।`,
       },
       { status: 409 },
     );
   }
 
-  // Resolve PDF source + gemini uri
   let source: {
     id: string;
     title?: string | null;
@@ -129,30 +161,31 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     mime_type?: string | null;
   } | null = null;
 
-  if (lesson.source_id) {
-    const { data } = await auth.supabase
+  const sourceId = lesson.source_id as string | null;
+  const classId = lesson.class_id as string | null;
+  const subjectId = lesson.subject_id as string | null;
+
+  if (sourceId) {
+    const { data } = await db
       .from("curriculum_sources")
       .select("id, title, gemini_file_uri, gemini_file_name, storage_path, file_name, mime_type")
-      .eq("id", lesson.source_id)
+      .eq("id", sourceId)
       .maybeSingle();
     source = data;
   }
 
-  if (!source && lesson.class_id && lesson.subject_id) {
-    const { data } = await auth.supabase
+  if (!source && classId && subjectId) {
+    const { data } = await db
       .from("curriculum_sources")
       .select("id, title, gemini_file_uri, gemini_file_name, storage_path, file_name, mime_type")
-      .eq("class_id", lesson.class_id)
-      .eq("subject_id", lesson.subject_id)
+      .eq("class_id", classId)
+      .eq("subject_id", subjectId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     source = data;
     if (source) {
-      await auth.supabase
-        .from("curriculum_lessons")
-        .update({ source_id: source.id })
-        .eq("id", id);
+      await db.from("curriculum_lessons").update({ source_id: source.id }).eq("id", id);
     }
   }
 
@@ -161,7 +194,10 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       {
         error: "PDF_NOT_FOUND",
         message:
-          "এই lesson-এর সাথে কোনো curriculum PDF source link নেই। Import → Extract + Commit আগে চালান, অথবা lesson-এ source_id set করুন।",
+          "এই lesson-এর সাথে কোনো curriculum PDF source link নেই। Import → Extract + Commit চালান অথবা source_id set করুন।",
+        lessonId: id,
+        classId,
+        subjectId,
       },
       { status: 409 },
     );
@@ -179,14 +215,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       );
     }
     try {
-      const storage = createCurriculumStorage(auth.supabase);
+      const storage = createCurriculumStorage(db as never);
       const pdfBlob = await storage.download(source.storage_path);
       const geminiFile = await uploadPdfToGemini({
         pdf: pdfBlob,
         displayName: source.file_name ?? source.title ?? "curriculum.pdf",
       });
       fileUri = geminiFile.uri!;
-      await auth.supabase
+      await db
         .from("curriculum_sources")
         .update({
           gemini_file_uri: fileUri,
@@ -207,14 +243,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     }
   }
 
-  const pages = resolvePageRange(lesson);
+  const pages = resolvePageRange({
+    page_start: lesson.page_start as number | null | undefined,
+    page_end: lesson.page_end as number | null | undefined,
+  });
   const pageStart = pages.page_start;
   const pageEnd = pages.page_end;
 
-  await auth.supabase
-    .from("curriculum_lessons")
-    .update({ workflow_status: "generating" })
-    .eq("id", id);
+  await db.from("curriculum_lessons").update({ workflow_status: "generating" }).eq("id", id);
 
   try {
     const response = await ai.models.generateContent({
@@ -230,7 +266,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
               },
             },
             {
-              text: `Create a reviewable learning draft for the NCTB lesson "${lesson.title_bn ?? lesson.title}". Use only the textbook content on pages ${pageStart ?? "unknown"}-${pageEnd ?? "unknown"}. Do not invent or change academic facts. Return JSON only with overview, objectives (array), main_content, ai_explanation, examples (array), summary, extra_notes. Keep the source faithful and age-appropriate. Source file: ${source.title ?? source.file_name ?? "curriculum PDF"}.`,
+              text: `Create a reviewable learning draft for the NCTB lesson "${(lesson.title_bn as string) ?? (lesson.title as string)}". Use only the textbook content on pages ${pageStart ?? "unknown"}-${pageEnd ?? "unknown"}. Do not invent or change academic facts. Return JSON only with overview, objectives (array), main_content, ai_explanation, examples (array), summary, extra_notes. Keep the source faithful and age-appropriate. Source file: ${source.title ?? source.file_name ?? "curriculum PDF"}.`,
             },
           ],
         },
@@ -249,7 +285,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       throw new Error("INVALID_AI_JSON");
     }
 
-    const { data, error: contentError } = await auth.supabase
+    const { data, error: contentError } = await db
       .from("lesson_contents")
       .upsert(
         {
@@ -271,10 +307,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     if (contentError) throw contentError;
 
-    await auth.supabase
-      .from("curriculum_lessons")
-      .update({ workflow_status: "generated" })
-      .eq("id", id);
+    await db.from("curriculum_lessons").update({ workflow_status: "generated" }).eq("id", id);
 
     await audit("GENERATE_LESSON_CONTENT", auth.user.id, {
       lessonId: id,
@@ -292,10 +325,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     });
   } catch (error) {
     console.error("Lesson generation error:", error);
-    await auth.supabase
-      .from("curriculum_lessons")
-      .update({ workflow_status: "reviewed" })
-      .eq("id", id);
+    await db.from("curriculum_lessons").update({ workflow_status: "reviewed" }).eq("id", id);
     const code =
       error instanceof Error && error.message === "INVALID_AI_JSON"
         ? "INVALID_AI_JSON"
