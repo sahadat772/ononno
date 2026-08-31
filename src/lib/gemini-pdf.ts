@@ -1,4 +1,4 @@
-import { ai } from '@/lib/gemini'
+import { ai, CURRICULUM_GEMINI_MODEL } from '@/lib/gemini'
 
 export type ExtractedLesson = {
   title: string;
@@ -69,7 +69,7 @@ JSON format এ উত্তর দাও:
 }`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: CURRICULUM_GEMINI_MODEL,
     contents: [
       {
         role: "user",
@@ -146,7 +146,7 @@ JSON format:
 }`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: CURRICULUM_GEMINI_MODEL,
     contents: [
       {
         role: "user",
