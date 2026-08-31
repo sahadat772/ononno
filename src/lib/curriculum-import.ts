@@ -111,6 +111,12 @@ function parseStructure(raw: string): ExtractedCurriculumStructure {
   };
 }
 
+function normalizeFileState(state: unknown): string {
+  return String(state ?? "")
+    .replace(/^FILE_STATE_/i, "")
+    .toUpperCase();
+}
+
 export async function uploadPdfToGemini(input: {
   pdf: Blob;
   displayName: string;
@@ -119,26 +125,79 @@ export async function uploadPdfToGemini(input: {
     throw new Error("GEMINI_CONFIGURATION_ERROR");
   }
 
-  const uploaded = await ai.files.upload({
-    file: input.pdf,
-    config: { displayName: input.displayName, mimeType: "application/pdf" },
-  });
+  const pdfBlob =
+    input.pdf.type === "application/pdf"
+      ? input.pdf
+      : new Blob([await input.pdf.arrayBuffer()], { type: "application/pdf" });
+
+  if (pdfBlob.size < 100) {
+    throw new Error("STORAGE_NOT_FOUND");
+  }
+
+  let uploaded;
+  try {
+    uploaded = await ai.files.upload({
+      file: pdfBlob,
+      config: {
+        displayName: input.displayName || "curriculum.pdf",
+        mimeType: "application/pdf",
+      },
+    });
+  } catch (uploadError) {
+    console.error("[uploadPdfToGemini] files.upload failed:", uploadError);
+    const msg =
+      uploadError instanceof Error ? uploadError.message : String(uploadError);
+    throw new Error(`GEMINI_UPLOAD_FAILED: ${msg.slice(0, 300)}`);
+  }
+
+  if (!uploaded?.name) {
+    throw new Error("PDF_PROCESSING_FAILED: upload returned no file name");
+  }
 
   let file = uploaded;
   for (
     let attempt = 0;
-    attempt < 18 && file.state === "PROCESSING";
+    attempt < 30 && normalizeFileState(file.state) === "PROCESSING";
     attempt += 1
   ) {
     await new Promise((resolve) => setTimeout(resolve, 2_000));
     file = await ai.files.get({ name: uploaded.name! });
   }
 
-  if (file.state === "FAILED" || !file.uri || !file.mimeType) {
-    throw new Error("PDF_PROCESSING_FAILED");
+  const state = normalizeFileState(file.state);
+  const uri = file.uri ?? null;
+  const mimeType =
+    file.mimeType ??
+    (file as { mime_type?: string }).mime_type ??
+    "application/pdf";
+
+  if (state === "FAILED") {
+    const detail =
+      (file as { error?: { message?: string } }).error?.message ??
+      "Gemini marked file as FAILED";
+    console.error("[uploadPdfToGemini] file FAILED:", file);
+    throw new Error(`PDF_PROCESSING_FAILED: ${detail}`);
   }
 
-  return file;
+  if (state === "PROCESSING") {
+    throw new Error(
+      "PDF_PROCESSING_FAILED: still PROCESSING after wait - retry shortly",
+    );
+  }
+
+  if (!uri) {
+    console.error("[uploadPdfToGemini] missing uri, state=", state, file);
+    throw new Error(
+      `PDF_PROCESSING_FAILED: no uri after upload (state=${state || "unknown"})`,
+    );
+  }
+
+  return {
+    ...file,
+    uri,
+    mimeType,
+    name: file.name ?? uploaded.name,
+  };
 }
 
 export async function extractStructureFromGemini(input: {
@@ -172,25 +231,7 @@ export async function extractStructureFromGemini(input: {
               },
             },
             {
-              text: `You are extracting the authoritative table of contents for the NCTB ${input.className} ${input.subjectName} textbook. ${pageHint} Return only JSON. Never invent titles, page ranges, lessons, or academic facts. Extract only what the PDF supports.
-{
-  "source_confidence": "high|medium|low",
-  "total_lessons": 0,
-  "chapters": [{
-    "title": "English/transliterated title",
-    "title_bn": "Exact Bangla title",
-    "chapter_number": 1,
-    "page_start": 1,
-    "page_end": 20,
-    "lessons": [{
-      "title": "English/transliterated title",
-      "title_bn": "Exact Bangla title",
-      "lesson_number": 1,
-      "page_start": 2,
-      "page_end": 5
-    }]
-  }]
-}`,
+              text: `You are extracting the authoritative table of contents for the NCTB ${input.className} ${input.subjectName} textbook. ${pageHint} Return only JSON. Never invent titles, page ranges, lessons, or academic facts. Extract only what the PDF supports.\n{\n  "source_confidence": "high|medium|low",\n  "total_lessons": 0,\n  "chapters": [{\n    "title": "English/transliterated title",\n    "title_bn": "Exact Bangla title",\n    "chapter_number": 1,\n    "page_start": 1,\n    "page_end": 20,\n    "lessons": [{\n      "title": "English/transliterated title",\n      "title_bn": "Exact Bangla title",\n      "lesson_number": 1,\n      "page_start": 2,\n      "page_end": 5\n    }]\n  }]\n}`,
             },
           ],
         },
@@ -209,6 +250,7 @@ export async function extractStructureFromGemini(input: {
       throw error;
     }
     console.error("Gemini structure extraction failed:", error);
-    throw new Error("GEMINI_REQUEST_FAILED");
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`GEMINI_REQUEST_FAILED: ${msg.slice(0, 300)}`);
   }
 }
