@@ -84,7 +84,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
     let fileName = source.gemini_file_name as string | null;
 
     if (!fileUri) {
-      const pdfBlob = await storage.download(source.storage_path);
+      let pdfBlob: Blob;
+      try {
+        pdfBlob = await storage.download(source.storage_path);
+      } catch (downloadError) {
+        console.error("[extract-structure] storage download failed:", downloadError);
+        const msg =
+          downloadError instanceof Error
+            ? downloadError.message
+            : String(downloadError);
+        throw new Error(`STORAGE_NOT_FOUND: ${msg.slice(0, 200)}`);
+      }
+
       const geminiFile = await uploadPdfToGemini({
         pdf: pdfBlob,
         displayName: source.file_name ?? source.title ?? "curriculum.pdf",
@@ -173,13 +184,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
       sourceConfidence: structure.sourceConfidence,
     });
   } catch (error) {
-    const code =
+    const rawMessage =
       error instanceof Error ? error.message : "PDF_PROCESSING_FAILED";
+    const code = rawMessage.split(":")[0].trim();
     const known = [
       "INVALID_AI_JSON",
       "STRUCTURE_VALIDATION_FAILED",
       "GEMINI_CONFIGURATION_ERROR",
       "GEMINI_REQUEST_FAILED",
+      "GEMINI_UPLOAD_FAILED",
       "PDF_PROCESSING_FAILED",
       "PDF_NOT_FOUND",
       "STORAGE_NOT_FOUND",
@@ -191,7 +204,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         .from("curriculum_sources")
         .update({
           source_status: "extraction_error",
-          last_error: errorCode,
+          last_error: rawMessage.slice(0, 500),
           extraction_error: errorCode,
         })
         .eq("id", sourceId);
@@ -204,7 +217,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
         ? 422
         : 500;
     return NextResponse.json(
-      { error: errorCode, message: "PDF structure extract করা যায়নি।" },
+      {
+        error: errorCode,
+        message: "PDF structure extract করা যায়নি।",
+        details: rawMessage.slice(0, 500),
+      },
       { status },
     );
   }
