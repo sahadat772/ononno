@@ -23,6 +23,22 @@ interface ClassInfo {
     class_number: number
 }
 
+/** Match class-1, class_1, class1, Class 1, etc. */
+function slugCandidates(raw: string): string[] {
+    const s = decodeURIComponent(raw || '').trim().toLowerCase()
+    const underscored = s.replace(/-/g, '_')
+    const dashed = s.replace(/_/g, '-')
+    const compact = s.replace(/[-_\s]/g, '')
+    return [...new Set([s, underscored, dashed, compact].filter(Boolean))]
+}
+
+function parseClassNumber(raw: string): number | null {
+    const m = decodeURIComponent(raw || '').match(/(\d{1,2})/)
+    if (!m) return null
+    const n = parseInt(m[1], 10)
+    return n >= 1 && n <= 12 ? n : null
+}
+
 export default function ClassSubjectsPage() {
     const params = useParams()
     const classSlug = params.classSlug as string
@@ -30,50 +46,85 @@ export default function ClassSubjectsPage() {
     const [classInfo, setClassInfo] = useState<ClassInfo | null>(null)
     const [subjects, setSubjects] = useState<Subject[]>([])
     const [loading, setLoading] = useState(true)
-    const [progress, setProgress] = useState<Record<string, number>>({})
+    const [error, setError] = useState<string | null>(null)
+    const [progress] = useState<Record<string, number>>({})
 
     useEffect(() => {
         const fetchData = async () => {
+            setLoading(true)
+            setError(null)
             const supabase = createClient()
 
-            // Class info আনো
-            const { data: cls } = await supabase
-                .from('curriculum_classes')
-                .select('*')
-                .eq('slug', classSlug)
-                .single()
+            try {
+                const candidates = slugCandidates(classSlug)
+                let cls: ClassInfo | null = null
 
-            if (!cls) return
-            setClassInfo(cls)
+                // 1) Try exact slug matches
+                for (const slug of candidates) {
+                    const { data } = await supabase
+                        .from('curriculum_classes')
+                        .select('id, name, slug, class_number')
+                        .eq('slug', slug)
+                        .eq('is_active', true)
+                        .maybeSingle()
+                    if (data) {
+                        cls = data
+                        break
+                    }
+                }
 
-            // Subjects আনো
-            const { data: subs } = await supabase
-                .from('curriculum_subjects')
-                .select('*')
-                .eq('class_id', cls.id)
-                .eq('is_active', true)
-                .order('order_index')
+                // 2) Fallback: class_number from slug (class-1 → 1)
+                if (!cls) {
+                    const num = parseClassNumber(classSlug)
+                    if (num != null) {
+                        const { data } = await supabase
+                            .from('curriculum_classes')
+                            .select('id, name, slug, class_number')
+                            .eq('class_number', num)
+                            .eq('is_active', true)
+                            .maybeSingle()
+                        if (data) cls = data
+                    }
+                }
 
-            if (subs) setSubjects(subs)
-            setLoading(false)
+                if (!cls) {
+                    setClassInfo(null)
+                    setSubjects([])
+                    setError(`Class "${classSlug}" পাওয়া যায়নি। Admin curriculum_classes-এ slug check করুন।`)
+                    return
+                }
+
+                setClassInfo(cls)
+
+                const { data: subs, error: subErr } = await supabase
+                    .from('curriculum_subjects')
+                    .select('id, name, name_bn, icon, color, is_mandatory, order_index')
+                    .eq('class_id', cls.id)
+                    .eq('is_active', true)
+                    .order('order_index')
+
+                if (subErr) {
+                    console.error('subjects fetch', subErr)
+                    setError('Subjects load করা যায়নি।')
+                    setSubjects([])
+                    return
+                }
+
+                setSubjects(subs ?? [])
+            } catch (e) {
+                console.error(e)
+                setError('ডেটা load করতে সমস্যা হয়েছে।')
+            } finally {
+                setLoading(false)
+            }
         }
-        fetchData()
+        void fetchData()
     }, [classSlug])
 
-    const sectorColors: Record<string, string> = {
-        'kids-zone': 'from-yellow-400 to-orange-400',
-        'primary': 'from-green-400 to-emerald-500',
-        'high-school': 'from-blue-400 to-cyan-500',
-        'secondary': 'from-violet-400 to-purple-500',
-        'hsc': 'from-rose-400 to-pink-500',
-        'university': 'from-amber-400 to-yellow-500',
-        'masters': 'from-indigo-400 to-blue-500',
-    }
     const sectorColor = 'from-blue-400 to-cyan-500'
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
-            {/* Header */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -91,20 +142,14 @@ export default function ClassSubjectsPage() {
                         <div className="rounded-2xl bg-[#0f0f2a] p-6">
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
-                                    <p className="text-gray-400 text-sm mb-1">
-                                        NCTB Curriculum
-                                    </p>
+                                    <p className="text-gray-400 text-sm mb-1">NCTB Curriculum</p>
                                     <h1 className={`text-3xl font-bold bg-linear-to-r ${sectorColor} bg-clip-text text-transparent`}>
                                         {classInfo.name}
                                     </h1>
                                     <p className="text-gray-400 mt-1">{subjects.length}টি বিষয়</p>
                                 </div>
-                                <div className="text-6xl">
-                                    📚
-                                </div>
+                                <div className="text-6xl">📚</div>
                             </div>
-
-                            {/* Progress */}
                             <div className="mt-4">
                                 <div className="flex justify-between text-xs text-gray-400 mb-1">
                                     <span>সামগ্রিক অগ্রগতি</span>
@@ -119,54 +164,44 @@ export default function ClassSubjectsPage() {
                 )}
             </motion.div>
 
-            {/* Subjects */}
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[...Array(6)].map((_, i) => (
                         <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-6 animate-pulse h-40" />
                     ))}
                 </div>
+            ) : error ? (
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
+                    <p className="text-4xl mb-3">📭</p>
+                    <p className="text-amber-200 font-semibold">{error}</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                        Admin → Curriculum → Classes-এ slug `class_1` বা `class-1` আছে কি দেখো।
+                    </p>
+                </div>
+            ) : subjects.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+                    <p className="text-4xl mb-3">📚</p>
+                    <p className="text-white font-semibold">এই ক্লাসে এখনো subject নেই</p>
+                    <p className="text-gray-400 text-sm mt-2">Admin subject add ও lesson publish করলে এখানে দেখা যাবে।</p>
+                </div>
             ) : (
                 <>
-                    {/* Mandatory */}
                     <div className="mb-8">
                         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <span>📌</span> বাধ্যতামূলক বিষয়
+                            <span>📌</span> বিষয়সমূহ
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {subjects.filter(s => s.is_mandatory).map((subject, i) => (
+                            {subjects.map((subject, i) => (
                                 <SubjectCard
                                     key={subject.id}
                                     subject={subject}
                                     classSlug={classSlug}
                                     index={i}
                                     progress={progress[subject.id] || 0}
-                                    sectorColor={sectorColor}
                                 />
                             ))}
                         </div>
                     </div>
-
-                    {/* Optional */}
-                    {subjects.filter(s => !s.is_mandatory).length > 0 && (
-                        <div>
-                            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <span>✨</span> ঐচ্ছিক বিষয়
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {subjects.filter(s => !s.is_mandatory).map((subject, i) => (
-                                    <SubjectCard
-                                        key={subject.id}
-                                        subject={subject}
-                                        classSlug={classSlug}
-                                        index={i}
-                                        progress={progress[subject.id] || 0}
-                                        sectorColor={sectorColor}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </>
             )}
         </div>
@@ -178,14 +213,13 @@ function SubjectCard({
     classSlug,
     index,
     progress,
-    sectorColor,
 }: {
     subject: Subject
     classSlug: string
     index: number
     progress: number
-    sectorColor: string
 }) {
+    const color = subject.color || 'from-violet-500 to-purple-600'
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -194,37 +228,34 @@ function SubjectCard({
             whileHover={{ y: -4, scale: 1.02 }}
         >
             <Link href={`/dashboard/student/academic/learn/${classSlug}/${subject.id}`}>
-                <div className={`rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer group`}>
-                    {/* Icon & Progress */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer group">
                     <div className="flex items-start justify-between mb-4">
-                        <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${subject.color} flex items-center justify-center text-3xl shadow-lg`}>
-                            {subject.icon}
+                        <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-3xl shadow-lg`}>
+                            {subject.icon || '📖'}
                         </div>
                         <div className="text-right">
                             <p className="text-xs text-gray-500">অগ্রগতি</p>
-                            <p className={`text-lg font-bold bg-linear-to-r ${subject.color} bg-clip-text text-transparent`}>
+                            <p className={`text-lg font-bold bg-linear-to-r ${color} bg-clip-text text-transparent`}>
                                 {progress}%
                             </p>
                         </div>
                     </div>
 
-                    {/* Name */}
                     <h3 className="font-bold text-white text-lg mb-0.5 group-hover:text-blue-400 transition-colors">
                         {subject.name_bn || subject.name}
                     </h3>
                     <p className="text-gray-500 text-sm mb-3">{subject.name}</p>
 
-                    {/* Progress Bar */}
                     <div className="w-full bg-white/10 rounded-full h-2 mb-3">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
                             transition={{ duration: 0.8, delay: index * 0.1 }}
-                            className={`bg-linear-to-r ${subject.color} h-2 rounded-full`}
+                            className={`bg-linear-to-r ${color} h-2 rounded-full`}
                         />
                     </div>
 
-                    <div className={`text-sm font-semibold bg-linear-to-r ${subject.color} bg-clip-text text-transparent flex items-center gap-1`}>
+                    <div className={`text-sm font-semibold bg-linear-to-r ${color} bg-clip-text text-transparent flex items-center gap-1`}>
                         {progress > 0 ? 'চালিয়ে যাও' : 'শুরু করো'} <span>→</span>
                     </div>
                 </div>
@@ -232,6 +263,3 @@ function SubjectCard({
         </motion.div>
     )
 }
-
-
-
