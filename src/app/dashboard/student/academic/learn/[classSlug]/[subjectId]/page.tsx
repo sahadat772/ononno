@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation'
 interface Chapter {
     id: string
     title: string
+    title_bn?: string
     chapter_number: number
     description: string
     order_index: number
@@ -17,6 +18,7 @@ interface Chapter {
 interface Subject {
     id: string
     name: string
+    name_bn?: string
     icon: string
     color: string
 }
@@ -44,7 +46,6 @@ export default function ChapterListPage() {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
 
-            // Subject আনো
             const { data: sub } = await supabase
                 .from('curriculum_subjects')
                 .select('*')
@@ -52,17 +53,30 @@ export default function ChapterListPage() {
                 .single()
             if (sub) setSubject(sub)
 
-            // Chapters আনো
-            const { data: chaps } = await supabase
-                .from('curriculum_chapters')
-                .select('*')
+            // Chapters that have at least one published lesson (or active chapters)
+            const { data: publishedLessons } = await supabase
+                .from('curriculum_lessons')
+                .select('chapter_id')
                 .eq('subject_id', subjectId)
                 .eq('is_active', true)
-                .eq('workflow_status', 'published')
-                .order('order_index')
-            if (chaps) setChapters(chaps)
+                .eq('is_published', true)
 
-            // Student progress আনো
+            const chapterIds = [
+                ...new Set((publishedLessons ?? []).map((l) => l.chapter_id).filter(Boolean)),
+            ]
+
+            if (chapterIds.length > 0) {
+                const { data: chaps } = await supabase
+                    .from('curriculum_chapters')
+                    .select('*')
+                    .in('id', chapterIds)
+                    .eq('is_active', true)
+                    .order('order_index')
+                if (chaps) setChapters(chaps)
+            } else {
+                setChapters([])
+            }
+
             if (user) {
                 const { data: prog } = await supabase
                     .from('learning_progress')
@@ -71,7 +85,6 @@ export default function ChapterListPage() {
                     .eq('subject_id', subjectId)
                 if (prog) setProgress(prog)
 
-                // Stats আনো
                 const { data: stats } = await supabase
                     .from('student_stats')
                     .select('total_xp, current_streak')
@@ -104,7 +117,6 @@ export default function ChapterListPage() {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white">
-            {/* Top Stats Bar */}
             <div className="sticky top-0 z-40 bg-[#0a0a1a]/90 backdrop-blur-xl border-b border-white/10 px-4 py-3">
                 <div className="max-w-2xl mx-auto flex items-center justify-between">
                     <Link
@@ -114,7 +126,6 @@ export default function ChapterListPage() {
                         ✕
                     </Link>
 
-                    {/* XP & Streak */}
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full px-3 py-1">
                             <span>🔥</span>
@@ -129,7 +140,6 @@ export default function ChapterListPage() {
             </div>
 
             <div className="max-w-2xl mx-auto px-4 py-8">
-                {/* Subject Header */}
                 {subject && (
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
@@ -139,11 +149,11 @@ export default function ChapterListPage() {
                         <motion.div
                             animate={{ scale: [1, 1.05, 1] }}
                             transition={{ repeat: Infinity, duration: 3 }}
-                            className={`w-24 h-24 rounded-3xl bg-linear-to-br ${subject.color} flex items-center justify-center text-5xl mx-auto mb-4 shadow-2xl`}
+                            className={`w-24 h-24 rounded-3xl bg-linear-to-br ${subject.color || 'from-violet-500 to-purple-600'} flex items-center justify-center text-5xl mx-auto mb-4 shadow-2xl`}
                         >
-                            {subject.icon}
+                            {subject.icon || '📚'}
                         </motion.div>
-                        <h1 className="text-3xl font-bold text-white mb-2">{subject.name}</h1>
+                        <h1 className="text-3xl font-bold text-white mb-2">{subject.name_bn || subject.name}</h1>
                         <div className="flex items-center justify-center gap-3">
                             <span className="text-gray-400 text-sm">{chapters.length}টি অধ্যায়</span>
                             <span className="text-gray-600">•</span>
@@ -154,7 +164,6 @@ export default function ChapterListPage() {
                     </motion.div>
                 )}
 
-                {/* Chapters — Duolingo Path Style */}
                 {loading ? (
                     <div className="space-y-6">
                         {[...Array(4)].map((_, i) => (
@@ -165,17 +174,16 @@ export default function ChapterListPage() {
                     <div className="text-center py-16">
                         <div className="text-6xl mb-4">📝</div>
                         <h3 className="text-white font-bold text-xl mb-2">অধ্যায় শীঘ্রই আসছে</h3>
-                        <p className="text-gray-400 text-sm">Admin এখনো content যোগ করেননি</p>
+                        <p className="text-gray-400 text-sm">Admin এখনো published lesson যোগ করেননি</p>
                         <div className="mt-6 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-left max-w-sm mx-auto">
-                            <p className="text-blue-400 text-sm font-semibold mb-2">💡 Admin কে জানাও:</p>
+                            <p className="text-blue-400 text-sm font-semibold mb-2">💡 Admin workflow:</p>
                             <p className="text-gray-400 text-xs">
-                                Admin Panel → Content → এই subject এ chapter ও lesson যোগ করুন
+                                Lessons → Review → Generate (1) → Approve → Publish
                             </p>
                         </div>
                     </div>
                 ) : (
                     <div className="relative">
-                        {/* Path Line */}
                         <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-linear-to-b from-white/20 via-white/10 to-transparent -translate-x-1/2 hidden md:block" />
 
                         <div className="space-y-6">
@@ -209,8 +217,7 @@ export default function ChapterListPage() {
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-4">
-                                                    {/* Chapter Icon */}
-                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink:0 shadow-lg ${!unlocked
+                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0 shadow-lg ${!unlocked
                                                             ? 'bg-white/5 text-gray-600'
                                                             : completed
                                                                 ? 'bg-linear-to-br from-emerald-500 to-teal-500'
@@ -243,13 +250,12 @@ export default function ChapterListPage() {
                                                             )}
                                                         </div>
                                                         <h3 className={`font-bold text-lg mb-1 ${!unlocked ? 'text-gray-600' : 'text-white'}`}>
-                                                            {chapter.title}
+                                                            {chapter.title_bn || chapter.title}
                                                         </h3>
                                                         {chapter.description && (
                                                             <p className="text-gray-400 text-sm truncate">{chapter.description}</p>
                                                         )}
 
-                                                        {/* Progress Bar */}
                                                         {unlocked && (
                                                             <div className="mt-2">
                                                                 <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -271,15 +277,13 @@ export default function ChapterListPage() {
                                                         )}
                                                     </div>
 
-                                                    {/* Arrow */}
                                                     {unlocked && (
-                                                        <span className="text-gray-400 text-xl flex-shrink:0">→</span>
+                                                        <span className="text-gray-400 text-xl flex-shrink-0">→</span>
                                                     )}
                                                 </div>
                                             </motion.div>
                                         </Link>
 
-                                        {/* Unlock hint */}
                                         {!unlocked && index > 0 && (
                                             <p className="text-center text-xs text-gray-600 mt-2">
                                                 আগের অধ্যায়ে ৬০% পেলে unlock হবে
@@ -295,4 +299,3 @@ export default function ChapterListPage() {
         </div>
     )
 }
-
