@@ -12,6 +12,7 @@ export const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY ?? "",
 });
 
-export const CURRICULUM_GEMINI_MODEL = "gemini-2.5-flash";
+/** Default curriculum model — gemini-2.5-flash retired for new API keys. */
+export const CURRICULUM_GEMINI_MODEL = "gemini-3.6-flash";
 
 export default ai;
