@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { STUDY_TIME_PRESETS, MIN_STUDY_MINUTES } from '@/lib/study-session'
+import { saveActiveStudySession } from '@/components/student/StudySessionTimer'
 
 interface Props {
   studentId: string
@@ -183,12 +184,11 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
     heartbeatRef.current = setInterval(() => {
       void (async () => {
         try {
-          // flush local tick into server every 15s
           const delta = 15
           await callAction('heartbeat', delta)
           setTick(0)
         } catch {
-          // ignore transient
+          /* ignore */
         }
       })()
     }, 15000)
@@ -237,12 +237,40 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
     }
   }
 
+  const lessonPath = () => {
+    const firstLesson = plan.find((p) => p.item_type === 'lesson')
+    if (!firstLesson) return null
+    const les = lessons.find((l) => l.id === firstLesson.lesson_id)
+    const ch = chapterId || les?.chapter_id
+    const sub = subjectId || les?.subject_id
+    if (!sub || !ch) return null
+    return {
+      path: `/dashboard/student/academic/learn/class-1/${sub}/${ch}/${firstLesson.lesson_id}`,
+      lessonId: firstLesson.lesson_id,
+      chapterId: ch,
+      subjectId: sub,
+    }
+  }
+
+  /** Start timer + same-tab go to lesson (timer continues on study/quiz page) */
   const beginSession = async () => {
     if (!sessionId) return
     setActionBusy(true)
     setError(null)
     try {
       await callAction('start')
+      const target = lessonPath()
+      saveActiveStudySession({
+        sessionId,
+        plannedMinutes,
+        subjectId: target?.subjectId,
+        chapterId: target?.chapterId,
+        lessonId: target?.lessonId,
+      })
+      if (target) {
+        router.push(`${target.path}?session=${sessionId}`)
+        return
+      }
       setTick(0)
       startLocalTick()
       startHeartbeat()
@@ -257,7 +285,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
   const pauseSession = async () => {
     setActionBusy(true)
     try {
-      // flush remaining tick
       if (tick > 0) {
         await callAction('heartbeat', Math.min(tick, 120))
         setTick(0)
@@ -302,20 +329,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
     }
   }
 
-  const openLesson = () => {
-    const firstLesson = plan.find((p) => p.item_type === 'lesson')
-    if (!firstLesson) return
-    const les = lessons.find((l) => l.id === firstLesson.lesson_id)
-    const ch = chapterId || les?.chapter_id
-    const sub = subjectId || les?.subject_id
-    if (sub && ch) {
-      window.open(
-        `/dashboard/student/academic/learn/class-1/${sub}/${ch}/${firstLesson.lesson_id}`,
-        '_blank',
-      )
-    }
-  }
-
   const onBack = () => {
     if (step === 'time') router.push('/dashboard/student')
     else if (step === 'scope') setStep('time')
@@ -339,7 +352,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
               📚 আজকের পড়ার পরিকল্পনা
             </h1>
             <p className="text-white/40 text-xs">
-              Timer · published only · min {MIN_STUDY_MINUTES}m · {classLevel}
+              একই ট্যাবে টাইমার · published · min {MIN_STUDY_MINUTES}m · {classLevel}
             </p>
           </div>
         </div>
@@ -353,7 +366,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
         >
           <p className="font-bold text-lg">আস-সালামু আলাইকুম, {studentName}! 👋</p>
           <p className="text-white/60 text-sm mt-1">
-            সময় বেছে নাও → plan → টাইমার চালিয়ে পড়ো। Planned ও Actual আলাদা track হয়।
+            পড়া শুরু করলে একই ট্যাবে lesson/quiz-এ live টাইমার দেখাবে।
           </p>
         </motion.div>
 
@@ -525,7 +538,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
               onClick={() => void beginSession()}
               className="w-full py-4 rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 font-bold text-lg disabled:opacity-50"
             >
-              {actionBusy ? 'শুরু হচ্ছে...' : 'টাইমার চালিয়ে পড়া শুরু 🚀'}
+              {actionBusy ? 'শুরু হচ্ছে...' : 'পড়া শুরু — live টাইমার সহ 🚀'}
             </button>
             <button
               type="button"
@@ -555,9 +568,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <p className="text-xs text-white/40 mt-2">{progressPct}% of plan</p>
             </div>
-
             <div className="grid grid-cols-2 gap-2">
               {sessionStatus === 'active' ? (
                 <button
@@ -587,28 +598,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
                 ✅ সম্পন্ন
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={openLesson}
-              className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-600 font-bold"
-            >
-              পাঠ খুলো (নতুন ট্যাব) 📖
-            </button>
-
-            <div className="space-y-2">
-              {plan.map((item) => (
-                <div
-                  key={`${item.position}-${item.item_type}`}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm flex justify-between"
-                >
-                  <span>
-                    {typeLabel[item.item_type]} · {item.title_bn || item.title}
-                  </span>
-                  <span className="text-white/40">{item.planned_minutes}ম</span>
-                </div>
-              ))}
-            </div>
           </section>
         )}
 
@@ -637,13 +626,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
               className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-600 font-bold"
             >
               নতুন session
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard/student')}
-              className="w-full py-3 rounded-2xl border border-white/10 text-white/70"
-            >
-              Dashboard ←
             </button>
           </section>
         )}
