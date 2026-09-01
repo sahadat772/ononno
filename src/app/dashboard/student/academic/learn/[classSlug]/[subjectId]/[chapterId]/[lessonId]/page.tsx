@@ -16,6 +16,7 @@ interface LessonContent {
   examples?: string[] | null
   summary?: string | null
   extra_notes?: string | null
+  quiz_questions?: Question[] | null
 }
 
 interface Lesson {
@@ -24,7 +25,6 @@ interface Lesson {
   title_bn?: string
   duration_minutes: number
   xp_reward: number
-  lesson_type?: string
 }
 
 interface Question {
@@ -34,7 +34,6 @@ interface Question {
   explanation: string
 }
 
-/** Fix stored "\\n" literals and normalise whitespace */
 function cleanText(raw?: string | null): string {
   if (!raw) return ''
   return raw
@@ -49,18 +48,39 @@ function Paragraphs({ text, className = '' }: { text: string; className?: string
     .split(/\n+/)
     .map((p) => p.trim())
     .filter(Boolean)
-
   if (parts.length === 0) return null
-
   return (
     <div className={`space-y-3 ${className}`}>
       {parts.map((p, i) => (
-        <p key={i} className="text-gray-300 leading-relaxed text-base">
-          {p}
-        </p>
+        <p key={i} className="text-gray-300 leading-relaxed text-base">{p}</p>
       ))}
     </div>
   )
+}
+
+function normalizeQuestions(raw: unknown): Question[] {
+  if (!Array.isArray(raw)) return []
+  const out: Question[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const q = item as Record<string, unknown>
+    const question = String(q.question ?? '').trim()
+    const options = Array.isArray(q.options)
+      ? q.options.map((o) => String(o).trim()).filter(Boolean)
+      : []
+    let correct = Number(q.correct)
+    if (!Number.isFinite(correct) || correct < 0) correct = 0
+    const explanation = String(q.explanation ?? '').trim() || 'সঠিক উত্তরটি বেছে নাও।'
+    if (question && options.length >= 2) {
+      out.push({
+        question,
+        options: options.slice(0, 4),
+        correct: Math.min(correct, options.length - 1),
+        explanation,
+      })
+    }
+  }
+  return out
 }
 
 export default function LessonContentPage() {
@@ -95,16 +115,40 @@ export default function LessonContentPage() {
           `id, title, title_bn, duration_minutes, xp_reward,
            lesson_contents (
              overview, objectives, main_content, ai_explanation,
-             examples, summary, extra_notes
+             examples, summary, extra_notes, quiz_questions
            )`,
         )
         .eq('id', lessonId)
         .eq('is_published', true)
         .maybeSingle()
 
-      if (error) console.error('lesson fetch', error)
-
-      if (data) {
+      if (error) {
+        // quiz_questions column may not exist yet
+        const fallback = await supabase
+          .from('curriculum_lessons')
+          .select(
+            `id, title, title_bn, duration_minutes, xp_reward,
+             lesson_contents (
+               overview, objectives, main_content, ai_explanation,
+               examples, summary, extra_notes
+             )`,
+          )
+          .eq('id', lessonId)
+          .eq('is_published', true)
+          .maybeSingle()
+        if (fallback.data) {
+          setLesson({
+            id: fallback.data.id,
+            title: fallback.data.title,
+            title_bn: fallback.data.title_bn,
+            duration_minutes: fallback.data.duration_minutes ?? 30,
+            xp_reward: fallback.data.xp_reward ?? 10,
+          })
+          const raw = fallback.data.lesson_contents as LessonContent | LessonContent[] | null
+          const stored = Array.isArray(raw) ? raw[0] : raw
+          setContent(stored ?? null)
+        }
+      } else if (data) {
         setLesson({
           id: data.id,
           title: data.title,
@@ -112,10 +156,11 @@ export default function LessonContentPage() {
           duration_minutes: data.duration_minutes ?? 30,
           xp_reward: data.xp_reward ?? 10,
         })
-
         const raw = data.lesson_contents as LessonContent | LessonContent[] | null
         const stored = Array.isArray(raw) ? raw[0] : raw
         setContent(stored ?? null)
+        const storedQuiz = normalizeQuestions(stored?.quiz_questions)
+        if (storedQuiz.length > 0) setQuestions(storedQuiz)
       }
       setLoading(false)
     }
@@ -136,45 +181,64 @@ export default function LessonContentPage() {
     )
   }, [content])
 
-  useEffect(() => {
-    if (phase !== 'learn' || !lesson || questions.length > 0) return
+  /** Fallback: live generate only if DB has no quiz */
+  const ensureQuiz = async (): Promise<Question[]> => {
+    if (questions.length > 0) return questions
+    setLoadingQuiz(true)
+    try {
+      const studyBlob = [
+        cleanText(content?.overview),
+        cleanText(content?.main_content),
+        cleanText(content?.ai_explanation),
+        cleanText(content?.summary),
+        ...(content?.objectives ?? []),
+        ...(content?.examples ?? []),
+      ]
+        .filter(Boolean)
+        .join('\n')
+        .slice(0, 3500)
 
-    const loadQuiz = async () => {
-      setLoadingQuiz(true)
-      try {
-        const studyBlob = [
-          cleanText(content?.overview),
-          cleanText(content?.main_content),
-          cleanText(content?.ai_explanation),
-          cleanText(content?.summary),
-          ...(content?.objectives ?? []),
-          ...(content?.examples ?? []),
-        ]
-          .filter(Boolean)
-          .join('\n')
-          .slice(0, 3000)
-
-        const res = await fetch('/api/lesson-content', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lessonTitle: displayTitle,
-            lessonContent: studyBlob || displayTitle,
-            lessonType: 'text',
-          }),
-        })
-        const data = await res.json()
-        if (Array.isArray(data.questions) && data.questions.length > 0) {
-          setQuestions(data.questions)
-        }
-      } catch {
-        // quiz optional
-      } finally {
-        setLoadingQuiz(false)
+      const res = await fetch('/api/lesson-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lessonTitle: displayTitle,
+          lessonContent: studyBlob || displayTitle,
+          lessonType: 'text',
+        }),
+      })
+      const data = await res.json()
+      const qs = normalizeQuestions(data.questions)
+      if (qs.length > 0) {
+        setQuestions(qs)
+        return qs
       }
+    } catch {
+      // optional
+    } finally {
+      setLoadingQuiz(false)
     }
-    void loadQuiz()
-  }, [phase, lesson, content, displayTitle, questions.length])
+    return []
+  }
+
+  const startQuiz = async () => {
+    const qs = await ensureQuiz()
+    if (qs.length > 0) {
+      setCurrentQuestion(0)
+      setSelectedAnswer(null)
+      setIsCorrect(null)
+      setShowExplanation(false)
+      setScore(0)
+      setHearts(3)
+      setPhase('quiz')
+    } else {
+      // no quiz available — complete with reading XP only
+      const earned = lesson?.xp_reward || 10
+      setXpEarned(earned)
+      setPhase('result')
+      void saveProgress(earned, 100)
+    }
+  }
 
   const handleAnswer = (optionIndex: number) => {
     if (selectedAnswer !== null) return
@@ -183,7 +247,7 @@ export default function LessonContentPage() {
     setIsCorrect(correct)
     setShowExplanation(true)
     if (correct) setScore((s) => s + 1)
-    else setHearts((h) => h - 1)
+    else setHearts((h) => Math.max(0, h - 1))
   }
 
   const saveProgress = async (xp: number, finalScore: number) => {
@@ -213,15 +277,23 @@ export default function LessonContentPage() {
         xp_amount: xp,
       })
     } catch {
-      await supabase.from('student_stats').upsert(
-        {
-          user_id: user.id,
-          total_xp: xp,
-          current_streak: 1,
-          last_activity_date: new Date().toISOString().split('T')[0],
-        },
-        { onConflict: 'user_id' },
-      )
+      try {
+        await supabase.rpc('increment_student_xp', {
+          p_user_id: user.id,
+          p_xp: xp,
+          p_lessons: 1,
+        })
+      } catch {
+        await supabase.from('student_stats').upsert(
+          {
+            user_id: user.id,
+            total_xp: xp,
+            current_streak: 1,
+            last_activity_date: new Date().toISOString().split('T')[0],
+          },
+          { onConflict: 'user_id' },
+        )
+      }
     }
   }
 
@@ -232,6 +304,10 @@ export default function LessonContentPage() {
 
     if (hearts <= 0) {
       setPhase('result')
+      const fs = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0
+      const earned = Math.round((score / Math.max(questions.length, 1)) * (lesson?.xp_reward || 10))
+      setXpEarned(earned)
+      void saveProgress(earned, fs)
       return
     }
 
@@ -250,24 +326,13 @@ export default function LessonContentPage() {
     }
   }
 
-  const completeWithoutQuiz = () => {
-    const earned = lesson?.xp_reward || 10
-    setXpEarned(earned)
-    setPhase('result')
-    void saveProgress(earned, 100)
-  }
-
   const finalScore =
     questions.length > 0 ? Math.round((score / questions.length) * 100) : 100
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1 }}
-          className="text-5xl"
-        >
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="text-5xl">
           ⚙️
         </motion.div>
       </div>
@@ -314,7 +379,7 @@ export default function LessonContentPage() {
                 <div className="w-full bg-white/10 rounded-full h-3">
                   <motion.div
                     animate={{
-                      width: `${(currentQuestion / questions.length) * 100}%`,
+                      width: `${((currentQuestion + (selectedAnswer !== null ? 1 : 0)) / questions.length) * 100}%`,
                     }}
                     className="bg-linear-to-r from-violet-500 to-purple-500 h-3 rounded-full"
                   />
@@ -322,14 +387,12 @@ export default function LessonContentPage() {
               </div>
               <div className="flex gap-1">
                 {[...Array(3)].map((_, i) => (
-                  <span
-                    key={i}
-                    className={`text-xl ${i < hearts ? 'opacity-100' : 'opacity-20'}`}
-                  >
+                  <span key={i} className={`text-xl ${i < hearts ? 'opacity-100' : 'opacity-20'}`}>
                     ❤️
                   </span>
                 ))}
               </div>
+              <span className="text-amber-400 text-xs font-bold">⚡{score * 2}</span>
             </>
           )}
         </div>
@@ -345,19 +408,14 @@ export default function LessonContentPage() {
               exit={{ opacity: 0, y: -30 }}
               className="text-center"
             >
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="text-8xl mb-6"
-              >
+              <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-8xl mb-6">
                 📖
               </motion.div>
-
               <h1 className="text-3xl font-bold text-white mb-3">{displayTitle}</h1>
-
               <div className="flex items-center justify-center gap-4 mb-8 text-sm text-gray-400">
                 <span>⏱️ {lesson.duration_minutes} মিনিট</span>
                 <span>⚡ +{lesson.xp_reward} XP</span>
+                {questions.length > 0 && <span>🎯 {questions.length} প্রশ্ন</span>}
               </div>
 
               {content?.objectives && content.objectives.length > 0 ? (
@@ -375,15 +433,9 @@ export default function LessonContentPage() {
               ) : (
                 <div className="bg-white/5 border border-white/10 rounded-3xl p-6 mb-8 text-left">
                   <p className="text-gray-300 leading-relaxed">
-                    NCTB পাঠ্যবই অনুযায়ী এই পাঠ পড়ো, বুঝো, তারপর quiz দিয়ে নিজেকে যাচাই করো।
+                    পাঠ পড়ো, বুঝো, তারপর ধাপে ধাপে quiz দিয়ে নিজেকে যাচাই করো — XP জিতো!
                   </p>
                 </div>
-              )}
-
-              {!hasStudyBody && (
-                <p className="text-amber-400/90 text-sm mb-4">
-                  ⚠️ এই lesson-এ এখনো admin-approved study content নেই।
-                </p>
               )}
 
               <motion.button
@@ -410,9 +462,6 @@ export default function LessonContentPage() {
               {!hasStudyBody ? (
                 <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
                   <p className="text-amber-200 font-semibold">Study content এখনো নেই</p>
-                  <p className="text-gray-400 text-sm mt-2">
-                    Admin → Lessons → Review → Generate → Approve → Publish করলে এখানে বিস্তারিত পাঠ আসবে।
-                  </p>
                 </div>
               ) : (
                 <>
@@ -422,7 +471,6 @@ export default function LessonContentPage() {
                       <Paragraphs text={content!.overview!} />
                     </section>
                   )}
-
                   {content?.objectives && content.objectives.length > 0 && (
                     <section className="rounded-3xl bg-blue-500/10 border border-blue-500/20 p-6">
                       <p className="text-blue-300 font-bold mb-3">🎯 শেখার লক্ষ্য</p>
@@ -436,21 +484,18 @@ export default function LessonContentPage() {
                       </ul>
                     </section>
                   )}
-
                   {cleanText(content?.main_content) && (
                     <section className="rounded-3xl bg-white/5 border border-white/10 p-6">
                       <p className="text-emerald-300 font-bold mb-3">📚 মূল পাঠ</p>
                       <Paragraphs text={content!.main_content!} />
                     </section>
                   )}
-
                   {cleanText(content?.ai_explanation) && (
                     <section className="rounded-3xl bg-cyan-500/10 border border-cyan-500/20 p-6">
                       <p className="text-cyan-300 font-bold mb-3">💡 সহজ ব্যাখ্যা</p>
                       <Paragraphs text={content!.ai_explanation!} />
                     </section>
                   )}
-
                   {content?.examples && content.examples.length > 0 && (
                     <section className="rounded-3xl bg-amber-500/10 border border-amber-500/20 p-6">
                       <p className="text-amber-300 font-bold mb-3">✏️ উদাহরণ</p>
@@ -464,14 +509,12 @@ export default function LessonContentPage() {
                       </ul>
                     </section>
                   )}
-
                   {cleanText(content?.summary) && (
                     <section className="rounded-3xl bg-emerald-500/10 border border-emerald-500/20 p-6">
                       <p className="text-emerald-300 font-bold mb-3">✅ সারসংক্ষেপ</p>
                       <Paragraphs text={content!.summary!} />
                     </section>
                   )}
-
                   {cleanText(content?.extra_notes) && (
                     <section className="rounded-3xl bg-white/5 border border-white/10 p-6">
                       <p className="text-gray-400 font-bold mb-3">📝 অতিরিক্ত নোট</p>
@@ -485,17 +528,14 @@ export default function LessonContentPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={loadingQuiz}
-                onClick={() => {
-                  if (questions.length > 0) setPhase('quiz')
-                  else completeWithoutQuiz()
-                }}
+                onClick={() => void startQuiz()}
                 className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-600 text-white font-bold text-lg shadow-lg shadow-violet-500/30 disabled:opacity-60"
               >
                 {loadingQuiz
-                  ? 'Quiz তৈরি হচ্ছে...'
+                  ? 'প্রশ্ন তৈরি হচ্ছে...'
                   : questions.length > 0
-                    ? 'Quiz শুরু করো! 🎯'
-                    : 'সম্পন্ন করো! ✅'}
+                    ? `প্রশ্ন শুরু করো! 🎯 (${questions.length}টি)`
+                    : 'সম্পন্ন করো — প্রশ্ন শুরু 🎯'}
               </motion.button>
             </motion.div>
           )}
@@ -558,11 +598,9 @@ export default function LessonContentPage() {
                     }`}
                   >
                     <p className={`font-bold mb-1 ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {isCorrect ? '🎉 সঠিক!' : '😔 ভুল!'}
+                      {isCorrect ? '🎉 সঠিক! +2 XP' : '😔 ভুল!'}
                     </p>
-                    <p className="text-gray-300 text-sm">
-                      {questions[currentQuestion]?.explanation}
-                    </p>
+                    <p className="text-gray-300 text-sm">{questions[currentQuestion]?.explanation}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -574,9 +612,7 @@ export default function LessonContentPage() {
                   onClick={handleNext}
                   className="w-full py-4 rounded-2xl bg-linear-to-r from-violet-500 to-purple-500 font-bold text-lg text-white"
                 >
-                  {currentQuestion < questions.length - 1
-                    ? 'পরের প্রশ্ন →'
-                    : 'ফলাফল দেখো 🏆'}
+                  {currentQuestion < questions.length - 1 ? 'পরের প্রশ্ন →' : 'ফলাফল দেখো 🏆'}
                 </motion.button>
               )}
             </motion.div>
@@ -590,7 +626,7 @@ export default function LessonContentPage() {
               className="text-center"
             >
               <div className="text-7xl mb-4">
-                {hearts <= 0 ? '💔' : finalScore >= 80 ? '🏆' : finalScore >= 60 ? '⭐' : '😔'}
+                {hearts <= 0 ? '💔' : finalScore >= 80 ? '🏆' : finalScore >= 60 ? '⭐' : questions.length === 0 ? '✅' : '😔'}
               </div>
               <h2 className="text-2xl font-bold text-white mb-6">
                 {hearts <= 0
@@ -637,7 +673,7 @@ export default function LessonContentPage() {
                 >
                   অধ্যায়ে ফিরে যাও →
                 </button>
-                {questions.length > 0 && finalScore < 60 && (
+                {questions.length > 0 && (
                   <button
                     onClick={() => {
                       setPhase('intro')
