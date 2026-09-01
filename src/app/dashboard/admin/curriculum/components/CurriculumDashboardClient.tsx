@@ -1,50 +1,297 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useMemo, useState, type ComponentType } from "react";
-import { ArrowRight, Bot, BookOpen, ChevronDown, ChevronRight, CirclePlus, ClipboardList, Download, Eye, FilePlus2, Filter, FolderOpen, GraduationCap, LibraryBig, MoreVertical, Pencil, Search, Sparkles, Target, Trash2, Upload } from "lucide-react";
+import Link from 'next/link'
+import {
+  BookOpen,
+  ClipboardList,
+  FileText,
+  FolderOpen,
+  GraduationCap,
+  LibraryBig,
+  Sparkles,
+  Target,
+  Upload,
+  Wand2,
+} from 'lucide-react'
 
-type Subject = { name: string; lessons: number };
-type Grade = { id: string; name: string; subjects: Subject[] };
-const classNames = ["প্রথম", "দ্বিতীয়", "তৃতীয়", "চতুর্থ", "পঞ্চম", "ষষ্ঠ", "সপ্তম", "অষ্টম", "নবম", "দশম", "একাদশ", "দ্বাদশ"];
-const primarySubjects = [{ name: "বাংলা", lessons: 0 }, { name: "English", lessons: 0 }, { name: "গণিত", lessons: 0 }, { name: "প্রাথমিক বিজ্ঞান", lessons: 0 }, { name: "বাংলাদেশ ও বিশ্বপরিচয়", lessons: 0 }, { name: "ধর্ম ও নৈতিক শিক্ষা", lessons: 0 }];
-const secondarySubjects = [{ name: "বাংলা", lessons: 0 }, { name: "English", lessons: 0 }, { name: "গণিত", lessons: 0 }, { name: "বিজ্ঞান", lessons: 0 }, { name: "বাংলাদেশ ও বিশ্বপরিচয়", lessons: 0 }, { name: "তথ্য ও যোগাযোগ প্রযুক্তি", lessons: 0 }, { name: "ধর্ম ও নৈতিক শিক্ষা", lessons: 0 }];
-const grades: Grade[] = classNames.map((name, index) => ({ id: `class-${index + 1}`, name: `${name} শ্রেণি`, subjects: index < 5 ? primarySubjects : secondarySubjects }));
-const actionItems = [
-  ["New Version", "Add Curriculum Version", FilePlus2, "blue"], ["Add Class", "Create New Class", GraduationCap, "green"], ["Add Subject", "Create New Subject", BookOpen, "purple"], ["Add Chapter", "Create New Chapter", ClipboardList, "orange"],
-  ["Add Lesson", "Create New Lesson", Target, "cyan"], ["AI Lesson", "Generate with AI", Bot, "pink"], ["Import", "Import Curriculum", Download, "blue"], ["Export", "Export Curriculum", Upload, "purple"],
-] as const;
-const colors: Record<string, { border: string; glow: string; icon: string; line: string }> = {
-  blue: { border: "border-[#087dff]/55", glow: "shadow-[0_0_28px_rgba(0,120,255,.12)]", icon: "text-[#48a8ff]", line: "#1597ff" }, green: { border: "border-[#16b76a]/50", glow: "shadow-[0_0_28px_rgba(22,183,106,.11)]", icon: "text-[#41e88c]", line: "#26d87b" }, purple: { border: "border-[#a855f7]/55", glow: "shadow-[0_0_28px_rgba(168,85,247,.12)]", icon: "text-[#c66bff]", line: "#ae45f8" }, orange: { border: "border-[#f77b21]/55", glow: "shadow-[0_0_28px_rgba(247,123,33,.12)]", icon: "text-[#ff9d45]", line: "#ff6d17" }, cyan: { border: "border-[#0c9cbd]/55", glow: "shadow-[0_0_28px_rgba(12,156,189,.12)]", icon: "text-[#38d5f5]", line: "#16c7ec" }, pink: { border: "border-[#e344a7]/55", glow: "shadow-[0_0_28px_rgba(227,68,167,.12)]", icon: "text-[#f56bc1]", line: "#df3ba9" },
-};
-function Sparkline({ color }: { color: string }) { return <svg viewBox="0 0 210 34" className="mt-4 h-9 w-full overflow-visible" aria-hidden="true"><path d="M1 24 L16 24 L27 24 L39 24 L50 24 L64 24 L75 24 L86 24 L99 23 L110 24 L122 18 L132 19 L143 11 L154 14 L165 13 L177 25 L188 18 L199 19 L209 10" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" /><g fill={color}>{[1, 23, 45, 67, 90, 111, 132, 154, 177, 209].map((cx, index) => <circle key={cx} cx={cx} cy={[24, 24, 24, 24, 23, 24, 19, 14, 25, 10][index]} r="1.8" />)}</g></svg>; }
-function Status({ children }: { children: React.ReactNode }) { return <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300">{children}</span>; }
-function IconButton({ Icon, danger = false }: { Icon: ComponentType<{ className?: string }>; danger?: boolean }) { return <button aria-label="Curriculum action" className={`grid size-7 place-items-center rounded-full border ${danger ? "border-rose-500/35 bg-rose-500/8 text-rose-400" : "border-slate-600/70 bg-slate-800/80 text-slate-300"}`}><Icon className="size-3.5" /></button>; }
-
-export default function CurriculumDashboardClient({ versionName, versionCount }: { versionName: string; versionCount: number }) {
-  const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(["root", "class-1"]));
-  const visibleGrades = useMemo(() => { const text = query.trim().toLocaleLowerCase(); return text ? grades.filter((grade) => [grade.name, ...grade.subjects.map((subject) => subject.name)].some((item) => item.toLocaleLowerCase().includes(text))) : grades; }, [query]);
-  const toggle = (key: string) => setExpanded((current) => { const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next; });
-  const stats = [["Curriculum Versions", versionCount, LibraryBig, "blue"], ["Classes", 12, GraduationCap, "green"], ["Subjects", 86, BookOpen, "purple"], ["Lessons", 0, Target, "orange"]] as const;
-
-  return <main className="min-h-screen bg-[#030711] px-3 py-5 font-sans text-[#f7f7ff] sm:px-6 lg:px-8"><div className="mx-auto max-w-375 space-y-5">
-    <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-3"><div className="grid size-12 place-items-center rounded-xl border border-fuchsia-500/60 bg-linear-to-br from-fuchsia-900/50 to-slate-950 shadow-[0_0_25px_rgba(223,50,206,.25)]"><LibraryBig className="size-6 text-pink-300" /></div><div><h1 className="text-[clamp(1.65rem,3vw,2.55rem)] font-extrabold tracking-tight">Curriculum <span className="bg-linear-to-r from-pink-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent">Management</span></h1><p className="mt-0.5 text-sm text-slate-400">Manage NCTB Curriculum, Classes, Subjects, Chapters and Lessons.</p></div></div><div className="flex flex-wrap gap-3"><button className="flex min-w-40 items-center justify-between rounded-lg border border-slate-600 bg-[#080d1b] px-3 py-2 text-left"><span><span className="block text-[10px] text-slate-400">Active Version</span><span className="block text-sm font-bold">{versionName}</span></span><ChevronDown className="size-4 text-slate-300" /></button><Link href="/dashboard/student/academic" className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-[#080d1b] px-4 py-2.5 text-xs font-bold hover:bg-slate-900">View Public Site <Eye className="size-4" /></Link></div></header>
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map(([label, value, Icon, color]) => { const tone = colors[color]; return <article key={label} className={`rounded-xl border bg-linear-to-br from-[#0d1425] to-[#070b16] p-5 ${tone.border} ${tone.glow}`}><div className="flex items-start justify-between"><div className={`grid size-14 place-items-center rounded-xl border ${tone.border} bg-white/3 shadow-[0_0_22px_currentColor] ${tone.icon}`}><Icon className="size-7" /></div><MoreVertical className="size-4 text-slate-400" /></div><div className="mt-4 flex items-end gap-4"><div><p className="text-xs text-slate-300">{label}</p><p className="mt-1 text-4xl font-extrabold">{value}</p></div></div><div className="mt-5 flex items-center gap-3 text-xs"><span className="font-bold text-emerald-400">↑ {label === "Curriculum Versions" ? "100%" : "0%"}</span><span className="text-slate-400">vs last month</span></div><Sparkline color={tone.line} /></article>; })}</section>
-    <section className="relative overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15] p-5 shadow-[0_15px_50px_rgba(0,0,0,.25)]"><Sparkles className="absolute right-5 top-5 size-6 text-violet-400" /><h2 className="flex items-center gap-2 text-lg font-bold"><span className="text-xl">🚀</span> Quick Actions</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{actionItems.map(([title, subtitle, Icon, color]) => { const tone = colors[color]; const hrefMap: Record<string, string> = {
-    "New Version": "/dashboard/admin/curriculum/versions",
-    "Add Class": "/dashboard/admin/curriculum/classes",
-    "Add Subject": "/dashboard/admin/curriculum/subjects",
-    "Add Chapter": "/dashboard/admin/curriculum/chapters",
-    "Add Lesson": "/dashboard/admin/curriculum/lessons",
-    "AI Lesson": "/dashboard/admin/curriculum/import",
-    "Import": "/dashboard/admin/curriculum/import",
-    "Export": "/dashboard/admin/curriculum/versions",
-  };
-  return <Link key={title} href={hrefMap[title] ?? "/dashboard/admin/curriculum"} className={`group relative min-h-44 rounded-lg border bg-linear-to-br from-[#10192b] to-[#080c16] p-4 transition hover:-translate-y-1 ${tone.border} ${tone.glow}`}><div className={`mx-auto grid size-16 place-items-center rounded-2xl bg-white/4 ${tone.icon} shadow-[0_0_30px_currentColor]`}><Icon className="size-9" /></div>{title === "AI Lesson" && <span className="absolute right-3 top-3 rounded bg-pink-400/20 px-1.5 py-0.5 text-[10px] font-bold text-pink-200">AI</span>}<h3 className="mt-4 text-center font-bold text-white">{title}</h3><p className="mt-1 text-center text-xs text-slate-400">{subtitle}</p><ArrowRight className="absolute bottom-3 right-3 size-4 text-slate-300 transition group-hover:translate-x-1" /></Link>; })}</div></section>
-    <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15]"><div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="flex items-center gap-2 text-lg font-bold"><FolderOpen className="size-5 text-sky-300" /> Curriculum Structure</h2><p className="mt-1 text-xs text-slate-400">Browse and manage your curriculum hierarchy</p></div><div className="flex gap-3"><label className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search..." className="h-10 w-48 rounded-lg border border-slate-600 bg-[#0a1020] pl-9 pr-3 text-sm outline-none focus:border-violet-400" /></label><button aria-label="Filter" className="grid size-10 place-items-center rounded-lg border border-slate-600 bg-[#0a1020]"><Filter className="size-4" /></button><Link href="/dashboard/admin/curriculum/import" className="inline-flex items-center gap-2 rounded-lg bg-linear-to-r from-violet-600 to-fuchsia-600 px-4 text-sm font-bold"><CirclePlus className="size-4" /> Add</Link></div></div><div className="mx-5 mb-2 hidden grid-cols-[1fr_90px_110px_150px] rounded-t-md border border-slate-700/80 bg-slate-800/70 px-3 py-3 text-xs font-semibold text-slate-200 md:grid"><span>Name</span><span>Lessons</span><span>Status</span><span>Actions</span></div><div className="px-5 pb-5">{expanded.has("root") && <><TreeRow depth={0} open={expanded.has("root")} onToggle={() => toggle("root")} icon="📚" label="NCTB Curriculum 2026" root /><div className="ml-5 border-l border-dotted border-slate-600/70 pl-3">{visibleGrades.map((grade) => <div key={grade.id}><TreeRow depth={1} open={expanded.has(grade.id)} onToggle={() => toggle(grade.id)} icon="🏫" label={grade.name} />{expanded.has(grade.id) && <div className="ml-5 border-l border-dotted border-slate-600/70 pl-3">{grade.subjects.slice(0, 4).map((subject) => <TreeRow key={subject.name} depth={2} open={false} onToggle={() => undefined} icon="📖" label={subject.name} leaf />)}</div>}</div>)}</div></>}</div></section>
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["Total Lessons", "0", "All published lessons", "⚡", "blue"], ["Published", "0", "Published lessons", "✓", "green"], ["Draft", "0", "Draft lessons", "✎", "orange"], ["AI Generated", "0", "AI generated lessons", "✹", "purple"]].map(([title, value, subtitle, symbol, color]) => { const tone = colors[color]; return <article key={title} className={`overflow-hidden rounded-xl border bg-linear-to-br from-[#10192b] to-[#080c16] ${tone.border}`}><div className="flex items-center gap-4 p-4"><div className={`grid size-12 place-items-center rounded-xl border text-xl ${tone.border} ${tone.icon}`}>{symbol}</div><div><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-3xl font-bold">{value}</p><p className="mt-1 text-[10px] text-slate-400">{subtitle}</p></div></div><div className={`border-t border-white/10 px-4 py-3 text-xs font-semibold ${tone.icon}`}>View {title} <ArrowRight className="ml-1 inline size-3.5" /></div></article>; })}</section>
-  </div></main>;
+type Stats = {
+  classes: number
+  subjects: number
+  chapters: number
+  lessons: number
+  published: number
+  generated: number
+  reviewed: number
+  versions: number
 }
-function TreeRow({ open, onToggle, icon, label, root = false, leaf = false }: { depth?: number; open: boolean; onToggle: () => void; icon: string; label: string; root?: boolean; leaf?: boolean }) { return <div className="grid grid-cols-[1fr_90px_110px_150px] items-center border-b border-slate-800/80 py-2.5 text-sm last:border-0"><button onClick={onToggle} className="flex min-w-0 items-center gap-2 text-left"><span className="grid size-5 place-items-center rounded-full bg-slate-800 text-slate-300">{leaf ? <ChevronRight className="size-3" /> : open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}</span><span>{icon}</span><span className={root ? "font-bold" : "font-semibold"}>{label}</span>{!leaf && <Status>Active</Status>}</button><span className="text-slate-300">0</span><Status>Published</Status><span className="flex gap-2"><IconButton Icon={Eye} /><IconButton Icon={Pencil} /><IconButton Icon={CopyIcon} /><IconButton Icon={Trash2} danger /></span></div>; }
-function CopyIcon({ className }: { className?: string }) { return <span className={className}>⧉</span>; }
+
+type ClassRow = { id: string; name: string; class_number: number; slug?: string | null }
+type SubjectRow = { id: string; name: string; name_bn: string; class_id: string }
+type SourceRow = {
+  id: string
+  title: string
+  source_status: string
+  workflow_status: string
+  total_chapters: number
+  total_lessons: number
+}
+
+type Props = {
+  stats: Stats
+  activeVersion: string
+  classes: ClassRow[]
+  subjects: SubjectRow[]
+  sources: SourceRow[]
+}
+
+const quickLinks = [
+  {
+    href: '/dashboard/admin/curriculum/import',
+    title: 'Import PDF',
+    subtitle: 'Catalog → Extract → Commit',
+    icon: Upload,
+    tone: 'from-violet-500 to-fuchsia-500',
+  },
+  {
+    href: '/dashboard/admin/curriculum/chapters',
+    title: 'Chapters',
+    subtitle: 'অধ্যায় ম্যানেজমেন্ট',
+    icon: ClipboardList,
+    tone: 'from-violet-500 to-purple-500',
+  },
+  {
+    href: '/dashboard/admin/curriculum/lessons',
+    title: 'Lessons',
+    subtitle: 'Review → Generate → Publish',
+    icon: BookOpen,
+    tone: 'from-amber-500 to-orange-500',
+  },
+  {
+    href: '/dashboard/admin/curriculum/subjects',
+    title: 'Subjects',
+    subtitle: 'Subject list',
+    icon: Target,
+    tone: 'from-emerald-500 to-teal-500',
+  },
+  {
+    href: '/dashboard/admin/curriculum/classes',
+    title: 'Classes',
+    subtitle: 'শ্রেণি তালিকা',
+    icon: GraduationCap,
+    tone: 'from-sky-500 to-blue-500',
+  },
+  {
+    href: '/dashboard/admin/curriculum/versions',
+    title: 'Versions',
+    subtitle: 'Curriculum versions',
+    icon: LibraryBig,
+    tone: 'from-pink-500 to-rose-500',
+  },
+]
+
+export default function CurriculumDashboardClient({
+  stats,
+  activeVersion,
+  classes,
+  subjects,
+  sources,
+}: Props) {
+  const draft = Math.max(0, stats.lessons - stats.published)
+
+  return (
+    <main className="min-h-screen bg-[#030711] px-3 py-5 text-slate-100 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* Header */}
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid size-12 place-items-center rounded-xl border border-fuchsia-500/50 bg-fuchsia-500/10">
+              <LibraryBig className="size-6 text-pink-300" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                Curriculum{' '}
+                <span className="bg-linear-to-r from-pink-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent">
+                  Management
+                </span>
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-400">
+                AI generates → Admin reviews → Publish → Student learns
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-lg border border-slate-600 bg-[#080d1b] px-3 py-2 text-xs">
+              <span className="block text-slate-500">Active Version</span>
+              <span className="font-bold text-white">{activeVersion}</span>
+            </span>
+            <Link
+              href="/dashboard/admin/curriculum/import"
+              className="inline-flex items-center gap-2 rounded-lg bg-linear-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-bold text-white"
+            >
+              <Wand2 className="size-4" /> Import PDF
+            </Link>
+          </div>
+        </header>
+
+        {/* Workflow strip */}
+        <section className="rounded-xl border border-violet-500/25 bg-violet-950/20 px-4 py-3 text-sm text-violet-100">
+          <p className="font-semibold flex items-center gap-2">
+            <Sparkles className="size-4" /> ONONNO workflow
+          </p>
+          <p className="mt-1 text-xs text-violet-200/80">
+            1) Import PDF → 2) Extract + Commit (chapters/lessons) → 3) Review → 4) Generate study+quiz → 5) Approve → 6) Publish
+          </p>
+        </section>
+
+        {/* Stats */}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Classes', value: stats.classes, icon: GraduationCap, color: 'text-sky-300 border-sky-400/40' },
+            { label: 'Subjects', value: stats.subjects, icon: BookOpen, color: 'text-emerald-300 border-emerald-400/40' },
+            { label: 'Chapters', value: stats.chapters, icon: ClipboardList, color: 'text-violet-300 border-violet-400/40' },
+            { label: 'Lessons', value: stats.lessons, icon: Target, color: 'text-amber-300 border-amber-400/40' },
+          ].map((s) => (
+            <article
+              key={s.label}
+              className={`rounded-xl border bg-linear-to-br from-[#0d1425] to-[#070b16] p-5 ${s.color.split(' ')[1]}`}
+            >
+              <div className={`grid size-11 place-items-center rounded-xl border bg-white/5 ${s.color}`}>
+                <s.icon className="size-5" />
+              </div>
+              <p className="mt-4 text-xs text-slate-400">{s.label}</p>
+              <p className="text-3xl font-extrabold text-white">{s.value}</p>
+            </article>
+          ))}
+        </section>
+
+        {/* Lesson pipeline */}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Published', value: stats.published, href: '/dashboard/admin/curriculum/lessons', hint: 'Student live' },
+            { label: 'Reviewed (ready)', value: stats.reviewed, href: '/dashboard/admin/curriculum/lessons', hint: 'Generate করো' },
+            { label: 'Generated', value: stats.generated, href: '/dashboard/admin/curriculum/lessons', hint: 'Approve/Publish' },
+            { label: 'Not published', value: draft, href: '/dashboard/admin/curriculum/lessons', hint: 'Draft pool' },
+          ].map((s) => (
+            <Link
+              key={s.label}
+              href={s.href}
+              className="rounded-xl border border-slate-700/80 bg-[#0b1223] p-4 transition hover:border-violet-400/40 hover:bg-[#0f1830]"
+            >
+              <p className="text-xs text-slate-400">{s.label}</p>
+              <p className="mt-1 text-2xl font-bold text-white">{s.value}</p>
+              <p className="mt-1 text-[11px] text-violet-300">{s.hint} →</p>
+            </Link>
+          ))}
+        </section>
+
+        {/* Quick actions */}
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+            <FolderOpen className="size-5 text-sky-300" /> Quick Actions
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {quickLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group flex items-center gap-4 rounded-xl border border-slate-700/80 bg-linear-to-br from-[#10192b] to-[#080c16] p-4 transition hover:-translate-y-0.5 hover:border-white/20"
+              >
+                <div
+                  className={`grid size-12 place-items-center rounded-xl bg-linear-to-br ${item.tone} text-white shadow-lg`}
+                >
+                  <item.icon className="size-6" />
+                </div>
+                <div>
+                  <p className="font-bold text-white group-hover:text-violet-200">{item.title}</p>
+                  <p className="text-xs text-slate-400">{item.subtitle}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* PDF sources */}
+        <section className="rounded-xl border border-slate-700/80 bg-[#0b1223] overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-700/70 px-5 py-4">
+            <div>
+              <h2 className="flex items-center gap-2 font-bold">
+                <FileText className="size-5 text-emerald-300" /> PDF Sources
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">Supabase catalog (latest)</p>
+            </div>
+            <Link href="/dashboard/admin/curriculum/import" className="text-xs font-semibold text-violet-300 hover:text-violet-200">
+              Import →
+            </Link>
+          </div>
+          {sources.length === 0 ? (
+            <p className="p-6 text-sm text-slate-500">এখনো কোনো PDF source নেই। Import page থেকে শুরু করো।</p>
+          ) : (
+            <div className="divide-y divide-slate-800">
+              {sources.map((s) => (
+                <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+                  <div>
+                    <p className="font-semibold text-white">{s.title}</p>
+                    <p className="text-xs text-slate-500">
+                      {s.source_status} · {s.workflow_status} · ch {s.total_chapters} · les {s.total_lessons}
+                    </p>
+                  </div>
+                  <Link
+                    href="/dashboard/admin/curriculum/import"
+                    className="rounded-lg border border-white/10 px-3 py-1 text-xs text-slate-300 hover:bg-white/5"
+                  >
+                    Open Import
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Classes + subjects snapshot */}
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-slate-700/80 bg-[#0b1223] overflow-hidden">
+            <div className="border-b border-slate-700/70 px-5 py-4 flex justify-between">
+              <h2 className="font-bold">Classes</h2>
+              <Link href="/dashboard/admin/curriculum/classes" className="text-xs text-violet-300">
+                All →
+              </Link>
+            </div>
+            <ul className="max-h-64 overflow-y-auto divide-y divide-slate-800">
+              {classes.length === 0 ? (
+                <li className="p-4 text-sm text-slate-500">No classes</li>
+              ) : (
+                classes.map((c) => (
+                  <li key={c.id} className="px-5 py-2.5 text-sm flex justify-between">
+                    <span className="text-white">{c.name}</span>
+                    <span className="text-slate-500 text-xs">#{c.class_number}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-slate-700/80 bg-[#0b1223] overflow-hidden">
+            <div className="border-b border-slate-700/70 px-5 py-4 flex justify-between">
+              <h2 className="font-bold">Subjects (sample)</h2>
+              <Link href="/dashboard/admin/curriculum/subjects" className="text-xs text-violet-300">
+                All →
+              </Link>
+            </div>
+            <ul className="max-h-64 overflow-y-auto divide-y divide-slate-800">
+              {subjects.length === 0 ? (
+                <li className="p-4 text-sm text-slate-500">No subjects</li>
+              ) : (
+                subjects.slice(0, 15).map((s) => (
+                  <li key={s.id} className="px-5 py-2.5 text-sm flex justify-between gap-2">
+                    <span className="text-white truncate">{s.name_bn || s.name}</span>
+                    <span className="text-slate-500 text-xs shrink-0">{s.name}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        </section>
+      </div>
+    </main>
+  )
+}
