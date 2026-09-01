@@ -50,7 +50,10 @@ export function slugifyCurriculumLabel(
   return base || fallback;
 }
 
-/** If model dumps all lessons under 1 chapter, split into balanced chapters (≈6–8 lessons each). */
+/**
+ * Force multi-chapter layout when Gemini dumps everything under 1–2 chapters.
+ * Target ≈6–8 lessons per chapter (53 lessons → ~8 chapters).
+ */
 export function balanceChapters(
   structure: ExtractedCurriculumStructure,
   targetLessonsPerChapter = 7,
@@ -59,16 +62,25 @@ export function balanceChapters(
     (n, ch) => n + ch.lessons.length,
     0,
   );
+  const maxInOne = structure.chapters.reduce(
+    (m, ch) => Math.max(m, ch.lessons.length),
+    0,
+  );
 
-  // Already multi-chapter with reasonable spread
-  if (structure.chapters.length >= 4 && totalLessons > 0) {
-    return {
-      ...structure,
-      totalLessons,
-    };
+  // Only skip rebalance if already spread reasonably
+  if (
+    structure.chapters.length >= 4 &&
+    maxInOne <= targetLessonsPerChapter + 2 &&
+    totalLessons > 0
+  ) {
+    return { ...structure, totalLessons };
   }
 
-  // Flatten all lessons in order
+  // Need split if few chapters OR any mega-chapter
+  if (totalLessons <= targetLessonsPerChapter && structure.chapters.length >= 1) {
+    return { ...structure, totalLessons };
+  }
+
   const flat: ExtractedLessonMap[] = [];
   for (const ch of structure.chapters) {
     for (const les of ch.lessons) {
@@ -78,7 +90,6 @@ export function balanceChapters(
 
   if (flat.length === 0) return structure;
 
-  // Prefer 8–10 chapters when many lessons (e.g. 53 → ~7 each → 8 chapters)
   const desiredChapters = Math.min(
     12,
     Math.max(4, Math.ceil(flat.length / targetLessonsPerChapter)),
@@ -92,17 +103,14 @@ export function balanceChapters(
       lessonNumber: idx + 1,
     }));
     const chapterNumber = chapters.length + 1;
-    const pageStart = slice
-      .map((l) => l.pageStart)
-      .filter((p): p is number => typeof p === "number")
-      .sort((a, b) => a - b)[0];
-    const pageEnd = slice
-      .map((l) => l.pageEnd)
-      .filter((p): p is number => typeof p === "number")
-      .sort((a, b) => b - a)[0];
+    const pageNums = slice
+      .flatMap((l) => [l.pageStart, l.pageEnd])
+      .filter((p): p is number => typeof p === "number");
+    const pageStart = pageNums.length ? Math.min(...pageNums) : undefined;
+    const pageEnd = pageNums.length ? Math.max(...pageNums) : undefined;
+    const hint =
+      slice[0]?.titleBn || slice[0]?.title || `অধ্যায় ${chapterNumber}`;
 
-    // Use first lesson title as chapter hint when possible
-    const hint = slice[0]?.titleBn || slice[0]?.title || `অধ্যায় ${chapterNumber}`;
     chapters.push({
       title: `Chapter ${chapterNumber}`,
       titleBn: `অধ্যায় ${chapterNumber}: ${hint}`.slice(0, 120),
