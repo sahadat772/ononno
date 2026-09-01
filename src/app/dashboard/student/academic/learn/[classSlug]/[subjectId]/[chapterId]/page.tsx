@@ -14,6 +14,7 @@ interface Lesson {
     duration_minutes: number
     xp_reward: number
     order_index: number
+    lesson_number?: number
 }
 
 interface Chapter {
@@ -62,7 +63,9 @@ export default function LessonListPage() {
     useEffect(() => {
         const fetchData = async () => {
             const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
+            const {
+                data: { user },
+            } = await supabase.auth.getUser()
 
             const { data: chap } = await supabase
                 .from('curriculum_chapters')
@@ -71,34 +74,52 @@ export default function LessonListPage() {
                 .single()
             if (chap) setChapter(chap)
 
-            // Student sees published lessons only (is_published is source of truth)
             const { data: lsns } = await supabase
                 .from('curriculum_lessons')
                 .select('*')
                 .eq('chapter_id', chapterId)
                 .eq('is_active', true)
                 .eq('is_published', true)
-                .order('order_index')
-            if (lsns) setLessons(lsns)
+                .order('order_index', { ascending: true })
+
+            if (lsns) {
+                // Stable order: order_index then lesson_number
+                const sorted = [...lsns].sort(
+                    (a, b) =>
+                        (a.order_index ?? 0) - (b.order_index ?? 0) ||
+                        (a.lesson_number ?? 0) - (b.lesson_number ?? 0),
+                )
+                setLessons(sorted)
+            }
 
             if (user) {
                 const { data: prog } = await supabase
                     .from('learning_progress')
                     .select('*')
                     .eq('user_id', user.id)
-                    .eq('chapter_id', chapterId)
-                if (prog) setProgress(prog)
+
+                // Match by lesson_id as string (column may be text or uuid)
+                if (prog) {
+                    setProgress(
+                        prog.map((p) => ({
+                            ...p,
+                            lesson_id: String(p.lesson_id),
+                        })),
+                    )
+                }
             }
 
             setLoading(false)
         }
-        fetchData()
+        void fetchData()
     }, [chapterId])
 
     const getLessonProgress = (lessonId: string) => {
-        return progress.find(p => p.lesson_id === lessonId)
+        const id = String(lessonId)
+        return progress.find((p) => String(p.lesson_id) === id)
     }
 
+    /** First published lesson unlocked; next unlocks only after previous completed */
     const isLessonUnlocked = (index: number) => {
         if (index === 0) return true
         const prevLesson = lessons[index - 1]
@@ -107,8 +128,12 @@ export default function LessonListPage() {
         return prevProgress?.status === 'completed'
     }
 
-    const completedCount = progress.filter(p => p.status === 'completed').length
-    const totalXPEarned = progress.reduce((sum, p) => sum + (p.xp_earned || 0), 0)
+    const completedCount = lessons.filter(
+        (l) => getLessonProgress(l.id)?.status === 'completed',
+    ).length
+    const totalXPEarned = progress
+        .filter((p) => lessons.some((l) => String(l.id) === String(p.lesson_id)))
+        .reduce((sum, p) => sum + (p.xp_earned || 0), 0)
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white">
@@ -135,9 +160,14 @@ export default function LessonListPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mb-8"
                     >
-                        <div className="rounded-3xl bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-6">
+                        <div className="rounded-3xl bg-linear-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-6">
                             <p className="text-gray-400 text-sm mb-1">অধ্যায় {chapter.chapter_number}</p>
-                            <h1 className="text-2xl font-bold text-white mb-4">{chapter.title_bn || chapter.title}</h1>
+                            <h1 className="text-2xl font-bold text-white mb-2">
+                                {chapter.title_bn || chapter.title}
+                            </h1>
+                            <p className="text-xs text-violet-300/80 mb-4">
+                                🔒 প্রথম পাঠ খোলা · একটা complete করলে পরেরটা unlock হবে
+                            </p>
 
                             <div className="grid grid-cols-3 gap-3">
                                 {[
@@ -156,14 +186,21 @@ export default function LessonListPage() {
                             <div className="mt-4">
                                 <div className="flex justify-between text-xs text-gray-400 mb-1">
                                     <span>অগ্রগতি</span>
-                                    <span>{lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0}%</span>
+                                    <span>
+                                        {lessons.length > 0
+                                            ? Math.round((completedCount / lessons.length) * 100)
+                                            : 0}
+                                        %
+                                    </span>
                                 </div>
                                 <div className="w-full bg-white/10 rounded-full h-3">
                                     <motion.div
                                         initial={{ width: 0 }}
-                                        animate={{ width: `${lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0}%` }}
+                                        animate={{
+                                            width: `${lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0}%`,
+                                        }}
                                         transition={{ duration: 0.8 }}
-                                        className="bg-gradient-to-r from-violet-500 to-purple-500 h-3 rounded-full"
+                                        className="bg-linear-to-r from-violet-500 to-purple-500 h-3 rounded-full"
                                     />
                                 </div>
                             </div>
@@ -199,63 +236,59 @@ export default function LessonListPage() {
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.05 }}
                                 >
-                                    <Link
-                                        href={unlocked
-                                            ? `/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/${lesson.id}`
-                                            : '#'
-                                        }
-                                    >
-                                        <motion.div
-                                            whileHover={unlocked ? { x: 4 } : {}}
-                                            whileTap={unlocked ? { scale: 0.98 } : {}}
-                                            className={`rounded-2xl border p-4 transition-all flex items-center gap-4 ${!unlocked
-                                                    ? 'border-white/5 bg-white/[0.02] opacity-50 cursor-not-allowed'
-                                                    : completed
+                                    {unlocked ? (
+                                        <Link
+                                            href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/${lesson.id}`}
+                                        >
+                                            <motion.div
+                                                whileHover={{ x: 4 }}
+                                                whileTap={{ scale: 0.98 }}
+                                                className={`rounded-2xl border p-4 transition-all flex items-center gap-4 ${
+                                                    completed
                                                         ? 'border-emerald-500/30 bg-emerald-500/10 cursor-pointer hover:bg-emerald-500/20'
                                                         : inProgress
-                                                            ? 'border-blue-500/30 bg-blue-500/10 cursor-pointer hover:bg-blue-500/20'
-                                                            : 'border-white/10 bg-white/5 cursor-pointer hover:bg-white/10'
+                                                          ? 'border-blue-500/30 bg-blue-500/10 cursor-pointer hover:bg-blue-500/20'
+                                                          : 'border-white/10 bg-white/5 cursor-pointer hover:bg-white/10'
                                                 }`}
-                                        >
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${!unlocked
-                                                    ? 'bg-white/5'
-                                                    : completed
-                                                        ? 'bg-emerald-500/20'
-                                                        : inProgress
-                                                            ? 'bg-blue-500/20'
-                                                            : 'bg-white/10'
-                                                }`}>
-                                                {!unlocked ? '🔒' : completed ? '⭐' : lessonTypeIcons[typeKey] || '📖'}
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${completed
-                                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                                            : 'bg-white/10 text-gray-400'
-                                                        }`}>
-                                                        {lessonTypeLabels[typeKey] || 'পাঠ'}
-                                                    </span>
-                                                    {completed && lessonProg?.score && (
-                                                        <span className="text-xs text-amber-400">
-                                                            ⭐ {lessonProg.score}%
+                                            >
+                                                <div
+                                                    className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${
+                                                        completed
+                                                            ? 'bg-emerald-500/20'
+                                                            : inProgress
+                                                              ? 'bg-blue-500/20'
+                                                              : 'bg-white/10'
+                                                    }`}
+                                                >
+                                                    {completed ? '⭐' : lessonTypeIcons[typeKey] || '📖'}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                                        <span className="text-xs text-gray-500">
+                                                            পাঠ {lesson.lesson_number ?? index + 1}
                                                         </span>
-                                                    )}
+                                                        <span
+                                                            className={`text-xs px-2 py-0.5 rounded-full ${
+                                                                completed
+                                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                                    : 'bg-white/10 text-gray-400'
+                                                            }`}
+                                                        >
+                                                            {lessonTypeLabels[typeKey] || 'পাঠ'}
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="font-bold text-white">
+                                                        {lesson.title_bn || lesson.title}
+                                                    </h3>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-xs text-gray-500">
+                                                            ⏱️ {lesson.duration_minutes} মিনিট
+                                                        </span>
+                                                        <span className="text-xs text-violet-400">
+                                                            ⚡ +{lesson.xp_reward} XP
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <h3 className={`font-bold ${!unlocked ? 'text-gray-600' : 'text-white'}`}>
-                                                    {lesson.title_bn || lesson.title}
-                                                </h3>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <span className="text-xs text-gray-500">
-                                                        ⏱️ {lesson.duration_minutes} মিনিট
-                                                    </span>
-                                                    <span className="text-xs text-violet-400">
-                                                        ⚡ +{lesson.xp_reward} XP
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {unlocked && (
                                                 <div className="flex-shrink-0">
                                                     {completed ? (
                                                         <span className="text-2xl">✅</span>
@@ -263,9 +296,26 @@ export default function LessonListPage() {
                                                         <span className="text-gray-400 text-xl">→</span>
                                                     )}
                                                 </div>
-                                            )}
-                                        </motion.div>
-                                    </Link>
+                                            </motion.div>
+                                        </Link>
+                                    ) : (
+                                        <div className="rounded-2xl border border-white/5 bg-white/[0.02] opacity-60 p-4 flex items-center gap-4 cursor-not-allowed">
+                                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 bg-white/5">
+                                                🔒
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs text-amber-400/80 mb-0.5">
+                                                    আগের পাঠ complete করলে unlock হবে
+                                                </p>
+                                                <h3 className="font-bold text-gray-500">
+                                                    {lesson.title_bn || lesson.title}
+                                                </h3>
+                                                <span className="text-xs text-gray-600">
+                                                    পাঠ {lesson.lesson_number ?? index + 1} · ⚡ +{lesson.xp_reward} XP
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </motion.div>
                             )
                         })}
