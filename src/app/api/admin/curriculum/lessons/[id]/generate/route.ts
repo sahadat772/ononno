@@ -9,6 +9,14 @@ import { createCurriculumStorage } from "@/lib/storage";
 import { createServiceRoleClient } from "@/lib/supabase-admin";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+type QuizQuestion = {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+};
+
 type GeneratedContent = {
   overview?: string;
   objectives?: string[];
@@ -19,6 +27,7 @@ type GeneratedContent = {
   practice?: string[];
   summary?: string;
   extra_notes?: string;
+  quiz_questions?: QuizQuestion[];
 };
 
 function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
@@ -28,6 +37,33 @@ function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
     console.warn("[generate] service role unavailable, using user client", e);
     return authSupabase;
   }
+}
+
+function normalizeQuiz(raw: unknown): QuizQuestion[] {
+  if (!Array.isArray(raw)) return [];
+  const out: QuizQuestion[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const q = item as Record<string, unknown>;
+    const question = String(q.question ?? "").trim();
+    const options = Array.isArray(q.options)
+      ? q.options.map((o) => String(o).trim()).filter(Boolean)
+      : [];
+    let correct = Number(q.correct);
+    if (!Number.isFinite(correct) || correct < 0 || correct > 3) correct = 0;
+    const explanation = String(q.explanation ?? "").trim() || "সঠিক উত্তরটি বেছে নাও।";
+    if (question && options.length >= 2) {
+      while (options.length < 4) options.push("—");
+      out.push({
+        question,
+        options: options.slice(0, 4),
+        correct: Math.min(correct, 3),
+        explanation,
+      });
+    }
+    if (out.length >= 5) break;
+  }
+  return out;
 }
 
 function buildStudentStudyPrompt(opts: {
@@ -45,31 +81,20 @@ function buildStudentStudyPrompt(opts: {
         : "পাঠ্যবইয়ের স্তর অনুযায়ী উপযুক্ত ভাষা।";
 
   return `তুমি ONONNO platform-এর Curriculum Intelligence Engine।
-কাজ: NCTB PDF (প্রায়ই শিক্ষক সংস্করণ / Teacher Guide) থেকে **ছাত্রদের জন্য study lesson** তৈরি করা।
+কাজ: NCTB PDF থেকে **ছাত্রদের জন্য study lesson + quiz** তৈরি করা।
 
-⚠️ গুরুত্বপূর্ণ পার্থক্য:
-- PDF-এ থাকতে পারে "শিক্ষক করবেন", "পিরিয়ড-১", "শিখনফল", "ক্লাসে জড়তা কাটান" — এগুলো **কপি করবে না**।
-- তুমি সেই তথ্য থেকে **শিশু যেন পড়ে শেখে** এমন পাঠ লিখবে।
+⚠️ শিক্ষক-ম্যানুয়াল ভাষা ("শিক্ষক করবেন", "জড়তা কাটান", "শিখনফল") কপি করবে না।
 
 পাঠের নাম: "${opts.title}"
-পৃষ্ঠা পরিসর: ${opts.pageStart ?? "?"}–${opts.pageEnd ?? "?"}
+পৃষ্ঠা: ${opts.pageStart ?? "?"}–${opts.pageEnd ?? "?"}
 সোর্স: ${opts.sourceLabel}
 ${ageHint}
 
-নিয়ম (বাধ্যতামূলক):
-1. শুধু এই পাঠের ধারণা/ছবি/নাম/গল্প PDF থেকে নাও। মিথ্যা তথ্য বানাবে না।
-2. **কখনোই** লিখবে না: "শিক্ষক করবেন", "ক্লাসে জড়তা", "প্রশ্নোত্তরের মাধ্যমে উৎসাহিত", "শিখনফল ৩.১.১" ইত্যাদি শিক্ষক-ম্যানুয়াল ভাষা।
-3. overview = ছাত্রকে বলো এই পাঠে কী শিখবে (২–৩ বাক্য, তুমি/তোমার)।
-4. objectives = "আমি পারব..." স্টাইলে ৩–৫টি।
-5. main_content = মূল অংশ। Class 1 এর জন্য সহজ গল্প/বর্ণনা। কমপক্ষে ৪টি ছোট অনুচ্ছেদ (\\n\\n দিয়ে আলাদা)। উদাহরণ:
-   - স্কুলে যাওয়া, খেলাধুলা, সহপাঠীর নাম চেনা, বাংলাদেশ বলা — ছাত্রের চোখ দিয়ে লেখো।
-6. ai_explanation = আরও সহজ করে বুঝিয়ে দাও (শিশুর মতো)।
-7. examples = ৪টি ছোট সংলাপ/বাক্য যা ছাত্র মুখে বলতে পারে।
-8. vocabulary = গুরুত্বপূর্ণ শব্দ + এক লাইনে সহজ অর্থ।
-9. practice = ৪টি সহজ প্রশ্ন (উত্তর দিও না) — ছাত্র নিজে ভাববে।
-10. summary = ৩–৪ বাক্যে সারকথা (ছাত্রকে উদ্দেশ্য করে)।
-11. extra_notes = বাড়িতে মা/বাবা কীভাবে সাহায্য করতে পারেন — ১–২ লাইন মাত্র।
-12. সব টেক্সট বাংলায়। শুধু JSON।
+নিয়ম:
+1. শুধু এই পাঠের তথ্য। মিথ্যা বানাবে না।
+2. overview, objectives ("আমি পারব..."), main_content (৪+ অনুচ্ছেদ), ai_explanation, examples, vocabulary, practice, summary, extra_notes — সব ছাত্র-facing বাংলা।
+3. **quiz_questions**: ঠিক ৫টি MCQ। প্রতিটিতে ৪টি options। correct = সঠিক option-এর 0-based index (0–3)। explanation ছোট বাংলা। প্রশ্ন শুধু এই পাঠের ওপর — সহজ, খেলার মতো।
+4. শুধু valid JSON।
 
 JSON:
 {
@@ -81,7 +106,15 @@ JSON:
   "vocabulary": ["শব্দ — অর্থ"],
   "practice": ["প্রশ্ন"],
   "summary": "string",
-  "extra_notes": "string"
+  "extra_notes": "string",
+  "quiz_questions": [
+    {
+      "question": "string",
+      "options": ["A", "B", "C", "D"],
+      "correct": 0,
+      "explanation": "string"
+    }
+  ]
 }`;
 }
 
@@ -166,7 +199,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
   let workflowStatus = String(lesson.workflow_status ?? "draft");
   let isPublished = Boolean(lesson.is_published);
 
-  // force=1 → unpublish + allow regenerate (fixes stuck old student content)
   if (force && (isPublished || workflowStatus === "published" || workflowStatus === "approved")) {
     await db
       .from("curriculum_lessons")
@@ -186,7 +218,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       {
         error: "ALREADY_PUBLISHED",
         message:
-          "Published lesson আবার generate করা যায় না। UI-তে Force Re-generate চাপুন অথবা আগে unpublish করুন।",
+          "Published lesson আবার generate করা যায় না। Force Re-generate ব্যবহার করুন।",
       },
       { status: 409 },
     );
@@ -389,7 +421,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       throw new Error("INVALID_AI_JSON");
     }
 
-    // Reject obvious teacher-manual output — soft signal in response
     const blob = JSON.stringify(content);
     const teacherLeak =
       /শিক্ষক করবেন|জড়তা কাট|শিখনফল|প্রশ্নোত্তরের মাধ্যমে উৎসাহিত/.test(blob);
@@ -406,25 +437,39 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .filter(Boolean)
       .join("\n\n");
 
-    const { data, error: contentError } = await db
+    const quizQuestions = normalizeQuiz(content.quiz_questions);
+
+    const upsertPayload: Record<string, unknown> = {
+      lesson_id: id,
+      overview: content.overview ?? null,
+      objectives: content.objectives ?? [],
+      main_content: content.main_content ?? null,
+      ai_explanation: content.ai_explanation ?? null,
+      examples,
+      summary: content.summary ?? null,
+      extra_notes: extraNotes || null,
+      is_ai_generated: true,
+      ai_prompt: `student-study+quiz v3 NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}; quiz=${quizQuestions.length}`,
+      quiz_questions: quizQuestions,
+    };
+
+    let { data, error: contentError } = await db
       .from("lesson_contents")
-      .upsert(
-        {
-          lesson_id: id,
-          overview: content.overview ?? null,
-          objectives: content.objectives ?? [],
-          main_content: content.main_content ?? null,
-          ai_explanation: content.ai_explanation ?? null,
-          examples,
-          summary: content.summary ?? null,
-          extra_notes: extraNotes || null,
-          is_ai_generated: true,
-          ai_prompt: `student-study v2 NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}`,
-        },
-        { onConflict: "lesson_id" },
-      )
+      .upsert(upsertPayload, { onConflict: "lesson_id" })
       .select()
       .single();
+
+    // Column missing (migration not applied) → retry without quiz_questions
+    if (contentError && /quiz_questions/i.test(contentError.message ?? "")) {
+      delete upsertPayload.quiz_questions;
+      const retry = await db
+        .from("lesson_contents")
+        .upsert(upsertPayload, { onConflict: "lesson_id" })
+        .select()
+        .single();
+      data = retry.data;
+      contentError = retry.error;
+    }
 
     if (contentError) throw contentError;
 
@@ -442,6 +487,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       force,
       studentFacing: true,
       teacherLeak,
+      quizCount: quizQuestions.length,
     });
 
     return NextResponse.json({
@@ -450,6 +496,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       status: "generated",
       cached: false,
       force,
+      quizCount: quizQuestions.length,
       teacherLeakWarning: teacherLeak
         ? "Output-এ শিক্ষক-ম্যানুয়াল ভাষা ধরা পড়েছে — Force Re-generate আবার চেষ্টা করুন।"
         : null,
