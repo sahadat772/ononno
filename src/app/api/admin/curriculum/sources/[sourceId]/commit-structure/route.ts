@@ -3,7 +3,11 @@ import { z } from "zod";
 import { requireRole } from "@/lib/api-auth";
 import { rateLimit, rateLimitDefaults } from "@/lib/rateLimiter";
 import { audit } from "@/lib/audit";
-import { slugifyCurriculumLabel } from "@/lib/curriculum-import";
+import {
+  balanceChapters,
+  slugifyCurriculumLabel,
+  type ExtractedChapterMap,
+} from "@/lib/curriculum-import";
 import { pageRangeWritePayload } from "@/lib/page-fields";
 
 const LessonSchema = z.object({
@@ -58,7 +62,7 @@ type NormalizedChapter = {
 function normalizeChapters(
   chapters: z.infer<typeof ChapterSchema>[],
 ): NormalizedChapter[] {
-  return chapters.map((chapter, chapterIndex) => {
+  const mapped: ExtractedChapterMap[] = chapters.map((chapter, chapterIndex) => {
     const title =
       chapter.title?.trim() ||
       chapter.titleBn?.trim() ||
@@ -98,6 +102,18 @@ function normalizeChapters(
       }),
     };
   });
+
+  // Critical: never commit 53 lessons under 1 chapter
+  const balanced = balanceChapters(
+    {
+      chapters: mapped,
+      totalLessons: mapped.reduce((n, ch) => n + ch.lessons.length, 0),
+      sourceConfidence: "medium",
+    },
+    7,
+  );
+
+  return balanced.chapters;
 }
 
 export async function POST(req: NextRequest, context: RouteContext) {
@@ -171,7 +187,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     for (const chapter of chapters) {
       const slug = slugifyCurriculumLabel(
-        chapter.title,
+        chapter.titleBn || chapter.title,
         `chapter-${chapter.chapterNumber}`,
       );
 
@@ -189,6 +205,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         await auth.supabase
           .from("curriculum_chapters")
           .update({
+            title: chapter.title,
+            title_bn: chapter.titleBn,
             source_id: sourceId,
             ...pageRangeWritePayload(chapter.pageStart, chapter.pageEnd),
           })
@@ -242,15 +260,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
       for (const lesson of chapter.lessons) {
         const lessonSlug = slugifyCurriculumLabel(
-          lesson.title,
+          lesson.titleBn || lesson.title,
           `lesson-${lesson.lessonNumber}`,
         );
 
         const { data: existingLesson } = await auth.supabase
           .from("curriculum_lessons")
           .select("id, is_published, workflow_status")
-          .eq("chapter_id", resolvedChapterId)
-          .or(`slug.eq.${lessonSlug},lesson_number.eq.${lesson.lessonNumber}`)
+          .eq("subject_id", subjectId)
+          .or(`slug.eq.${lessonSlug}`)
           .maybeSingle();
 
         if (existingLesson) {
@@ -259,7 +277,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
           await auth.supabase
             .from("curriculum_lessons")
             .update({
+              chapter_id: resolvedChapterId,
               source_id: sourceId,
+              lesson_number: lesson.lessonNumber,
+              order_index: lesson.lessonNumber - 1,
               ...pageRangeWritePayload(lesson.pageStart, lesson.pageEnd),
             })
             .eq("id", existingLesson.id);
@@ -319,6 +340,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       lessonCount,
       skippedChapters,
       skippedLessons,
+      balancedChapters: chapters.length,
     });
 
     return NextResponse.json({
@@ -328,6 +350,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       skippedChapters,
       skippedLessons,
       createdChapterIds,
+      totalChaptersAfterBalance: chapters.length,
       status: "reviewed",
     });
   } catch (error) {
