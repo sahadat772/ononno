@@ -152,21 +152,41 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
     const openEdit = (item: CurriculumLesson) => { setSelectedLesson(item); setEditOpen(true) }
     const openDelete = (item: CurriculumLesson) => { setSelectedLesson(item); setDeleteOpen(true) }
 
-    const runWorkflow = async (item: CurriculumLesson, action: "review" | "generate" | "approve" | "publish") => {
+    const runWorkflow = async (
+        item: CurriculumLesson,
+        action: "review" | "generate" | "approve" | "publish",
+        opts?: { force?: boolean },
+    ) => {
         setWorkflowBusy(`${item.id}:${action}`)
         setHint(null)
         try {
-            const response = await fetch(`/api/admin/curriculum/lessons/${item.id}/${action === "generate" ? "generate" : "workflow"}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: action === "generate" ? undefined : JSON.stringify({ action }),
-            })
+            const force = opts?.force === true
+            const generateUrl = force
+                ? `/api/admin/curriculum/lessons/${item.id}/generate?force=1`
+                : `/api/admin/curriculum/lessons/${item.id}/generate`
+
+            const response = await fetch(
+                action === "generate"
+                    ? generateUrl
+                    : `/api/admin/curriculum/lessons/${item.id}/workflow`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: action === "generate" ? undefined : JSON.stringify({ action }),
+                },
+            )
             const data = await response.json()
-            if (!response.ok) throw new Error(data.message || data.error || "Workflow update করা যায়নি।")
+            if (!response.ok) {
+                throw new Error(data.message || data.error || "Workflow update করা যায়নি।")
+            }
 
             if (action === 'generate') {
                 setLastGeneratedId(item.id)
-                setHint('Study draft save হয়েছে (lesson_contents)। একই lesson বারবার generate করার দরকার নেই — Approve → Publish করুন। পরের lesson-এ যান।')
+                if (data.cached) {
+                    setHint(data.message || 'Cached content — নতুন করতে Force Re-generate চাপুন।')
+                } else {
+                    setHint('ছাত্র-পাঠ্য study draft save হয়েছে। Approve → Publish করুন।')
+                }
             }
             window.location.reload()
         } catch (error) {
@@ -201,7 +221,7 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                 Lesson <span className="bg-linear-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">Management</span>
                             </h1>
                             <p className="mt-0.5 text-sm text-slate-400">
-                                একবারে <strong className="text-amber-200">১টা lesson</strong> Generate → Approve → Publish। Student শুধু Published দেখে।
+                                একবারে <strong className="text-amber-200">১টা lesson</strong> — ছাত্র-পাঠ্য study Generate → Approve → Publish
                             </p>
                         </div>
                     </div>
@@ -212,11 +232,11 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                 </header>
 
                 <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 px-4 py-3 text-sm text-violet-100">
-                    <p className="font-semibold">AI workflow (plan অনুযায়ী)</p>
+                    <p className="font-semibold">Architecture workflow</p>
                     <p className="mt-1 text-xs text-violet-200/80">
-                        Extract structure = শুধু heading/TOC · Study content = এখানে একটা করে Generate · Save = lesson_contents (পুনরায় generate লাগে না) · Student = শুধু Publish এর পর
+                        PDF (TG) → Extract TOC → Review → <strong>Generate ছাত্র study</strong> (মূল পাঠ + ব্যাখ্যা + উদাহরণ + অনুশীলন) → Approve → Publish → Student
                     </p>
-                    <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate} lesson</p>
+                    <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate} · পুরনো teacher-summary হলে Force Re-generate ব্যবহার করুন</p>
                 </div>
 
                 {hint && (
@@ -226,7 +246,6 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                 {nextAfterGenerated && (
                     <div className="rounded-xl border border-sky-400/30 bg-sky-950/30 px-4 py-3 text-sm text-sky-100">
                         পরের lesson suggest: <strong>{nextAfterGenerated.title_bn || nextAfterGenerated.title}</strong>
-                        {' '}— প্রথমে Review (প্রয়োজন হলে) তারপর Generate।
                     </div>
                 )}
 
@@ -243,7 +262,7 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                             <h2 className="flex items-center gap-2 text-lg font-bold">
                                 <FolderOpen className="size-5 text-amber-300" /> Curriculum Lessons
                             </h2>
-                            <p className="mt-1 text-xs text-slate-400">Actions: Review → Generate (1) → Approve → Publish</p>
+                            <p className="mt-1 text-xs text-slate-400">Review → Generate → Approve → Publish</p>
                         </div>
                         <div className="flex gap-3 flex-wrap">
                             <select value={filterClass}
@@ -270,7 +289,7 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                 <option value="">সব Status</option>
                                 <option value="published">Published</option>
                                 <option value="draft">Draft</option>
-                                <option value="reviewed">Reviewed (ready generate)</option>
+                                <option value="reviewed">Reviewed</option>
                                 <option value="generated">Generated</option>
                                 <option value="inactive">Inactive</option>
                             </select>
@@ -283,7 +302,7 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                         </div>
                     </div>
 
-                    <div className="hidden grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_140px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
+                    <div className="hidden grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_160px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
                         <span>No.</span>
                         <span>Title</span>
                         <span>Chapter</span>
@@ -298,11 +317,10 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                             <div className="py-16 text-center">
                                 <FolderOpen className="mx-auto size-10 text-slate-600" />
                                 <p className="mt-3 font-bold">No lessons found</p>
-                                <p className="mt-1 text-sm text-slate-500">Try another filter or search keyword.</p>
                             </div>
                         ) : filteredLessons.map((item) => (
                             <article key={item.id}
-                                className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_140px]">
+                                className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_160px]">
                                 <div className="grid size-11 place-items-center rounded-xl border border-amber-400/45 bg-amber-400/10 text-lg font-black text-amber-300">
                                     {item.lesson_number}
                                 </div>
@@ -333,14 +351,27 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                         </ActionButton>
                                     )}
                                     {item.workflow_status === "reviewed" && (
-                                        <ActionButton label="Generate 1 lesson study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, "generate")}>
+                                        <ActionButton label="Generate student study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, "generate")}>
                                             <WandSparkles className="size-3.5" />
                                         </ActionButton>
                                     )}
                                     {item.workflow_status === "generated" && (
-                                        <ActionButton label="Approve" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, "approve")}>
-                                            <CheckCircle2 className="size-3.5" />
-                                        </ActionButton>
+                                        <>
+                                            <ActionButton label="Approve" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, "approve")}>
+                                                <CheckCircle2 className="size-3.5" />
+                                            </ActionButton>
+                                            <ActionButton
+                                                label="Force re-generate student study"
+                                                disabled={workflowBusy === `${item.id}:generate`}
+                                                onClick={() => {
+                                                    if (window.confirm('নতুন ছাত্র-পাঠ্য study আবার generate করবে? পুরনো draft overwrite হবে।')) {
+                                                        void runWorkflow(item, "generate", { force: true })
+                                                    }
+                                                }}
+                                            >
+                                                <WandSparkles className="size-3.5" />
+                                            </ActionButton>
+                                        </>
                                     )}
                                     {item.workflow_status === "approved" && (
                                         <ActionButton label="Publish to students" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, "publish")}>
