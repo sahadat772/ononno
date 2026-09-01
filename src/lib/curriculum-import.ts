@@ -50,6 +50,76 @@ export function slugifyCurriculumLabel(
   return base || fallback;
 }
 
+/** If model dumps all lessons under 1 chapter, split into balanced chapters (≈6–8 lessons each). */
+export function balanceChapters(
+  structure: ExtractedCurriculumStructure,
+  targetLessonsPerChapter = 7,
+): ExtractedCurriculumStructure {
+  const totalLessons = structure.chapters.reduce(
+    (n, ch) => n + ch.lessons.length,
+    0,
+  );
+
+  // Already multi-chapter with reasonable spread
+  if (structure.chapters.length >= 4 && totalLessons > 0) {
+    return {
+      ...structure,
+      totalLessons,
+    };
+  }
+
+  // Flatten all lessons in order
+  const flat: ExtractedLessonMap[] = [];
+  for (const ch of structure.chapters) {
+    for (const les of ch.lessons) {
+      flat.push(les);
+    }
+  }
+
+  if (flat.length === 0) return structure;
+
+  // Prefer 8–10 chapters when many lessons (e.g. 53 → ~7 each → 8 chapters)
+  const desiredChapters = Math.min(
+    12,
+    Math.max(4, Math.ceil(flat.length / targetLessonsPerChapter)),
+  );
+  const perChapter = Math.ceil(flat.length / desiredChapters);
+
+  const chapters: ExtractedChapterMap[] = [];
+  for (let i = 0; i < flat.length; i += perChapter) {
+    const slice = flat.slice(i, i + perChapter).map((les, idx) => ({
+      ...les,
+      lessonNumber: idx + 1,
+    }));
+    const chapterNumber = chapters.length + 1;
+    const pageStart = slice
+      .map((l) => l.pageStart)
+      .filter((p): p is number => typeof p === "number")
+      .sort((a, b) => a - b)[0];
+    const pageEnd = slice
+      .map((l) => l.pageEnd)
+      .filter((p): p is number => typeof p === "number")
+      .sort((a, b) => b - a)[0];
+
+    // Use first lesson title as chapter hint when possible
+    const hint = slice[0]?.titleBn || slice[0]?.title || `অধ্যায় ${chapterNumber}`;
+    chapters.push({
+      title: `Chapter ${chapterNumber}`,
+      titleBn: `অধ্যায় ${chapterNumber}: ${hint}`.slice(0, 120),
+      chapterNumber,
+      pageStart,
+      pageEnd,
+      lessons: slice,
+    });
+  }
+
+  return {
+    chapters,
+    totalLessons: flat.length,
+    sourceConfidence: structure.sourceConfidence,
+  };
+}
+
 function parseStructure(raw: string): ExtractedCurriculumStructure {
   const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
   let parsed: {
@@ -102,13 +172,15 @@ function parseStructure(raw: string): ExtractedCurriculumStructure {
     })),
   }));
 
-  return {
+  const structure: ExtractedCurriculumStructure = {
     chapters,
     totalLessons:
       parsed.total_lessons ??
       chapters.reduce((count, chapter) => count + chapter.lessons.length, 0),
     sourceConfidence: parsed.source_confidence ?? "medium",
   };
+
+  return balanceChapters(structure, 7);
 }
 
 function normalizeFileState(state: unknown): string {
@@ -231,7 +303,36 @@ export async function extractStructureFromGemini(input: {
               },
             },
             {
-              text: `You are extracting the authoritative table of contents for the NCTB ${input.className} ${input.subjectName} textbook. ${pageHint} Return only JSON. Never invent titles, page ranges, lessons, or academic facts. Extract only what the PDF supports.\n{\n  "source_confidence": "high|medium|low",\n  "total_lessons": 0,\n  "chapters": [{\n    "title": "English/transliterated title",\n    "title_bn": "Exact Bangla title",\n    "chapter_number": 1,\n    "page_start": 1,\n    "page_end": 20,\n    "lessons": [{\n      "title": "English/transliterated title",\n      "title_bn": "Exact Bangla title",\n      "lesson_number": 1,\n      "page_start": 2,\n      "page_end": 5\n    }]\n  }]\n}`,
+              text: `You are extracting the authoritative table of contents for the NCTB ${input.className} ${input.subjectName} textbook (often a Teacher Guide).
+
+${pageHint}
+
+CRITICAL STRUCTURE RULES:
+1. Return MULTIPLE chapters (typically 6–12 for a full primary book). NEVER put 40+ lessons under a single chapter.
+2. Use PDF "অধ্যায় / একক / Unit / Chapter" headings when present.
+3. If the PDF lists many short পাঠ/lesson titles without clear chapter breaks, GROUP consecutive lessons into logical chapters of about 5–8 lessons each, named "অধ্যায় 1", "অধ্যায় 2", ... with a short Bangla theme from the first lesson in that group.
+4. Every lesson must belong to exactly one chapter. Preserve order as in the PDF.
+5. Never invent titles or page numbers that the PDF does not support. Prefer real titles from TOC / lesson headers.
+6. Return ONLY valid JSON.
+
+{
+  "source_confidence": "high|medium|low",
+  "total_lessons": 0,
+  "chapters": [{
+    "title": "English/transliterated chapter title",
+    "title_bn": "Bangla chapter title",
+    "chapter_number": 1,
+    "page_start": 1,
+    "page_end": 20,
+    "lessons": [{
+      "title": "English/transliterated lesson title",
+      "title_bn": "Bangla lesson title",
+      "lesson_number": 1,
+      "page_start": 2,
+      "page_end": 5
+    }]
+  }]
+}`,
             },
           ],
         },
