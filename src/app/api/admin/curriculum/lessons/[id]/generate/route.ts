@@ -45,7 +45,11 @@ function buildStudentStudyPrompt(opts: {
         : "পাঠ্যবইয়ের স্তর অনুযায়ী উপযুক্ত ভাষা।";
 
   return `তুমি ONONNO platform-এর Curriculum Intelligence Engine।
-কাজ: NCTB PDF (প্রায়ই শিক্ষক সংস্করণ) থেকে **ছাত্রদের জন্য study lesson** তৈরি করা — শিক্ষক-নোট নয়।
+কাজ: NCTB PDF (প্রায়ই শিক্ষক সংস্করণ / Teacher Guide) থেকে **ছাত্রদের জন্য study lesson** তৈরি করা।
+
+⚠️ গুরুত্বপূর্ণ পার্থক্য:
+- PDF-এ থাকতে পারে "শিক্ষক করবেন", "পিরিয়ড-১", "শিখনফল", "ক্লাসে জড়তা কাটান" — এগুলো **কপি করবে না**।
+- তুমি সেই তথ্য থেকে **শিশু যেন পড়ে শেখে** এমন পাঠ লিখবে।
 
 পাঠের নাম: "${opts.title}"
 পৃষ্ঠা পরিসর: ${opts.pageStart ?? "?"}–${opts.pageEnd ?? "?"}
@@ -53,29 +57,29 @@ function buildStudentStudyPrompt(opts: {
 ${ageHint}
 
 নিয়ম (বাধ্যতামূলক):
-1. শুধু PDF-এর এই পাঠ/পৃষ্ঠার তথ্য ব্যবহার করো। নতুন একাডেমিক তথ্য বানাবে না।
-2. **Student-facing** লিখো — "শিক্ষক করবেন", "ক্লাসে জড়তা কাটাবেন" টাইপের শিক্ষক নির্দেশাবলী লিখবে না।
-3. main_content = শিক্ষার্থী যা পড়বে (গল্প/কবিতা/পাঠ্য অংশের সহজ রূপ + মূল ধারণা)। কমপক্ষে ৩–৬টি ছোট অনুচ্ছেদ।
-4. ai_explanation = আরও সহজ ব্যাখ্যা (শিশু যেন বুঝে)।
-5. examples = ৩–৫টি ছোট উদাহরণ / সংলাপ / অনুশীলন বাক্য যা ছাত্র অনুশীলন করতে পারে।
-6. vocabulary = গুরুত্বপূর্ণ শব্দ (যদি থাকে) — ছোট তালিকা।
-7. practice = ৩–৫টি সহজ প্রশ্ন বা কাজ (উত্তর ছাড়া, শুধু প্রশ্ন) যা ছাত্র নিজে চেষ্টা করবে।
-8. overview = ২–৩ বাক্যে পাঠ পরিচিতি (ছাত্রকে উদ্দেশ্য করে)।
-9. objectives = ৩–৫টি শেখার লক্ষ্য ("আমি পারব..." স্টাইল)।
-10. summary = ৩–৫ বাক্যে সারকথা।
-11. extra_notes = অভিভাবক/বাড়ির সাহায্যের ১–২ টিপস (ঐচ্ছিক) — শিক্ষক ম্যানুয়াল নয়।
-12. সব টেক্সট **বাংলায়** (প্রয়োজনে ইংরেজি শব্দ রেখে)।
-13. শুধু valid JSON — অন্য কোনো markdown নয়।
+1. শুধু এই পাঠের ধারণা/ছবি/নাম/গল্প PDF থেকে নাও। মিথ্যা তথ্য বানাবে না।
+2. **কখনোই** লিখবে না: "শিক্ষক করবেন", "ক্লাসে জড়তা", "প্রশ্নোত্তরের মাধ্যমে উৎসাহিত", "শিখনফল ৩.১.১" ইত্যাদি শিক্ষক-ম্যানুয়াল ভাষা।
+3. overview = ছাত্রকে বলো এই পাঠে কী শিখবে (২–৩ বাক্য, তুমি/তোমার)।
+4. objectives = "আমি পারব..." স্টাইলে ৩–৫টি।
+5. main_content = মূল অংশ। Class 1 এর জন্য সহজ গল্প/বর্ণনা। কমপক্ষে ৪টি ছোট অনুচ্ছেদ (\\n\\n দিয়ে আলাদা)। উদাহরণ:
+   - স্কুলে যাওয়া, খেলাধুলা, সহপাঠীর নাম চেনা, বাংলাদেশ বলা — ছাত্রের চোখ দিয়ে লেখো।
+6. ai_explanation = আরও সহজ করে বুঝিয়ে দাও (শিশুর মতো)।
+7. examples = ৪টি ছোট সংলাপ/বাক্য যা ছাত্র মুখে বলতে পারে।
+8. vocabulary = গুরুত্বপূর্ণ শব্দ + এক লাইনে সহজ অর্থ।
+9. practice = ৪টি সহজ প্রশ্ন (উত্তর দিও না) — ছাত্র নিজে ভাববে।
+10. summary = ৩–৪ বাক্যে সারকথা (ছাত্রকে উদ্দেশ্য করে)।
+11. extra_notes = বাড়িতে মা/বাবা কীভাবে সাহায্য করতে পারেন — ১–২ লাইন মাত্র।
+12. সব টেক্সট বাংলায়। শুধু JSON।
 
-JSON schema:
+JSON:
 {
   "overview": "string",
   "objectives": ["string"],
-  "main_content": "string (paragraphs separated by \\n\\n)",
+  "main_content": "string",
   "ai_explanation": "string",
   "examples": ["string"],
-  "vocabulary": ["শব্দ — সহজ অর্থ"],
-  "practice": ["প্রশ্ন বা কাজ"],
+  "vocabulary": ["শব্দ — অর্থ"],
+  "practice": ["প্রশ্ন"],
   "summary": "string",
   "extra_notes": "string"
 }`;
@@ -154,21 +158,35 @@ export async function POST(request: NextRequest, context: RouteContext) {
         error: "SOURCE_NOT_FOUND",
         message: `Lesson পাওয়া যায়নি। (id=${id})`,
         lessonId: id,
-        hint: "Supabase Table Editor-এ curriculum_lessons-এ এই id আছে কি check করুন।",
       },
       { status: 404 },
     );
   }
 
-  const workflowStatus = String(lesson.workflow_status ?? "draft");
-  const isPublished = Boolean(lesson.is_published);
+  let workflowStatus = String(lesson.workflow_status ?? "draft");
+  let isPublished = Boolean(lesson.is_published);
+
+  // force=1 → unpublish + allow regenerate (fixes stuck old student content)
+  if (force && (isPublished || workflowStatus === "published" || workflowStatus === "approved")) {
+    await db
+      .from("curriculum_lessons")
+      .update({
+        is_published: false,
+        workflow_status: "reviewed",
+      })
+      .eq("id", id);
+    isPublished = false;
+    workflowStatus = "reviewed";
+    lesson.is_published = false;
+    lesson.workflow_status = "reviewed";
+  }
 
   if (isPublished || workflowStatus === "published") {
     return NextResponse.json(
       {
         error: "ALREADY_PUBLISHED",
         message:
-          "Published lesson আবার generate করা যায় না। আগে unpublish / return-to-review করুন।",
+          "Published lesson আবার generate করা যায় না। UI-তে Force Re-generate চাপুন অথবা আগে unpublish করুন।",
       },
       { status: 409 },
     );
@@ -197,18 +215,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       status: "generated",
       cached: true,
       message:
-        "আগেই generate করা content আছে। নতুন করে বানাতে ?force=1 দিয়ে আবার Generate চাপুন।",
+        "আগেই generate করা content আছে। নতুন করতে Force Re-generate (?force=1) ব্যবহার করুন।",
     });
   }
 
   if (
-    !["reviewed", "generated", "extracted", "draft"].includes(workflowStatus) &&
-    !(force && workflowStatus === "approved")
+    !["reviewed", "generated", "extracted", "draft"].includes(workflowStatus)
   ) {
     return NextResponse.json(
       {
         error: "STRUCTURE_VALIDATION_FAILED",
-        message: `বর্তমান status (${workflowStatus}) এ generate করা যাবে না। আগে Review করুন।`,
+        message: `বর্তমান status (${workflowStatus}) এ generate করা যাবে না।`,
       },
       { status: 409 },
     );
@@ -263,11 +280,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json(
       {
         error: "PDF_NOT_FOUND",
-        message:
-          "এই lesson-এর সাথে কোনো curriculum PDF source link নেই। Import → Extract + Commit চালান।",
+        message: "PDF source link নেই। Import → Extract + Commit চালান।",
         lessonId: id,
-        classId,
-        subjectId,
       },
       { status: 409 },
     );
@@ -287,10 +301,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!fileUri) {
     if (!source.storage_path) {
       return NextResponse.json(
-        {
-          error: "PDF_NOT_FOUND",
-          message: "Source-এ storage_path ও gemini_file_uri দুটোই নেই।",
-        },
+        { error: "PDF_NOT_FOUND", message: "storage_path ও gemini_file_uri নেই।" },
         { status: 409 },
       );
     }
@@ -364,7 +375,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           ],
         },
       ],
-      config: { responseMimeType: "application/json", temperature: 0.35 },
+      config: { responseMimeType: "application/json", temperature: 0.4 },
     });
 
     const raw = (response.text ?? "")
@@ -378,7 +389,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       throw new Error("INVALID_AI_JSON");
     }
 
-    // Merge vocabulary/practice into examples/extra_notes if columns limited
+    // Reject obvious teacher-manual output — soft signal in response
+    const blob = JSON.stringify(content);
+    const teacherLeak =
+      /শিক্ষক করবেন|জড়তা কাট|শিখনফল|প্রশ্নোত্তরের মাধ্যমে উৎসাহিত/.test(blob);
+
     const examples = [
       ...(content.examples ?? []),
       ...(content.vocabulary ?? []).map((v) => `শব্দ: ${v}`),
@@ -404,7 +419,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           summary: content.summary ?? null,
           extra_notes: extraNotes || null,
           is_ai_generated: true,
-          ai_prompt: `student-study NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}`,
+          ai_prompt: `student-study v2 NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}`,
         },
         { onConflict: "lesson_id" },
       )
@@ -426,6 +441,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       pageEnd,
       force,
       studentFacing: true,
+      teacherLeak,
     });
 
     return NextResponse.json({
@@ -434,6 +450,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       status: "generated",
       cached: false,
       force,
+      teacherLeakWarning: teacherLeak
+        ? "Output-এ শিক্ষক-ম্যানুয়াল ভাষা ধরা পড়েছে — Force Re-generate আবার চেষ্টা করুন।"
+        : null,
     });
   } catch (error) {
     console.error("Lesson generation error:", error);
@@ -448,8 +467,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json(
       {
         error: code,
-        message:
-          "Lesson draft generate করা যায়নি। Gemini configuration ও source PDF যাচাই করুন।",
+        message: "Lesson draft generate করা যায়নি।",
         details: error instanceof Error ? error.message.slice(0, 400) : undefined,
       },
       { status: code === "INVALID_AI_JSON" ? 422 : 500 },
