@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { BookOpen, CirclePlus, Eye, Filter, FolderOpen, GraduationCap, Pencil, Search, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, BookOpen, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Trash2 } from 'lucide-react'
 import AddChapterModal from './AddChapterModal'
 import EditChapterModal from './EditChapterModal'
 import DeleteChapterModal from './DeleteChapterModal'
@@ -20,6 +21,7 @@ type CurriculumChapter = {
     icon?: string | null
     is_active: boolean
     order_index: number
+    workflow_status?: string | null
     curriculum_subjects?: { id: string; name: string; name_bn: string } | null
     curriculum_classes?: { id: string; name: string; class_number: number } | null
 }
@@ -90,7 +92,7 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
         const keyword = search.trim().toLowerCase()
         return chapters.filter((item) => {
             const matchSearch = !keyword || [item.title, item.title_bn, item.slug]
-                .some((v) => v.toLowerCase().includes(keyword))
+                .some((v) => (v || '').toLowerCase().includes(keyword))
             const matchClass = !filterClass || item.class_id === filterClass
             const matchSubject = !filterSubject || item.subject_id === filterSubject
             return matchSearch && matchClass && matchSubject
@@ -106,7 +108,21 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
         <main className="min-h-screen bg-[#030711] px-3 py-5 text-slate-100 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl space-y-5">
 
-                {/* Header */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <Link href="/dashboard/admin/curriculum"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10">
+                        <ArrowLeft className="size-3.5" /> Curriculum
+                    </Link>
+                    <Link href="/dashboard/admin/curriculum/import"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-200 hover:bg-violet-500/20">
+                        Import PDF
+                    </Link>
+                    <Link href="/dashboard/admin/curriculum/lessons"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/20">
+                        Lessons
+                    </Link>
+                </div>
+
                 <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                         <div className="grid size-12 place-items-center rounded-xl border border-violet-400/55 bg-violet-400/10 shadow-[0_0_26px_rgba(167,139,250,.18)]">
@@ -116,7 +132,7 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                             <h1 className="text-[clamp(1.65rem,3vw,2.55rem)] font-extrabold tracking-tight">
                                 Chapter <span className="bg-linear-to-r from-violet-300 to-purple-300 bg-clip-text text-transparent">Management</span>
                             </h1>
-                            <p className="mt-0.5 text-sm text-slate-400">Manage curriculum chapters for each subject.</p>
+                            <p className="mt-0.5 text-sm text-slate-400">Import → Extract + Commit করলে এখানে chapter দেখাবে।</p>
                         </div>
                     </div>
                     <button onClick={() => setOpenModal(true)}
@@ -125,14 +141,12 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                     </button>
                 </header>
 
-                {/* Stats */}
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <StatCard label="Total Chapters" value={chapters.length} text="All curriculum chapters" color="blue" icon={<BookOpen className="size-6" />} />
-                    <StatCard label="Active Chapters" value={activeChapters} text="Visible to learners" color="green" icon={<Eye className="size-6" />} />
+                    <StatCard label="Active Chapters" value={activeChapters} text="Visible for lessons" color="green" icon={<Eye className="size-6" />} />
                     <StatCard label="Search Results" value={filteredChapters.length} text={search ? `Matching "${search}"` : 'All chapters shown'} color="purple" icon={<Filter className="size-6" />} />
                 </section>
 
-                {/* Table */}
                 <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15] shadow-[0_15px_50px_rgba(0,0,0,.25)]">
                     <div className="flex flex-col gap-4 border-b border-slate-700/70 p-5 lg:flex-row lg:items-center lg:justify-between">
                         <div>
@@ -142,7 +156,6 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                             <p className="mt-1 text-xs text-slate-400">Browse, edit and manage all chapters.</p>
                         </div>
                         <div className="flex gap-3 flex-wrap">
-                            {/* Class Filter */}
                             <select
                                 value={filterClass}
                                 onChange={(e) => { setFilterClass(e.target.value); setFilterSubject('') }}
@@ -153,7 +166,6 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
-                            {/* Subject Filter */}
                             <select
                                 value={filterSubject}
                                 onChange={(e) => setFilterSubject(e.target.value)}
@@ -164,7 +176,6 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                                     <option key={s.id} value={s.id}>{s.name_bn} ({s.name})</option>
                                 ))}
                             </select>
-                            {/* Search */}
                             <label className="relative">
                                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                                 <input value={search} onChange={(e) => setSearch(e.target.value)}
@@ -174,7 +185,6 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                         </div>
                     </div>
 
-                    {/* Table Header */}
                     <div className="hidden grid-cols-[80px_minmax(200px,1fr)_150px_150px_100px_120px_120px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
                         <span>Chapter</span>
                         <span>Title</span>
@@ -185,41 +195,41 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                         <span>Actions</span>
                     </div>
 
-                    {/* Rows */}
                     <div className="divide-y divide-slate-800/90">
                         {filteredChapters.length === 0 ? (
-                            <div className="py-16 text-center">
+                            <div className="py-16 text-center px-4">
                                 <FolderOpen className="mx-auto size-10 text-slate-600" />
                                 <p className="mt-3 font-bold">No chapters found</p>
-                                <p className="mt-1 text-sm text-slate-500">Try another search keyword.</p>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Import page থেকে PDF Extract + Commit করো, অথবা Add Chapter চাপো।
+                                </p>
+                                <Link
+                                    href="/dashboard/admin/curriculum/import"
+                                    className="inline-block mt-4 text-sm font-semibold text-violet-300 hover:text-violet-200"
+                                >
+                                    → Import PDF
+                                </Link>
                             </div>
                         ) : filteredChapters.map((item) => (
                             <article key={item.id}
                                 className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[80px_minmax(200px,1fr)_150px_150px_100px_120px_120px]">
-                                {/* Chapter Number */}
-                                <div className="grid size-11 place-items-center rounded-xl border border-violet-400/45 bg-violet-400/10 text-lg font-black text-violet-300 shadow-[0_0_18px_rgba(167,139,250,.15)]">
+                                <div className="grid size-11 place-items-center rounded-xl border border-violet-400/45 bg-violet-400/10 text-lg font-black text-violet-300">
                                     {item.chapter_number}
                                 </div>
-                                {/* Title */}
                                 <div>
                                     <p className="font-bold text-white">{item.title_bn}</p>
                                     <p className="text-xs text-slate-400">{item.title}</p>
                                 </div>
-                                {/* Slug */}
                                 <code className="w-fit rounded-md bg-slate-800/80 px-2 py-1 text-xs text-sky-300">
                                     {item.slug}
                                 </code>
-                                {/* Subject */}
                                 <p className="text-sm text-slate-400">
                                     {item.curriculum_subjects?.name_bn ?? '—'}
                                 </p>
-                                {/* Class */}
                                 <p className="text-sm text-slate-400">
                                     {item.curriculum_classes?.name ?? '—'}
                                 </p>
-                                {/* Status */}
                                 <Status active={item.is_active} />
-                                {/* Actions */}
                                 <div className="flex gap-2">
                                     <ActionButton label="Edit chapter" onClick={() => openEdit(item)}>
                                         <Pencil className="size-3.5" />
@@ -232,29 +242,8 @@ export default function ChaptersClient({ chapters, subjects, classes }: Props) {
                         ))}
                     </div>
                 </section>
-
-                {/* Tips */}
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                        ['Chapter order', 'Keep a unique chapter number per subject', '01'],
-                        ['Visibility', 'Active chapters are available for lessons', '✓'],
-                        ['Content', 'Add lessons inside each chapter', '▣'],
-                        ['Need help?', 'Start by selecting a subject first', '+'],
-                    ].map(([title, text, symbol]) => (
-                        <div key={title} className="rounded-xl border border-slate-700/80 bg-linear-to-br from-[#10192b] to-[#080c16] p-4">
-                            <div className="flex items-center gap-3">
-                                <span className="grid size-10 place-items-center rounded-lg border border-violet-400/40 bg-violet-400/10 text-sm font-bold text-violet-300">{symbol}</span>
-                                <div>
-                                    <p className="text-sm font-semibold">{title}</p>
-                                    <p className="mt-1 text-xs text-slate-400">{text}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </section>
             </div>
 
-            {/* Modals */}
             <AddChapterModal
                 open={openModal}
                 subjects={subjects}
