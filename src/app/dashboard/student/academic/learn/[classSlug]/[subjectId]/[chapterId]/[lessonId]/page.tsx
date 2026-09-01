@@ -105,6 +105,8 @@ export default function LessonContentPage() {
   const [xpEarned, setXpEarned] = useState(0)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loadingQuiz, setLoadingQuiz] = useState(false)
+  const [progressSaved, setProgressSaved] = useState(false)
+  const [progressError, setProgressError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -123,7 +125,6 @@ export default function LessonContentPage() {
         .maybeSingle()
 
       if (error) {
-        // quiz_questions column may not exist yet
         const fallback = await supabase
           .from('curriculum_lessons')
           .select(
@@ -181,7 +182,6 @@ export default function LessonContentPage() {
     )
   }, [content])
 
-  /** Fallback: live generate only if DB has no quiz */
   const ensureQuiz = async (): Promise<Question[]> => {
     if (questions.length > 0) return questions
     setLoadingQuiz(true)
@@ -232,7 +232,6 @@ export default function LessonContentPage() {
       setHearts(3)
       setPhase('quiz')
     } else {
-      // no quiz available — complete with reading XP only
       const earned = lesson?.xp_reward || 10
       setXpEarned(earned)
       setPhase('result')
@@ -250,6 +249,10 @@ export default function LessonContentPage() {
     else setHearts((h) => Math.max(0, h - 1))
   }
 
+  /**
+   * Always mark completed when student finishes the lesson flow
+   * so the NEXT lesson unlocks (sequential progression).
+   */
   const saveProgress = async (xp: number, finalScore: number) => {
     const supabase = createClient()
     const {
@@ -257,19 +260,66 @@ export default function LessonContentPage() {
     } = await supabase.auth.getUser()
     if (!user || !lesson) return
 
-    await supabase.from('learning_progress').upsert(
-      {
-        user_id: user.id,
-        lesson_id: lessonId,
-        chapter_id: chapterId,
-        subject_id: subjectId,
-        status: finalScore >= 60 ? 'completed' : 'in_progress',
-        score: finalScore,
-        xp_earned: xp,
-        completed_at: new Date().toISOString(),
-      },
+    setProgressError(null)
+    const row = {
+      user_id: user.id,
+      lesson_id: String(lessonId),
+      chapter_id: String(chapterId),
+      subject_id: String(subjectId),
+      status: 'completed' as const,
+      score: finalScore,
+      xp_earned: xp,
+      completed_at: new Date().toISOString(),
+    }
+
+    // Try upsert with common conflict targets
+    let saved = false
+    const attempts = [
       { onConflict: 'user_id,lesson_id' },
-    )
+      { onConflict: 'user_id,lesson_id' as string },
+    ]
+
+    for (const opt of attempts) {
+      const { error } = await supabase.from('learning_progress').upsert(row, opt)
+      if (!error) {
+        saved = true
+        break
+      }
+      console.warn('learning_progress upsert failed', error.message)
+    }
+
+    if (!saved) {
+      // Fallback: delete then insert
+      await supabase
+        .from('learning_progress')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('lesson_id', String(lessonId))
+
+      const { error: insErr } = await supabase.from('learning_progress').insert(row)
+      if (insErr) {
+        console.error('learning_progress insert failed', insErr)
+        setProgressError(insErr.message)
+        // Last resort: insert minimal columns only
+        const { error: minErr } = await supabase.from('learning_progress').insert({
+          user_id: user.id,
+          lesson_id: String(lessonId),
+          status: 'completed',
+          score: finalScore,
+          xp_earned: xp,
+        })
+        if (minErr) {
+          setProgressError(minErr.message)
+        } else {
+          saved = true
+          setProgressError(null)
+        }
+      } else {
+        saved = true
+      }
+    }
+
+    setProgressSaved(saved)
 
     try {
       await supabase.rpc('increment_xp', {
@@ -307,7 +357,8 @@ export default function LessonContentPage() {
       const fs = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0
       const earned = Math.round((score / Math.max(questions.length, 1)) * (lesson?.xp_reward || 10))
       setXpEarned(earned)
-      void saveProgress(earned, fs)
+      // Still mark completed so next lesson unlocks (user finished the attempt)
+      void saveProgress(earned, Math.max(fs, 1))
       return
     }
 
@@ -628,7 +679,7 @@ export default function LessonContentPage() {
               <div className="text-7xl mb-4">
                 {hearts <= 0 ? '💔' : finalScore >= 80 ? '🏆' : finalScore >= 60 ? '⭐' : questions.length === 0 ? '✅' : '😔'}
               </div>
-              <h2 className="text-2xl font-bold text-white mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">
                 {hearts <= 0
                   ? 'আবার চেষ্টা করো!'
                   : finalScore >= 80
@@ -639,6 +690,13 @@ export default function LessonContentPage() {
                         ? 'পাঠ সম্পন্ন!'
                         : 'আরো পড়তে হবে!'}
               </h2>
+              <p className="text-emerald-400/90 text-sm mb-4">
+                {progressSaved
+                  ? '✅ Progress save হয়েছে — পরের পাঠ এখন unlock'
+                  : progressError
+                    ? `⚠️ Progress save সমস্যা: ${progressError}`
+                    : 'Progress save হচ্ছে...'}
+              </p>
 
               <div className="grid grid-cols-3 gap-3 my-8">
                 {[
@@ -683,6 +741,7 @@ export default function LessonContentPage() {
                       setScore(0)
                       setHearts(3)
                       setShowExplanation(false)
+                      setProgressSaved(false)
                     }}
                     className="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-300"
                   >
