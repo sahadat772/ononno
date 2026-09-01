@@ -11,6 +11,7 @@ import {
     ChevronUp,
     Loader2,
     AlertCircle,
+    RefreshCw,
 } from 'lucide-react'
 
 type CurriculumClass = {
@@ -96,47 +97,32 @@ export default function ImportClient({ subjects, classes }: Props) {
 
     const [savedCount, setSavedCount] = useState({ chapters: 0, lessons: 0 })
 
-    // Fetch PDFs when subject + class are selected
-    useEffect(() => {
-        if (!selectedSubjectId || !filterClassId) {
-            return
-        }
-
-        let cancelled = false
-
-        const fetchPdfs = async () => {
-            setLoadingPdfs(true)
-            setError(null)
-
-            try {
-                const res = await fetch(
-                    `/api/admin/curriculum/pdf-sources?class_id=${filterClassId}&subject_id=${selectedSubjectId}`
-                )
-
-                if (!res.ok) throw new Error('PDFs load করা যায়নি')
-
-                const data = await res.json()
-                if (cancelled) return
-
-                setPdfSources(data)
-
-                if (data.length === 0) {
-                    setError('এই subject-এর জন্য কোনো PDF উপলব্ধ নেই।')
-                }
-            } catch (err) {
-                if (cancelled) return
-                console.error(err)
-                setError(err instanceof Error ? err.message : 'PDFs load করা যায়নি')
-            } finally {
-                if (!cancelled) setLoadingPdfs(false)
+    const fetchPdfs = async () => {
+        if (!selectedSubjectId || !filterClassId) return
+        setLoadingPdfs(true)
+        setError(null)
+        try {
+            const res = await fetch(
+                `/api/admin/curriculum/pdf-sources?class_id=${filterClassId}&subject_id=${selectedSubjectId}`,
+            )
+            if (!res.ok) throw new Error('PDFs load করা যায়নি')
+            const data = await res.json()
+            setPdfSources(Array.isArray(data) ? data : data?.sources ?? [])
+            if ((Array.isArray(data) ? data : data?.sources ?? []).length === 0) {
+                setError('এই subject-এর জন্য কোনো PDF উপলব্ধ নেই। Catalog refresh / storage check করো।')
             }
+        } catch (err) {
+            console.error(err)
+            setError(err instanceof Error ? err.message : 'PDFs load করা যায়নি')
+        } finally {
+            setLoadingPdfs(false)
         }
+    }
 
-        fetchPdfs()
-
-        return () => {
-            cancelled = true
-        }
+    useEffect(() => {
+        if (!selectedSubjectId || !filterClassId) return
+        void fetchPdfs()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedSubjectId, filterClassId])
 
     const filteredSubjects = useMemo(() => {
@@ -146,15 +132,9 @@ export default function ImportClient({ subjects, classes }: Props) {
 
     const selectedPdf = pdfSources.find((p) => p.id === selectedPdfId)
 
-    // Extract PDF structure
     async function handleExtract() {
-        if (!selectedPdfId) {
+        if (!selectedPdfId || !selectedPdf) {
             setError('একটি PDF select করো।')
-            return
-        }
-
-        if (!selectedPdf) {
-            setError('PDF পাওয়া যায়নি।')
             return
         }
 
@@ -171,13 +151,13 @@ export default function ImportClient({ subjects, classes }: Props) {
                         start_page: pageRange.start,
                         end_page: pageRange.end || selectedPdf.page_count,
                     }),
-                }
+                },
             )
 
             const data = await response.json()
 
             if (!response.ok) {
-                setError(data?.error || 'Extraction failed.')
+                setError(data?.message || data?.error || 'Extraction failed.')
                 return
             }
 
@@ -189,18 +169,18 @@ export default function ImportClient({ subjects, classes }: Props) {
             const normalized: ExtractedChapter[] = (data.chapters as ApiExtractedChapter[]).map(
                 (chapter) => ({
                     title: chapter.title?.trim() || 'Untitled',
-                    title_bn: chapter.title_bn?.trim() || 'অজানা',
+                    title_bn: chapter.title_bn?.trim() || chapter.title?.trim() || 'অজানা',
                     page_start: chapter.page_start || 0,
                     page_end: chapter.page_end || 0,
                     lessons: (chapter.lessons || []).map((lesson) => ({
                         title: lesson.title?.trim() || lesson.title_bn || 'Untitled',
-                        title_bn: lesson.title_bn?.trim() || 'অজানা',
+                        title_bn: lesson.title_bn?.trim() || lesson.title?.trim() || 'অজানা',
                         page_start: lesson.page_start || 0,
                         page_end: lesson.page_end || 0,
                     })),
                     selected: true,
                     expanded: true,
-                })
+                }),
             )
 
             setChapters(normalized)
@@ -213,25 +193,19 @@ export default function ImportClient({ subjects, classes }: Props) {
         }
     }
 
-    // Toggle chapter selection
     function toggleChapter(idx: number) {
         setChapters((prev) =>
-            prev.map((ch, i) =>
-                i === idx ? { ...ch, selected: !ch.selected } : ch
-            )
+            prev.map((ch, i) => (i === idx ? { ...ch, selected: !ch.selected } : ch)),
         )
     }
 
-    // Toggle chapter expansion
     function toggleExpanded(idx: number) {
         setChapters((prev) =>
-            prev.map((ch, i) =>
-                i === idx ? { ...ch, expanded: !ch.expanded } : ch
-            )
+            prev.map((ch, i) => (i === idx ? { ...ch, expanded: !ch.expanded } : ch)),
         )
     }
 
-    // Save chapters to database
+    /** Commit → curriculum_chapters + curriculum_lessons (management pages) */
     async function handleSave() {
         const selectedChapters = chapters.filter((ch) => ch.selected)
 
@@ -240,90 +214,72 @@ export default function ImportClient({ subjects, classes }: Props) {
             return
         }
 
+        if (!selectedPdfId) {
+            setError('PDF source নেই।')
+            return
+        }
+
         setSaving(true)
         setStep('saving')
         setError(null)
 
-        let chapterCount = 0
-        let lessonCount = 0
-
         try {
-            for (let i = 0; i < selectedChapters.length; i++) {
-                const chapter = selectedChapters[i]
-
-                // Create chapter
-                const chRes = await fetch(
-                    '/api/admin/curriculum/chapters',
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            subjectId: selectedSubjectId,
-                            classId: filterClassId,
-                            title: chapter.title,
-                            titleBn: chapter.title_bn,
-                            slug: chapter.title.toLowerCase().replace(/\s+/g, '-'),
-                            chapterNumber: i + 1,
-                            orderIndex: i,
-                            description: null,
-                        }),
-                    }
-                )
-
-                const chData = await chRes.json()
-
-                if (!chRes.ok || !chData?.id) {
-                    setError(`Chapter ${chapter.title_bn} save করতে পারলাম না।`)
-                    continue
-                }
-
-                chapterCount++
-
-                // Create lessons
-                for (let j = 0; j < chapter.lessons.length; j++) {
-                    const lesson = chapter.lessons[j]
-
-                    const lesRes = await fetch(
-                        '/api/admin/curriculum/lessons',
-                        {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                chapterId: chData.id,
-                                title: lesson.title,
-                                titleBn: lesson.title_bn,
-                                slug: lesson.title.toLowerCase().replace(/\s+/g, '-'),
-                                lessonNumber: j + 1,
-                                orderIndex: j,
-                                description: null,
-                                sourcePageStart: lesson.page_start,
-                                sourcePageEnd: lesson.page_end,
-                            }),
-                        }
-                    )
-
-                    const lesData = await lesRes.json()
-
-                    if (!lesRes.ok || !lesData?.id) {
-                        console.error(`Lesson ${lesson.title_bn} save করতে পারলাম না।`)
-                        continue
-                    }
-
-                    lessonCount++
-                }
+            const payload = {
+                chapters: selectedChapters.map((ch, i) => ({
+                    title: ch.title,
+                    titleBn: ch.title_bn,
+                    title_bn: ch.title_bn,
+                    chapterNumber: i + 1,
+                    chapter_number: i + 1,
+                    pageStart: ch.page_start || undefined,
+                    pageEnd: ch.page_end || undefined,
+                    page_start: ch.page_start || undefined,
+                    page_end: ch.page_end || undefined,
+                    lessons: ch.lessons.map((les, j) => ({
+                        title: les.title,
+                        titleBn: les.title_bn,
+                        title_bn: les.title_bn,
+                        lessonNumber: j + 1,
+                        lesson_number: j + 1,
+                        pageStart: les.page_start || undefined,
+                        pageEnd: les.page_end || undefined,
+                        page_start: les.page_start || undefined,
+                        page_end: les.page_end || undefined,
+                    })),
+                })),
             }
 
-            setSavedCount({ chapters: chapterCount, lessons: lessonCount })
+            const res = await fetch(
+                `/api/admin/curriculum/sources/${selectedPdfId}/commit-structure`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                },
+            )
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                setError(data?.message || data?.error || 'Commit failed')
+                setStep('preview')
+                return
+            }
+
+            setSavedCount({
+                chapters: (data.chapterCount ?? 0) + (data.skippedChapters ?? 0),
+                lessons: (data.lessonCount ?? 0) + (data.skippedLessons ?? 0),
+            })
             setStep('done')
         } catch (err) {
             console.error(err)
             setError('Saving এ error হয়েছে। আবার চেষ্টা করো।')
+            setStep('preview')
         } finally {
             setSaving(false)
         }
     }
 
-    // Reset
     function handleReset() {
         setStep('pdf-select')
         setError(null)
@@ -336,14 +292,17 @@ export default function ImportClient({ subjects, classes }: Props) {
     return (
         <div className="min-h-screen bg-linear-to-b from-slate-900 to-slate-800 p-6">
             <div className="max-w-4xl mx-auto">
-                {/* Header */}
                 <div className="flex items-center gap-3 mb-8">
                     <BookOpen className="w-8 h-8 text-emerald-400" />
-                    <h1 className="text-3xl font-bold text-white">Curriculum PDF Import</h1>
+                    <div>
+                        <h1 className="text-3xl font-bold text-white">Curriculum PDF Import</h1>
+                        <p className="text-slate-400 text-sm mt-1">
+                            Class → Subject → Catalog → Extract → Commit → Chapters & Lessons
+                        </p>
+                    </div>
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {/* Step 1: PDF Selection */}
                     {step === 'pdf-select' && (
                         <motion.div
                             key="pdf-select"
@@ -352,7 +311,6 @@ export default function ImportClient({ subjects, classes }: Props) {
                             exit={{ opacity: 0, y: -20 }}
                             className="space-y-6"
                         >
-                            {/* Class Selection */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-200 mb-2">
                                     Class নির্বাচন করো
@@ -376,7 +334,6 @@ export default function ImportClient({ subjects, classes }: Props) {
                                 </select>
                             </div>
 
-                            {/* Subject Selection */}
                             {filterClassId && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-200 mb-2">
@@ -394,19 +351,28 @@ export default function ImportClient({ subjects, classes }: Props) {
                                         <option value="">-- Subject বেছে নাও --</option>
                                         {filteredSubjects.map((sub) => (
                                             <option key={sub.id} value={sub.id}>
-                                                {sub.name_bn}
+                                                {sub.name_bn || sub.name}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
                             )}
 
-                            {/* PDF Selection */}
                             {selectedSubjectId && (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-200 mb-2">
-                                        PDF নির্বাচন করো
-                                    </label>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="block text-sm font-medium text-slate-200">
+                                            PDF (Supabase / Drive catalog)
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => void fetchPdfs()}
+                                            className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                                        >
+                                            <RefreshCw className="w-3.5 h-3.5" />
+                                            Refresh catalog
+                                        </button>
+                                    </div>
 
                                     {loadingPdfs ? (
                                         <div className="flex items-center justify-center p-4">
@@ -423,17 +389,19 @@ export default function ImportClient({ subjects, classes }: Props) {
                                                 <div
                                                     key={pdf.id}
                                                     onClick={() => setSelectedPdfId(pdf.id)}
-                                                    className={`p-4 rounded-2xl cursor-pointer transition ${selectedPdfId === pdf.id
+                                                    className={`p-4 rounded-2xl cursor-pointer transition ${
+                                                        selectedPdfId === pdf.id
                                                             ? 'bg-emerald-500/20 border border-emerald-400'
                                                             : 'bg-slate-700/50 border border-slate-600 hover:border-emerald-400'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <FileText className="w-5 h-5 text-emerald-400 mt-1 shrink-0" />
                                                         <div className="flex-1">
                                                             <p className="font-medium text-white">{pdf.file_name}</p>
                                                             <p className="text-sm text-slate-400">
-                                                                পৃষ্ঠা: {pdf.page_count} | অধ্যায়: {pdf.total_chapters} | পাঠ: {pdf.total_lessons}
+                                                                পৃষ্ঠা: {pdf.page_count || '—'} | status:{' '}
+                                                                {pdf.source_status} / {pdf.workflow_status}
                                                             </p>
                                                         </div>
                                                         {selectedPdfId === pdf.id && (
@@ -447,7 +415,6 @@ export default function ImportClient({ subjects, classes }: Props) {
                                 </div>
                             )}
 
-                            {/* Page Range Selection */}
                             {selectedPdf && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -457,7 +424,7 @@ export default function ImportClient({ subjects, classes }: Props) {
                                         <input
                                             type="number"
                                             min="1"
-                                            max={selectedPdf.page_count}
+                                            max={selectedPdf.page_count || 999}
                                             value={pageRange.start}
                                             onChange={(e) =>
                                                 setPageRange((p) => ({
@@ -475,8 +442,8 @@ export default function ImportClient({ subjects, classes }: Props) {
                                         <input
                                             type="number"
                                             min={pageRange.start}
-                                            max={selectedPdf.page_count}
-                                            value={pageRange.end || selectedPdf.page_count}
+                                            max={selectedPdf.page_count || 999}
+                                            value={pageRange.end || selectedPdf.page_count || ''}
                                             onChange={(e) =>
                                                 setPageRange((p) => ({
                                                     ...p,
@@ -489,7 +456,6 @@ export default function ImportClient({ subjects, classes }: Props) {
                                 </div>
                             )}
 
-                            {/* Error */}
                             {error && (
                                 <div className="bg-red-900/20 border border-red-500 rounded-2xl p-4 flex gap-3">
                                     <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -497,7 +463,6 @@ export default function ImportClient({ subjects, classes }: Props) {
                                 </div>
                             )}
 
-                            {/* Extract Button */}
                             <button
                                 onClick={handleExtract}
                                 disabled={!selectedPdf || extracting}
@@ -506,19 +471,18 @@ export default function ImportClient({ subjects, classes }: Props) {
                                 {extracting ? (
                                     <>
                                         <Loader2 className="w-5 h-5 animate-spin" />
-                                        Extracting...
+                                        Extracting chapters...
                                     </>
                                 ) : (
                                     <>
                                         <Wand2 className="w-5 h-5" />
-                                        PDF থেকে Structure Extract করো
+                                        PDF থেকে Chapter + Lesson structure extract
                                     </>
                                 )}
                             </button>
                         </motion.div>
                     )}
 
-                    {/* Step 2: Preview */}
                     {step === 'preview' && (
                         <motion.div
                             key="preview"
@@ -528,9 +492,11 @@ export default function ImportClient({ subjects, classes }: Props) {
                             className="space-y-6"
                         >
                             <div className="text-slate-200">
-                                <h2 className="text-xl font-bold text-white mb-4">Extracted Content Review</h2>
+                                <h2 className="text-xl font-bold text-white mb-2">Extracted Content Review</h2>
                                 <p className="text-sm mb-4">
-                                    Total: {chapters.length} chapters, {chapters.reduce((s, c) => s + c.lessons.length, 0)} lessons
+                                    Total: {chapters.length} chapters,{' '}
+                                    {chapters.reduce((s, c) => s + c.lessons.length, 0)} lessons —
+                                    Commit করলে Chapter management ও Lesson management-এ দেখাবে।
                                 </p>
                             </div>
 
@@ -543,10 +509,7 @@ export default function ImportClient({ subjects, classes }: Props) {
 
                             <div className="space-y-3 max-h-96 overflow-y-auto">
                                 {chapters.map((chapter, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="bg-slate-700/50 rounded-2xl overflow-hidden"
-                                    >
+                                    <div key={idx} className="bg-slate-700/50 rounded-2xl overflow-hidden">
                                         <div
                                             onClick={() => toggleChapter(idx)}
                                             className="p-4 cursor-pointer flex items-center gap-3 hover:bg-slate-600 transition"
@@ -560,7 +523,8 @@ export default function ImportClient({ subjects, classes }: Props) {
                                             <div className="flex-1">
                                                 <p className="font-bold text-white">{chapter.title_bn}</p>
                                                 <p className="text-xs text-slate-400">
-                                                    পৃষ্ঠা {chapter.page_start}-{chapter.page_end} | {chapter.lessons.length} lessons
+                                                    পৃষ্ঠা {chapter.page_start}-{chapter.page_end} |{' '}
+                                                    {chapter.lessons.length} lessons
                                                 </p>
                                             </div>
                                             <button
@@ -582,8 +546,8 @@ export default function ImportClient({ subjects, classes }: Props) {
                                             <div className="bg-slate-800 p-4 space-y-2 border-t border-slate-600">
                                                 {chapter.lessons.map((lesson, lidx) => (
                                                     <div key={lidx} className="flex gap-2 text-sm">
-                                                        <span className="text-slate-500">— {lesson.title_bn}</span>
-                                                        <span className="text-xs text-slate-600">
+                                                        <span className="text-slate-300">— {lesson.title_bn}</span>
+                                                        <span className="text-xs text-slate-500">
                                                             (পৃষ্ঠা {lesson.page_start}-{lesson.page_end})
                                                         </span>
                                                     </div>
@@ -609,12 +573,12 @@ export default function ImportClient({ subjects, classes }: Props) {
                                     {saving ? (
                                         <>
                                             <Loader2 className="w-5 h-5 animate-spin" />
-                                            Saving...
+                                            Commit...
                                         </>
                                     ) : (
                                         <>
                                             <Check className="w-5 h-5" />
-                                            Save করো
+                                            Extract + Commit (Chapter & Lesson)
                                         </>
                                     )}
                                 </button>
@@ -622,8 +586,7 @@ export default function ImportClient({ subjects, classes }: Props) {
                         </motion.div>
                     )}
 
-                    {/* Step 3: Done */}
-                    {step === 'done' && (
+                    {(step === 'saving' || step === 'done') && step === 'done' && (
                         <motion.div
                             key="done"
                             initial={{ opacity: 0, scale: 0.9 }}
@@ -636,7 +599,10 @@ export default function ImportClient({ subjects, classes }: Props) {
                             <div>
                                 <h2 className="text-2xl font-bold text-white mb-2">সম্পন্ন!</h2>
                                 <p className="text-slate-300">
-                                    {savedCount.chapters} অধ্যায় এবং {savedCount.lessons} পাঠ save হয়েছে।
+                                    {savedCount.chapters} অধ্যায় এবং {savedCount.lessons} পাঠ catalog-এ আছে।
+                                </p>
+                                <p className="text-slate-400 text-sm mt-2">
+                                    এখন Chapters / Lessons page দেখো → Review → Generate study + quiz → Publish
                                 </p>
                             </div>
                             <button
@@ -645,6 +611,16 @@ export default function ImportClient({ subjects, classes }: Props) {
                             >
                                 আরও PDF import করো
                             </button>
+                        </motion.div>
+                    )}
+
+                    {step === 'saving' && (
+                        <motion.div
+                            key="saving"
+                            className="text-center py-16 text-slate-300 flex flex-col items-center gap-3"
+                        >
+                            <Loader2 className="w-10 h-10 animate-spin text-emerald-400" />
+                            Chapter ও Lesson commit হচ্ছে...
                         </motion.div>
                     )}
                 </AnimatePresence>
