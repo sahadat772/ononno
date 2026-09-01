@@ -15,6 +15,8 @@ type GeneratedContent = {
   main_content?: string;
   ai_explanation?: string;
   examples?: string[];
+  vocabulary?: string[];
+  practice?: string[];
   summary?: string;
   extra_notes?: string;
 };
@@ -28,7 +30,58 @@ function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
   }
 }
 
-export async function POST(_request: NextRequest, context: RouteContext) {
+function buildStudentStudyPrompt(opts: {
+  title: string;
+  classNumber?: number | null;
+  pageStart?: number | null;
+  pageEnd?: number | null;
+  sourceLabel: string;
+}) {
+  const ageHint =
+    opts.classNumber != null && opts.classNumber <= 2
+      ? "শিক্ষার্থীর বয়স প্রায় ৬–৭ বছর (Class 1–2)। খুব সহজ শব্দ, ছোট বাক্য।"
+      : opts.classNumber != null && opts.classNumber <= 5
+        ? "প্রাথমিক স্তর — সহজ ও স্পষ্ট বাংলা।"
+        : "পাঠ্যবইয়ের স্তর অনুযায়ী উপযুক্ত ভাষা।";
+
+  return `তুমি ONONNO platform-এর Curriculum Intelligence Engine।
+কাজ: NCTB PDF (প্রায়ই শিক্ষক সংস্করণ) থেকে **ছাত্রদের জন্য study lesson** তৈরি করা — শিক্ষক-নোট নয়।
+
+পাঠের নাম: "${opts.title}"
+পৃষ্ঠা পরিসর: ${opts.pageStart ?? "?"}–${opts.pageEnd ?? "?"}
+সোর্স: ${opts.sourceLabel}
+${ageHint}
+
+নিয়ম (বাধ্যতামূলক):
+1. শুধু PDF-এর এই পাঠ/পৃষ্ঠার তথ্য ব্যবহার করো। নতুন একাডেমিক তথ্য বানাবে না।
+2. **Student-facing** লিখো — "শিক্ষক করবেন", "ক্লাসে জড়তা কাটাবেন" টাইপের শিক্ষক নির্দেশাবলী লিখবে না।
+3. main_content = শিক্ষার্থী যা পড়বে (গল্প/কবিতা/পাঠ্য অংশের সহজ রূপ + মূল ধারণা)। কমপক্ষে ৩–৬টি ছোট অনুচ্ছেদ।
+4. ai_explanation = আরও সহজ ব্যাখ্যা (শিশু যেন বুঝে)।
+5. examples = ৩–৫টি ছোট উদাহরণ / সংলাপ / অনুশীলন বাক্য যা ছাত্র অনুশীলন করতে পারে।
+6. vocabulary = গুরুত্বপূর্ণ শব্দ (যদি থাকে) — ছোট তালিকা।
+7. practice = ৩–৫টি সহজ প্রশ্ন বা কাজ (উত্তর ছাড়া, শুধু প্রশ্ন) যা ছাত্র নিজে চেষ্টা করবে।
+8. overview = ২–৩ বাক্যে পাঠ পরিচিতি (ছাত্রকে উদ্দেশ্য করে)।
+9. objectives = ৩–৫টি শেখার লক্ষ্য ("আমি পারব..." স্টাইল)।
+10. summary = ৩–৫ বাক্যে সারকথা।
+11. extra_notes = অভিভাবক/বাড়ির সাহায্যের ১–২ টিপস (ঐচ্ছিক) — শিক্ষক ম্যানুয়াল নয়।
+12. সব টেক্সট **বাংলায়** (প্রয়োজনে ইংরেজি শব্দ রেখে)।
+13. শুধু valid JSON — অন্য কোনো markdown নয়।
+
+JSON schema:
+{
+  "overview": "string",
+  "objectives": ["string"],
+  "main_content": "string (paragraphs separated by \\n\\n)",
+  "ai_explanation": "string",
+  "examples": ["string"],
+  "vocabulary": ["শব্দ — সহজ অর্থ"],
+  "practice": ["প্রশ্ন বা কাজ"],
+  "summary": "string",
+  "extra_notes": "string"
+}`;
+}
+
+export async function POST(request: NextRequest, context: RouteContext) {
   const auth = await requireRole(["admin"]);
   if ("error" in auth) return auth.error;
 
@@ -49,28 +102,34 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   }
 
   const { id } = await context.params;
+  const force =
+    request.nextUrl.searchParams.get("force") === "1" ||
+    request.nextUrl.searchParams.get("force") === "true";
+
   const db = getDb(auth.supabase as never);
 
-  // Minimal select first — avoid missing-column failures
   let lesson: Record<string, unknown> | null = null;
   let lessonError: { message: string } | null = null;
 
   {
     const res = await db
       .from("curriculum_lessons")
-      .select("id, title, title_bn, workflow_status, is_published, page_start, page_end, source_id, class_id, subject_id")
+      .select(
+        "id, title, title_bn, workflow_status, is_published, page_start, page_end, source_id, class_id, subject_id",
+      )
       .eq("id", id)
       .maybeSingle();
     lesson = res.data;
     lessonError = res.error;
   }
 
-  // Retry with page aliases if first query failed on unknown columns
   if (lessonError) {
     console.error("generate lesson lookup error (primary):", lessonError);
     const res2 = await db
       .from("curriculum_lessons")
-      .select("id, title, title_bn, workflow_status, is_published, source_id, class_id, subject_id")
+      .select(
+        "id, title, title_bn, workflow_status, is_published, source_id, class_id, subject_id",
+      )
       .eq("id", id)
       .maybeSingle();
     if (!res2.error && res2.data) {
@@ -95,7 +154,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         error: "SOURCE_NOT_FOUND",
         message: `Lesson পাওয়া যায়নি। (id=${id})`,
         lessonId: id,
-        hint: "Supabase Table Editor-এ curriculum_lessons-এ এই id আছে কি check করুন। RLS থাকলে SUPABASE_SERVICE_ROLE_KEY Vercel-এ set করুন।",
+        hint: "Supabase Table Editor-এ curriculum_lessons-এ এই id আছে কি check করুন।",
       },
       { status: 404 },
     );
@@ -109,17 +168,17 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       {
         error: "ALREADY_PUBLISHED",
         message:
-          "Published lesson আবার generate করা যায় না। নতুন draft চাইলে unpublish/return-to-review করুন।",
+          "Published lesson আবার generate করা যায় না। আগে unpublish / return-to-review করুন।",
       },
       { status: 409 },
     );
   }
 
-  if (workflowStatus === "approved") {
+  if (workflowStatus === "approved" && !force) {
     return NextResponse.json(
       {
         error: "STRUCTURE_COMMIT_FAILED",
-        message: "Approved lesson generate/overwrite করা যাবে না।",
+        message: "Approved lesson generate/overwrite করা যাবে না (force ছাড়া)।",
       },
       { status: 409 },
     );
@@ -131,17 +190,21 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     .eq("lesson_id", id)
     .maybeSingle();
 
-  if (existingContent && workflowStatus === "generated") {
+  if (existingContent && workflowStatus === "generated" && !force) {
     return NextResponse.json({
       lessonId: id,
       content: existingContent,
       status: "generated",
       cached: true,
-      message: "আগেই generate করা content আছে — আবার Gemini call করা হয়নি।",
+      message:
+        "আগেই generate করা content আছে। নতুন করে বানাতে ?force=1 দিয়ে আবার Generate চাপুন।",
     });
   }
 
-  if (!["reviewed", "generated", "extracted", "draft"].includes(workflowStatus)) {
+  if (
+    !["reviewed", "generated", "extracted", "draft"].includes(workflowStatus) &&
+    !(force && workflowStatus === "approved")
+  ) {
     return NextResponse.json(
       {
         error: "STRUCTURE_VALIDATION_FAILED",
@@ -168,7 +231,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   if (sourceId) {
     const { data } = await db
       .from("curriculum_sources")
-      .select("id, title, gemini_file_uri, gemini_file_name, storage_path, file_name, mime_type")
+      .select(
+        "id, title, gemini_file_uri, gemini_file_name, storage_path, file_name, mime_type",
+      )
       .eq("id", sourceId)
       .maybeSingle();
     source = data;
@@ -177,7 +242,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   if (!source && classId && subjectId) {
     const { data } = await db
       .from("curriculum_sources")
-      .select("id, title, gemini_file_uri, gemini_file_name, storage_path, file_name, mime_type")
+      .select(
+        "id, title, gemini_file_uri, gemini_file_name, storage_path, file_name, mime_type",
+      )
       .eq("class_id", classId)
       .eq("subject_id", subjectId)
       .order("created_at", { ascending: false })
@@ -185,7 +252,10 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       .maybeSingle();
     source = data;
     if (source) {
-      await db.from("curriculum_lessons").update({ source_id: source.id }).eq("id", id);
+      await db
+        .from("curriculum_lessons")
+        .update({ source_id: source.id })
+        .eq("id", id);
     }
   }
 
@@ -194,13 +264,23 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       {
         error: "PDF_NOT_FOUND",
         message:
-          "এই lesson-এর সাথে কোনো curriculum PDF source link নেই। Import → Extract + Commit চালান অথবা source_id set করুন।",
+          "এই lesson-এর সাথে কোনো curriculum PDF source link নেই। Import → Extract + Commit চালান।",
         lessonId: id,
         classId,
         subjectId,
       },
       { status: 409 },
     );
+  }
+
+  let classNumber: number | null = null;
+  if (classId) {
+    const { data: cls } = await db
+      .from("curriculum_classes")
+      .select("class_number")
+      .eq("id", classId)
+      .maybeSingle();
+    classNumber = (cls?.class_number as number) ?? null;
   }
 
   let fileUri = source.gemini_file_uri;
@@ -236,7 +316,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           error: "PDF_PROCESSING_FAILED",
           message: "PDF Gemini-তে upload করা যায়নি।",
           details:
-            uploadErr instanceof Error ? uploadErr.message.slice(0, 300) : String(uploadErr),
+            uploadErr instanceof Error
+              ? uploadErr.message.slice(0, 300)
+              : String(uploadErr),
         },
         { status: 500 },
       );
@@ -249,10 +331,23 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   });
   const pageStart = pages.page_start;
   const pageEnd = pages.page_end;
+  const title =
+    (lesson.title_bn as string) || (lesson.title as string) || "পাঠ";
 
-  await db.from("curriculum_lessons").update({ workflow_status: "generating" }).eq("id", id);
+  await db
+    .from("curriculum_lessons")
+    .update({ workflow_status: "generating" })
+    .eq("id", id);
 
   try {
+    const prompt = buildStudentStudyPrompt({
+      title,
+      classNumber,
+      pageStart,
+      pageEnd,
+      sourceLabel: source.title ?? source.file_name ?? "NCTB curriculum PDF",
+    });
+
     const response = await ai.models.generateContent({
       model: CURRICULUM_GEMINI_MODEL,
       contents: [
@@ -265,13 +360,11 @@ export async function POST(_request: NextRequest, context: RouteContext) {
                 mimeType: source.mime_type ?? "application/pdf",
               },
             },
-            {
-              text: `Create a reviewable learning draft for the NCTB lesson "${(lesson.title_bn as string) ?? (lesson.title as string)}". Use only the textbook content on pages ${pageStart ?? "unknown"}-${pageEnd ?? "unknown"}. Do not invent or change academic facts. Return JSON only with overview, objectives (array), main_content, ai_explanation, examples (array), summary, extra_notes. Keep the source faithful and age-appropriate. Source file: ${source.title ?? source.file_name ?? "curriculum PDF"}.`,
-            },
+            { text: prompt },
           ],
         },
       ],
-      config: { responseMimeType: "application/json", temperature: 0.2 },
+      config: { responseMimeType: "application/json", temperature: 0.35 },
     });
 
     const raw = (response.text ?? "")
@@ -285,6 +378,19 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       throw new Error("INVALID_AI_JSON");
     }
 
+    // Merge vocabulary/practice into examples/extra_notes if columns limited
+    const examples = [
+      ...(content.examples ?? []),
+      ...(content.vocabulary ?? []).map((v) => `শব্দ: ${v}`),
+    ];
+    const practiceBlock =
+      content.practice && content.practice.length > 0
+        ? `অনুশীলনী:\n${content.practice.map((p, i) => `${i + 1}. ${p}`).join("\n")}`
+        : "";
+    const extraNotes = [content.extra_notes, practiceBlock]
+      .filter(Boolean)
+      .join("\n\n");
+
     const { data, error: contentError } = await db
       .from("lesson_contents")
       .upsert(
@@ -294,11 +400,11 @@ export async function POST(_request: NextRequest, context: RouteContext) {
           objectives: content.objectives ?? [],
           main_content: content.main_content ?? null,
           ai_explanation: content.ai_explanation ?? null,
-          examples: content.examples ?? [],
+          examples,
           summary: content.summary ?? null,
-          extra_notes: content.extra_notes ?? null,
+          extra_notes: extraNotes || null,
           is_ai_generated: true,
-          ai_prompt: `NCTB source pages ${pageStart ?? "unknown"}-${pageEnd ?? "unknown"}; model ${CURRICULUM_GEMINI_MODEL}`,
+          ai_prompt: `student-study NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}`,
         },
         { onConflict: "lesson_id" },
       )
@@ -307,7 +413,10 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     if (contentError) throw contentError;
 
-    await db.from("curriculum_lessons").update({ workflow_status: "generated" }).eq("id", id);
+    await db
+      .from("curriculum_lessons")
+      .update({ workflow_status: "generated" })
+      .eq("id", id);
 
     await audit("GENERATE_LESSON_CONTENT", auth.user.id, {
       lessonId: id,
@@ -315,6 +424,8 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       model: CURRICULUM_GEMINI_MODEL,
       pageStart,
       pageEnd,
+      force,
+      studentFacing: true,
     });
 
     return NextResponse.json({
@@ -322,10 +433,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       content: data,
       status: "generated",
       cached: false,
+      force,
     });
   } catch (error) {
     console.error("Lesson generation error:", error);
-    await db.from("curriculum_lessons").update({ workflow_status: "reviewed" }).eq("id", id);
+    await db
+      .from("curriculum_lessons")
+      .update({ workflow_status: "reviewed" })
+      .eq("id", id);
     const code =
       error instanceof Error && error.message === "INVALID_AI_JSON"
         ? "INVALID_AI_JSON"
