@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useAccess } from '@/hooks/useAccess'
 import LockOverlay from '@/components/shared/LockOverlay'
+import StudySessionTimer from '@/components/student/StudySessionTimer'
 
 interface LessonContent {
   overview?: string | null
@@ -91,6 +92,8 @@ export default function LessonContentPage() {
   const subjectId = params.subjectId as string
   const chapterId = params.chapterId as string
   const lessonId = params.lessonId as string
+  const searchParams = useSearchParams()
+  const sessionFromUrl = searchParams.get('session')
 
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [content, setContent] = useState<LessonContent | null>(null)
@@ -249,10 +252,6 @@ export default function LessonContentPage() {
     else setHearts((h) => Math.max(0, h - 1))
   }
 
-  /**
-   * Always mark completed when student finishes the lesson flow
-   * so the NEXT lesson unlocks (sequential progression).
-   */
   const saveProgress = async (xp: number, finalScore: number) => {
     const supabase = createClient()
     const {
@@ -272,12 +271,8 @@ export default function LessonContentPage() {
       completed_at: new Date().toISOString(),
     }
 
-    // Try upsert with common conflict targets
     let saved = false
-    const attempts = [
-      { onConflict: 'user_id,lesson_id' },
-      { onConflict: 'user_id,lesson_id' as string },
-    ]
+    const attempts = [{ onConflict: 'user_id,lesson_id' }]
 
     for (const opt of attempts) {
       const { error } = await supabase.from('learning_progress').upsert(row, opt)
@@ -285,11 +280,9 @@ export default function LessonContentPage() {
         saved = true
         break
       }
-      console.warn('learning_progress upsert failed', error.message)
     }
 
     if (!saved) {
-      // Fallback: delete then insert
       await supabase
         .from('learning_progress')
         .delete()
@@ -298,9 +291,7 @@ export default function LessonContentPage() {
 
       const { error: insErr } = await supabase.from('learning_progress').insert(row)
       if (insErr) {
-        console.error('learning_progress insert failed', insErr)
         setProgressError(insErr.message)
-        // Last resort: insert minimal columns only
         const { error: minErr } = await supabase.from('learning_progress').insert({
           user_id: user.id,
           lesson_id: String(lessonId),
@@ -308,24 +299,18 @@ export default function LessonContentPage() {
           score: finalScore,
           xp_earned: xp,
         })
-        if (minErr) {
-          setProgressError(minErr.message)
-        } else {
+        if (minErr) setProgressError(minErr.message)
+        else {
           saved = true
           setProgressError(null)
         }
-      } else {
-        saved = true
-      }
+      } else saved = true
     }
 
     setProgressSaved(saved)
 
     try {
-      await supabase.rpc('increment_xp', {
-        user_id_input: user.id,
-        xp_amount: xp,
-      })
+      await supabase.rpc('increment_xp', { user_id_input: user.id, xp_amount: xp })
     } catch {
       try {
         await supabase.rpc('increment_student_xp', {
@@ -357,7 +342,6 @@ export default function LessonContentPage() {
       const fs = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0
       const earned = Math.round((score / Math.max(questions.length, 1)) * (lesson?.xp_reward || 10))
       setXpEarned(earned)
-      // Still mark completed so next lesson unlocks (user finished the attempt)
       void saveProgress(earned, Math.max(fs, 1))
       return
     }
@@ -407,6 +391,9 @@ export default function LessonContentPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white">
+      {/* Live study timer — same tab, continues on learn + quiz */}
+      <StudySessionTimer sessionId={sessionFromUrl} />
+
       {!accessLoading && !isPaid && !canDoLesson && (
         <div className="min-h-screen flex items-center justify-center p-6">
           <div className="max-w-md w-full">
