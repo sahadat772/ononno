@@ -1,5 +1,7 @@
 import { ai } from "@/lib/gemini";
 import { classNumberToDepth } from "@/lib/study-depth";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { CURRICULUM_PDF_BUCKET } from "@/lib/storage/supabase-curriculum-storage";
 
 /** Preferred Imagen models (tried in order). */
 export const COVER_IMAGE_MODELS = [
@@ -33,6 +35,7 @@ export function buildLessonCoverPrompt(opts: {
     "no logos, no real book page scan, child-safe, classroom-friendly.",
     "Single clear focal scene that helps a student understand the lesson theme.",
     "Do not copy any copyrighted textbook artwork.",
+    "Landscape 16:9 composition.",
   ].join(" ");
 }
 
@@ -84,11 +87,102 @@ export async function generateLessonCoverImage(
     }
   }
 
+  // Fallback: Gemini multimodal image generation
+  const flashModels = [
+    "gemini-2.0-flash-preview-image-generation",
+    "gemini-2.5-flash-image",
+  ];
+  for (const model of flashModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          // @ts-expect-error modalities support varies by SDK version
+          responseModalities: ["TEXT", "IMAGE"],
+        },
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parts = (response as any)?.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        const inline = part?.inlineData || part?.inline_data;
+        if (inline?.data) {
+          return {
+            bytes: Buffer.from(String(inline.data), "base64"),
+            mimeType: String(inline.mimeType || inline.mime_type || "image/png"),
+            model,
+          };
+        }
+      }
+    } catch (e) {
+      lastError = e;
+      console.warn(`[cover-image] flash model ${model} failed`, e);
+    }
+  }
+
   throw lastError instanceof Error
     ? lastError
     : new Error("COVER_IMAGE_GENERATION_FAILED");
 }
 
 export function coverStoragePath(lessonId: string) {
-  return `covers/lesson-${lessonId}.png`;
+  return `curriculum/media/covers/lesson-${lessonId}.png`;
+}
+
+export async function uploadLessonCover(opts: {
+  supabase: SupabaseClient;
+  lessonId: string;
+  bytes: Buffer;
+  mimeType?: string;
+}): Promise<{ path: string; url: string | null }> {
+  const path = coverStoragePath(opts.lessonId);
+  const contentType = opts.mimeType || "image/png";
+
+  const { error } = await opts.supabase.storage
+    .from(CURRICULUM_PDF_BUCKET)
+    .upload(path, opts.bytes, {
+      contentType,
+      upsert: true,
+    });
+
+  if (error) throw new Error(error.message);
+
+  const { data: signed } = await opts.supabase.storage
+    .from(CURRICULUM_PDF_BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 365);
+
+  return { path, url: signed?.signedUrl ?? null };
+}
+
+/**
+ * Full pipeline: prompt → image → storage → paths.
+ * Returns null on soft failure (does not throw).
+ */
+export async function generateAndStoreLessonCover(opts: {
+  supabase: SupabaseClient;
+  lessonId: string;
+  title: string;
+  overview?: string | null;
+  classNumber?: number | null;
+  subjectName?: string | null;
+}): Promise<{ path: string; url: string | null; model: string } | null> {
+  try {
+    const prompt = buildLessonCoverPrompt({
+      title: opts.title,
+      overview: opts.overview,
+      classNumber: opts.classNumber,
+      subjectName: opts.subjectName,
+    });
+    const img = await generateLessonCoverImage(prompt);
+    const stored = await uploadLessonCover({
+      supabase: opts.supabase,
+      lessonId: opts.lessonId,
+      bytes: img.bytes,
+      mimeType: img.mimeType,
+    });
+    return { ...stored, model: img.model };
+  } catch (e) {
+    console.warn("[cover-image] generateAndStore soft-fail", e);
+    return null;
+  }
 }
