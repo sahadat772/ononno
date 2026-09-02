@@ -7,6 +7,10 @@ import { resolvePageRange } from "@/lib/page-fields";
 import { uploadPdfToGemini } from "@/lib/curriculum-import";
 import { createCurriculumStorage } from "@/lib/storage";
 import { createServiceRoleClient } from "@/lib/supabase-admin";
+import {
+  buildDepthPromptBlock,
+  getDepthRules,
+} from "@/lib/study-depth";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -39,7 +43,7 @@ function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
   }
 }
 
-function normalizeQuiz(raw: unknown): QuizQuestion[] {
+function normalizeQuiz(raw: unknown, max = 5): QuizQuestion[] {
   if (!Array.isArray(raw)) return [];
   const out: QuizQuestion[] = [];
   for (const item of raw) {
@@ -51,7 +55,8 @@ function normalizeQuiz(raw: unknown): QuizQuestion[] {
       : [];
     let correct = Number(q.correct);
     if (!Number.isFinite(correct) || correct < 0 || correct > 3) correct = 0;
-    const explanation = String(q.explanation ?? "").trim() || "সঠিক উত্তরটি বেছে নাও।";
+    const explanation =
+      String(q.explanation ?? "").trim() || "সঠিক উত্তরটি বেছে নাও।";
     if (question && options.length >= 2) {
       while (options.length < 4) options.push("—");
       out.push({
@@ -61,7 +66,7 @@ function normalizeQuiz(raw: unknown): QuizQuestion[] {
         explanation,
       });
     }
-    if (out.length >= 5) break;
+    if (out.length >= max) break;
   }
   return out;
 }
@@ -73,12 +78,8 @@ function buildStudentStudyPrompt(opts: {
   pageEnd?: number | null;
   sourceLabel: string;
 }) {
-  const ageHint =
-    opts.classNumber != null && opts.classNumber <= 2
-      ? "শিক্ষার্থীর বয়স প্রায় ৬–৭ বছর (Class 1–2)। খুব সহজ শব্দ, ছোট বাক্য।"
-      : opts.classNumber != null && opts.classNumber <= 5
-        ? "প্রাথমিক স্তর — সহজ ও স্পষ্ট বাংলা।"
-        : "পাঠ্যবইয়ের স্তর অনুযায়ী উপযুক্ত ভাষা।";
+  const rules = getDepthRules(opts.classNumber);
+  const depthBlock = buildDepthPromptBlock(opts.classNumber);
 
   return `তুমি ONONNO platform-এর Curriculum Intelligence Engine।
 কাজ: NCTB PDF থেকে **ছাত্রদের জন্য study lesson + quiz** তৈরি করা।
@@ -88,13 +89,15 @@ function buildStudentStudyPrompt(opts: {
 পাঠের নাম: "${opts.title}"
 পৃষ্ঠা: ${opts.pageStart ?? "?"}–${opts.pageEnd ?? "?"}
 সোর্স: ${opts.sourceLabel}
-${ageHint}
+
+${depthBlock}
 
 নিয়ম:
-1. শুধু এই পাঠের তথ্য। মিথ্যা বানাবে না।
-2. overview, objectives ("আমি পারব..."), main_content (৪+ অনুচ্ছেদ), ai_explanation, examples, vocabulary, practice, summary, extra_notes — সব ছাত্র-facing বাংলা।
-3. **quiz_questions**: ঠিক ৫টি MCQ। প্রতিটিতে ৪টি options। correct = সঠিক option-এর 0-based index (0–3)। explanation ছোট বাংলা। প্রশ্ন শুধু এই পাঠের ওপর — সহজ, খেলার মতো।
-4. শুধু valid JSON।
+1. শুধু এই পাঠের তথ্য। মিথ্যা বানাবে না। PDF-এ যা নেই তা বানাবে না।
+2. সব ফিল্ড ছাত্র-facing বাংলা।
+3. overview, objectives, main_content, ai_explanation, examples, vocabulary, practice, summary, extra_notes — volume rules মেনে লেখো।
+4. **quiz_questions**: ঠিক ${rules.quizCount}টি MCQ। প্রতিটিতে ৪টি options। correct = 0-based index (0–3)। explanation ছোট বাংলা।
+5. শুধু valid JSON।
 
 JSON:
 {
@@ -199,7 +202,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
   let workflowStatus = String(lesson.workflow_status ?? "draft");
   let isPublished = Boolean(lesson.is_published);
 
-  if (force && (isPublished || workflowStatus === "published" || workflowStatus === "approved")) {
+  if (
+    force &&
+    (isPublished ||
+      workflowStatus === "published" ||
+      workflowStatus === "approved")
+  ) {
     await db
       .from("curriculum_lessons")
       .update({
@@ -329,11 +337,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     classNumber = (cls?.class_number as number) ?? null;
   }
 
+  const depthRules = getDepthRules(classNumber);
+
   let fileUri = source.gemini_file_uri;
   if (!fileUri) {
     if (!source.storage_path) {
       return NextResponse.json(
-        { error: "PDF_NOT_FOUND", message: "storage_path ও gemini_file_uri নেই।" },
+        {
+          error: "PDF_NOT_FOUND",
+          message: "storage_path ও gemini_file_uri নেই।",
+        },
         { status: 409 },
       );
     }
@@ -437,7 +450,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .filter(Boolean)
       .join("\n\n");
 
-    const quizQuestions = normalizeQuiz(content.quiz_questions);
+    const quizQuestions = normalizeQuiz(
+      content.quiz_questions,
+      depthRules.quizCount,
+    );
 
     const upsertPayload: Record<string, unknown> = {
       lesson_id: id,
@@ -449,7 +465,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       summary: content.summary ?? null,
       extra_notes: extraNotes || null,
       is_ai_generated: true,
-      ai_prompt: `student-study+quiz v3 NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}; quiz=${quizQuestions.length}`,
+      ai_prompt: `student-study+quiz v4 depth=${depthRules.depth} class=${classNumber ?? "?"} NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}; quiz=${quizQuestions.length}`,
       quiz_questions: quizQuestions,
     };
 
@@ -459,7 +475,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .select()
       .single();
 
-    // Column missing (migration not applied) → retry without quiz_questions
     if (contentError && /quiz_questions/i.test(contentError.message ?? "")) {
       delete upsertPayload.quiz_questions;
       const retry = await db
@@ -488,6 +503,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       studentFacing: true,
       teacherLeak,
       quizCount: quizQuestions.length,
+      studyDepth: depthRules.depth,
+      classNumber,
     });
 
     return NextResponse.json({
@@ -497,6 +514,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       cached: false,
       force,
       quizCount: quizQuestions.length,
+      studyDepth: depthRules.depth,
+      classNumber,
       teacherLeakWarning: teacherLeak
         ? "Output-এ শিক্ষক-ম্যানুয়াল ভাষা ধরা পড়েছে — Force Re-generate আবার চেষ্টা করুন।"
         : null,
@@ -515,7 +534,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       {
         error: code,
         message: "Lesson draft generate করা যায়নি।",
-        details: error instanceof Error ? error.message.slice(0, 400) : undefined,
+        details:
+          error instanceof Error ? error.message.slice(0, 400) : undefined,
       },
       { status: code === "INVALID_AI_JSON" ? 422 : 500 },
     );
