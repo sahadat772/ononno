@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import AdWrapper from '@/components/shared/AdWrapper'
+import WeakAreaCard from '@/components/student/WeakAreaCard'
 
 interface Props {
     profile: Record<string, string> | null
@@ -39,13 +40,15 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
 
                 const { data } = await supabase
                     .from('learning_progress')
-                    .select('completed, score')
+                    .select('status, score')
                     .eq('user_id', user.id)
 
                 if (data) {
-                    const completedLessons = data.filter(r => r.completed).length
+                    const completedLessons = data.filter(
+                        (r) => r.status === 'completed' || (r.score != null && Number(r.score) >= 0),
+                    ).length
                     const avgScore = data.length > 0
-                        ? Math.round(data.reduce((sum, r) => sum + (r.score || 0), 0) / data.length)
+                        ? Math.round(data.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / data.length)
                         : 0
                     setRealStats({ lessons: completedLessons, quizScore: avgScore })
                 }
@@ -101,10 +104,8 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] p-4 md:p-8">
-            {/* Top Ad */}
             <AdWrapper position="top" className="mb-4" />
 
-            {/* Welcome */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -121,9 +122,12 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                                 <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs px-2 py-1 rounded-full">
                                     🏫 {className}
                                 </span>
-                                <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs px-2 py-1 rounded-full">
-                                    🔥 ১ দিনের streak
-                                </span>
+                                <Link
+                                    href="/dashboard/student/learning-path"
+                                    className="bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs px-2 py-1 rounded-full hover:bg-violet-500/30"
+                                >
+                                    📚 আজকের Plan
+                                </Link>
                             </div>
                         </div>
                         <div className="text-5xl md:text-6xl shrink-0">
@@ -131,13 +135,12 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                         </div>
                     </div>
 
-                    {/* Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-4">
                         {[
                             { label: 'সম্পন্ন লেসন', value: `${realStats.lessons}`, icon: '📚', color: 'from-blue-500 to-cyan-500' },
                             { label: 'ইসলামিক', value: '০%', icon: '🕌', color: 'from-emerald-500 to-teal-500' },
                             { label: 'Quiz score', value: `${realStats.quizScore}%`, icon: '✅', color: 'from-violet-500 to-purple-500' },
-                            { label: 'Streak', value: '১ দিন', icon: '🔥', color: 'from-amber-500 to-orange-500' },
+                            { label: 'Streak', value: '—', icon: '🔥', color: 'from-amber-500 to-orange-500' },
                         ].map((stat, i) => (
                             <motion.div
                                 key={i}
@@ -157,7 +160,11 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                 </div>
             </motion.div>
 
-            {/* Main Modules */}
+            {/* Phase 2.5 — Weak areas */}
+            <div className="mb-4">
+                <WeakAreaCard />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
                 {modules.map((module, i) => (
                     <motion.div
@@ -173,7 +180,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                                     <div className={`w-11 h-11 md:w-12 md:h-12 rounded-xl bg-linear-to-br ${module.color} flex items-center justify-center text-2xl shadow-md`}>
                                         {module.icon}
                                     </div>
-                                    <span className={`text-xs px-2 py-1 rounded-full border ${module.badgeColor} max-width: 120px; text-center leading-tight`}>
+                                    <span className={`text-xs px-2 py-1 rounded-full border ${module.badgeColor}`}>
                                         {module.badge}
                                     </span>
                                 </div>
@@ -195,7 +202,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                     </motion.div>
                 ))}
             </div>
-            {/* Islamic Quick Links */}
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -228,60 +235,40 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                 </div>
             </motion.div>
 
-            {/* Career Path */}
             {isCareerAvailable && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="mb-3"
-                >
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-3">
                     <Link href="/dashboard/student/career">
                         <div className="rounded-2xl border border-amber-500/20 bg-linear-to-r from-amber-500/10 to-orange-500/10 p-4 md:p-5 hover:bg-amber-500/20 transition-all cursor-pointer">
                             <div className="flex items-center gap-3 md:gap-4">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">
-                                    🧭
-                                </div>
+                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">🧭</div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-white text-base md:text-lg">ক্যারিয়ার পাথ AI</h3>
                                     <p className="text-gray-400 text-sm truncate">তোমার আগ্রহ অনুযায়ী সেরা ক্যারিয়ার খুঁজে নাও</p>
                                 </div>
-                                <span className="bg-amber-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">
-                                    শুরু →
-                                </span>
+                                <span className="bg-amber-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">শুরু →</span>
                             </div>
                         </div>
                     </Link>
                 </motion.div>
             )}
 
-            {/* Skill Training */}
             {isTrainingAvailable && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                >
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
                     <Link href="/dashboard/student/training">
                         <div className="rounded-2xl border border-cyan-500/20 bg-linear-to-r from-cyan-500/10 to-blue-500/10 p-4 md:p-5 hover:bg-cyan-500/20 transition-all cursor-pointer">
                             <div className="flex items-center gap-3 md:gap-4">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">
-                                    💡
-                                </div>
+                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">💡</div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-white text-base md:text-lg">Skill Training</h3>
                                     <p className="text-gray-400 text-sm truncate">Stock market, Tech, Business — সব training এক জায়গায়</p>
                                 </div>
-                                <span className="bg-cyan-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">
-                                    শুরু →
-                                </span>
+                                <span className="bg-cyan-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">শুরু →</span>
                             </div>
                         </div>
                     </Link>
                 </motion.div>
             )}
 
-            {/* Bottom Ad */}
             <AdWrapper position="bottom" className="mt-6" />
         </div>
     )
