@@ -24,6 +24,7 @@ import {
   Target,
   Upload,
   Wand2,
+  BarChart3,
 } from 'lucide-react'
 
 type Stats = {
@@ -144,6 +145,13 @@ const actionItems = [
     href: '/dashboard/admin/curriculum/import',
   },
   {
+    title: 'Learning Analytics',
+    subtitle: 'Students · sessions · weak',
+    Icon: BarChart3,
+    color: 'cyan',
+    href: '/dashboard/admin/learning-analytics',
+  },
+  {
     title: 'Chapters',
     subtitle: 'Chapter management',
     Icon: ClipboardList,
@@ -184,13 +192,6 @@ const actionItems = [
     subtitle: 'Curriculum versions',
     Icon: FilePlus2,
     color: 'blue',
-    href: '/dashboard/admin/curriculum/versions',
-  },
-  {
-    title: 'Export',
-    subtitle: 'Export curriculum',
-    Icon: Download,
-    color: 'purple',
     href: '/dashboard/admin/curriculum/versions',
   },
 ] as const
@@ -258,7 +259,6 @@ export default function CurriculumDashboardClient({
   return (
     <main className="min-h-screen bg-[#030711] px-3 py-5 font-sans text-[#f7f7ff] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-5">
-        {/* Header — same premium look */}
         <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="grid size-12 place-items-center rounded-xl border border-fuchsia-500/60 bg-linear-to-br from-fuchsia-900/50 to-slate-950 shadow-[0_0_25px_rgba(223,50,206,.25)]">
@@ -288,10 +288,10 @@ export default function CurriculumDashboardClient({
               <ChevronDown className="size-4 text-slate-300" />
             </button>
             <Link
-              href="/dashboard/student/academic"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-[#080d1b] px-4 py-2.5 text-xs font-bold hover:bg-slate-900"
+              href="/dashboard/admin/learning-analytics"
+              className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2.5 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20"
             >
-              View Public Site <Eye className="size-4" />
+              <BarChart3 className="size-4" /> Analytics
             </Link>
             <Link
               href="/dashboard/admin/curriculum/import"
@@ -302,7 +302,6 @@ export default function CurriculumDashboardClient({
           </div>
         </header>
 
-        {/* Top stat cards with sparklines */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {topStats.map(([label, value, Icon, color]) => {
             const tone = colors[color]
@@ -333,7 +332,6 @@ export default function CurriculumDashboardClient({
           })}
         </section>
 
-        {/* Quick Actions — premium cards */}
         <section className="relative overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15] p-5 shadow-[0_15px_50px_rgba(0,0,0,.25)]">
           <Sparkles className="absolute right-5 top-5 size-6 text-violet-400" />
           <h2 className="flex items-center gap-2 text-lg font-bold">
@@ -371,7 +369,6 @@ export default function CurriculumDashboardClient({
           </div>
         </section>
 
-        {/* Curriculum structure tree — real classes/subjects */}
         <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15]">
           <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -470,7 +467,6 @@ export default function CurriculumDashboardClient({
           </div>
         </section>
 
-        {/* PDF sources strip */}
         {sources.length > 0 && (
           <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15]">
             <div className="flex items-center justify-between border-b border-slate-700/70 px-5 py-4">
@@ -504,7 +500,6 @@ export default function CurriculumDashboardClient({
           </section>
         )}
 
-        {/* Bottom pipeline cards */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {bottomStats.map(([title, value, subtitle, symbol, color]) => {
             const tone = colors[color]
