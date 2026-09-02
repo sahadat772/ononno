@@ -11,6 +11,7 @@ import {
   buildDepthPromptBlock,
   getDepthRules,
 } from "@/lib/study-depth";
+import { generateAndStoreLessonCover } from "@/lib/lesson-cover-image";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -488,6 +489,46 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (contentError) throw contentError;
 
+    // Slice B — cover image (soft-fail: study still saves if image fails)
+    let coverPath: string | null = null;
+    let coverUrl: string | null = null;
+    let coverModel: string | null = null;
+    try {
+      const cover = await generateAndStoreLessonCover({
+        supabase: db as never,
+        lessonId: id,
+        title,
+        overview: content.overview ?? null,
+        classNumber,
+      });
+      if (cover) {
+        coverPath = cover.path;
+        coverUrl = cover.url;
+        coverModel = cover.model;
+        const coverPatch: Record<string, unknown> = {
+          cover_image_path: cover.path,
+          cover_image_url: cover.url,
+        };
+        const { error: coverErr } = await db
+          .from("lesson_contents")
+          .update(coverPatch)
+          .eq("lesson_id", id);
+        if (coverErr && /cover_image/i.test(coverErr.message ?? "")) {
+          console.warn(
+            "[generate] cover_image columns missing — run migration SQL",
+            coverErr.message,
+          );
+        } else if (coverErr) {
+          console.warn("[generate] cover update failed", coverErr.message);
+        } else if (data && typeof data === "object") {
+          (data as Record<string, unknown>).cover_image_path = cover.path;
+          (data as Record<string, unknown>).cover_image_url = cover.url;
+        }
+      }
+    } catch (coverEx) {
+      console.warn("[generate] cover pipeline error", coverEx);
+    }
+
     await db
       .from("curriculum_lessons")
       .update({ workflow_status: "generated" })
@@ -505,6 +546,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       quizCount: quizQuestions.length,
       studyDepth: depthRules.depth,
       classNumber,
+      coverImage: Boolean(coverPath),
+      coverModel,
     });
 
     return NextResponse.json({
@@ -516,6 +559,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       quizCount: quizQuestions.length,
       studyDepth: depthRules.depth,
       classNumber,
+      coverImage: Boolean(coverPath),
+      cover_image_url: coverUrl,
+      cover_image_path: coverPath,
       teacherLeakWarning: teacherLeak
         ? "Output-এ শিক্ষক-ম্যানুয়াল ভাষা ধরা পড়েছে — Force Re-generate আবার চেষ্টা করুন।"
         : null,
