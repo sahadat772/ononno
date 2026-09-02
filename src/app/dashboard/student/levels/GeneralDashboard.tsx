@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import AdWrapper from '@/components/shared/AdWrapper'
 import WeakAreaCard from '@/components/student/WeakAreaCard'
+import LearningInsightsCard from '@/components/student/LearningInsightsCard'
 
 interface Props {
     profile: Record<string, string> | null
@@ -159,6 +160,11 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                     </div>
                 </div>
             </motion.div>
+
+            {/* Phase 2.6 — Learning insights */}
+            <div className="mb-4">
+                <LearningInsightsCard />
+            </div>
 
             {/* Phase 2.5 — Weak areas */}
             <div className="mb-4">
