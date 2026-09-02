@@ -18,6 +18,8 @@ interface LessonContent {
   summary?: string | null
   extra_notes?: string | null
   quiz_questions?: Question[] | null
+  cover_image_url?: string | null
+  cover_image_path?: string | null
 }
 
 interface Lesson {
@@ -120,7 +122,8 @@ export default function LessonContentPage() {
           `id, title, title_bn, duration_minutes, xp_reward,
            lesson_contents (
              overview, objectives, main_content, ai_explanation,
-             examples, summary, extra_notes, quiz_questions
+             examples, summary, extra_notes, quiz_questions,
+             cover_image_url, cover_image_path
            )`,
         )
         .eq('id', lessonId)
@@ -134,7 +137,8 @@ export default function LessonContentPage() {
             `id, title, title_bn, duration_minutes, xp_reward,
              lesson_contents (
                overview, objectives, main_content, ai_explanation,
-               examples, summary, extra_notes
+               examples, summary, extra_notes,
+               cover_image_url, cover_image_path
              )`,
           )
           .eq('id', lessonId)
@@ -391,7 +395,6 @@ export default function LessonContentPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white">
-      {/* Live study timer — same tab, continues on learn + quiz */}
       <StudySessionTimer sessionId={sessionFromUrl} />
 
       {!accessLoading && !isPaid && !canDoLesson && (
@@ -450,6 +453,16 @@ export default function LessonContentPage() {
                 📖
               </motion.div>
               <h1 className="text-3xl font-bold text-white mb-3">{displayTitle}</h1>
+              {content?.cover_image_url && (
+                <div className="mb-6 rounded-3xl overflow-hidden border border-white/10 mx-auto max-w-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={content.cover_image_url}
+                    alt={displayTitle}
+                    className="w-full aspect-video object-cover"
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-center gap-4 mb-8 text-sm text-gray-400">
                 <span>⏱️ {lesson.duration_minutes} মিনিট</span>
                 <span>⚡ +{lesson.xp_reward} XP</span>
@@ -496,6 +509,18 @@ export default function LessonContentPage() {
               className="space-y-5"
             >
               <h2 className="text-2xl font-bold text-white">📖 {displayTitle}</h2>
+
+              {content?.cover_image_url && (
+                <div className="rounded-3xl overflow-hidden border border-white/10 bg-black/30">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={content.cover_image_url}
+                    alt={displayTitle}
+                    className="w-full aspect-video object-cover"
+                  />
+                  <p className="text-[11px] text-white/40 px-3 py-2">🎨 পাঠের ছবি (AI illustration)</p>
+                </div>
+              )}
 
               {!hasStudyBody ? (
                 <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
