@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { STUDY_TIME_PRESETS, MIN_STUDY_MINUTES } from '@/lib/study-session'
 import { saveActiveStudySession } from '@/components/student/StudySessionTimer'
+import QuizPerformanceSummary from '@/components/student/QuizPerformanceSummary'
 
 interface Props {
   studentId: string
@@ -157,10 +158,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
     const res = await fetch(`/api/student/study-sessions/${sessionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        delta_seconds: delta,
-      }),
+      body: JSON.stringify({ action, delta_seconds: delta }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || data.error || 'Action failed')
@@ -174,9 +172,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
   const startLocalTick = () => {
     if (localTickRef.current) clearInterval(localTickRef.current)
     setTick(0)
-    localTickRef.current = setInterval(() => {
-      setTick((t) => t + 1)
-    }, 1000)
+    localTickRef.current = setInterval(() => setTick((t) => t + 1), 1000)
   }
 
   const startHeartbeat = () => {
@@ -184,8 +180,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
     heartbeatRef.current = setInterval(() => {
       void (async () => {
         try {
-          const delta = 15
-          await callAction('heartbeat', delta)
+          await callAction('heartbeat', 15)
           setTick(0)
         } catch {
           /* ignore */
@@ -252,7 +247,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
     }
   }
 
-  /** Start timer + same-tab go to lesson (timer continues on study/quiz page) */
   const beginSession = async () => {
     if (!sessionId) return
     setActionBusy(true)
@@ -352,7 +346,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
               📚 আজকের পড়ার পরিকল্পনা
             </h1>
             <p className="text-white/40 text-xs">
-              একই ট্যাবে টাইমার · published · min {MIN_STUDY_MINUTES}m · {classLevel}
+              Performance · Timer · published · min {MIN_STUDY_MINUTES}m · {classLevel}
             </p>
           </div>
         </div>
@@ -366,7 +360,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
         >
           <p className="font-bold text-lg">আস-সালামু আলাইকুম, {studentName}! 👋</p>
           <p className="text-white/60 text-sm mt-1">
-            পড়া শুরু করলে একই ট্যাবে lesson/quiz-এ live টাইমার দেখাবে।
+            Quiz score অনুযায়ী Strong / Medium / Weak দেখাবে। পড়া শুরু করলে live টাইমার চলবে।
           </p>
         </motion.div>
 
@@ -378,6 +372,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
 
         {step === 'time' && (
           <section className="space-y-4">
+            <QuizPerformanceSummary />
             <h2 className="font-semibold">আজ কতক্ষণ পড়তে চাও?</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {STUDY_TIME_PRESETS.map((m) => (
@@ -425,7 +420,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
           <section className="space-y-4">
             <p className="text-sm text-white/50">সময়: {effectiveMinutes} মিনিট</p>
             {loadingOpts && <p className="text-white/40 text-sm">লোড হচ্ছে...</p>}
-
             <div>
               <label className="text-xs text-white/50">Class (ঐচ্ছিক)</label>
               <select
@@ -446,7 +440,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
                 ))}
               </select>
             </div>
-
             <div>
               <label className="text-xs text-white/50">Subject *</label>
               <select
@@ -469,7 +462,6 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
                 ))}
               </select>
             </div>
-
             <div>
               <label className="text-xs text-white/50">Chapter (ঐচ্ছিক)</label>
               <select
@@ -492,11 +484,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
                 ))}
               </select>
             </div>
-
-            <p className="text-xs text-white/40">
-              Available published lessons: {filteredLessons.length}
-            </p>
-
+            <p className="text-xs text-white/40">Available published lessons: {filteredLessons.length}</p>
             <button
               type="button"
               disabled={creating || !subjectId}
@@ -511,9 +499,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
         {step === 'plan' && (
           <section className="space-y-4">
             <h2 className="font-semibold">তোমার Session Plan</h2>
-            <p className="text-sm text-white/50">
-              Planned: {plannedMinutes} মিনিট · {plan.length} ধাপ
-            </p>
+            <p className="text-sm text-white/50">Planned: {plannedMinutes} মিনিট · {plan.length} ধাপ</p>
             <div className="space-y-2">
               {plan.map((item) => (
                 <div
@@ -521,14 +507,10 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
                   className="rounded-2xl border border-white/10 bg-white/5 p-4 flex justify-between gap-3"
                 >
                   <div>
-                    <p className="text-xs text-violet-300">
-                      {typeLabel[item.item_type] || item.item_type}
-                    </p>
+                    <p className="text-xs text-violet-300">{typeLabel[item.item_type] || item.item_type}</p>
                     <p className="font-semibold">{item.title_bn || item.title}</p>
                   </div>
-                  <span className="text-sm text-white/40 shrink-0">
-                    ⏱ {item.planned_minutes} মি
-                  </span>
+                  <span className="text-sm text-white/40 shrink-0">⏱ {item.planned_minutes} মি</span>
                 </div>
               ))}
             </div>
@@ -540,11 +522,7 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
             >
               {actionBusy ? 'শুরু হচ্ছে...' : 'পড়া শুরু — live টাইমার সহ 🚀'}
             </button>
-            <button
-              type="button"
-              onClick={() => setStep('time')}
-              className="w-full py-3 rounded-2xl border border-white/10 text-white/70"
-            >
+            <button type="button" onClick={() => setStep('time')} className="w-full py-3 rounded-2xl border border-white/10 text-white/70">
               নতুন plan
             </button>
           </section>
@@ -553,48 +531,24 @@ export default function LearningPathClient({ studentName, classLevel }: Props) {
         {step === 'active' && (
           <section className="space-y-5">
             <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
-              <p className="text-xs text-emerald-300/80 mb-2">
-                {sessionStatus === 'paused' ? '⏸ পজ' : '▶️ চলছে'}
-              </p>
-              <p className="text-5xl font-black tracking-tight tabular-nums">
-                {formatClock(displaySeconds)}
-              </p>
-              <p className="mt-2 text-sm text-white/50">
-                Planned {plannedMinutes} মি · Actual {formatClock(displaySeconds)}
-              </p>
+              <p className="text-xs text-emerald-300/80 mb-2">{sessionStatus === 'paused' ? '⏸ পজ' : '▶️ চলছে'}</p>
+              <p className="text-5xl font-black tracking-tight tabular-nums">{formatClock(displaySeconds)}</p>
+              <p className="mt-2 text-sm text-white/50">Planned {plannedMinutes} মি · Actual {formatClock(displaySeconds)}</p>
               <div className="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full bg-linear-to-r from-emerald-400 to-teal-400 transition-all"
-                  style={{ width: `${progressPct}%` }}
-                />
+                <div className="h-full bg-linear-to-r from-emerald-400 to-teal-400 transition-all" style={{ width: `${progressPct}%` }} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {sessionStatus === 'active' ? (
-                <button
-                  type="button"
-                  disabled={actionBusy}
-                  onClick={() => void pauseSession()}
-                  className="py-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-200 font-bold"
-                >
+                <button type="button" disabled={actionBusy} onClick={() => void pauseSession()} className="py-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 text-amber-200 font-bold">
                   ⏸ পজ
                 </button>
               ) : (
-                <button
-                  type="button"
-                  disabled={actionBusy}
-                  onClick={() => void resumeSession()}
-                  className="py-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 text-sky-200 font-bold"
-                >
+                <button type="button" disabled={actionBusy} onClick={() => void resumeSession()} className="py-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 text-sky-200 font-bold">
                   ▶️ চালিয়ে যাও
                 </button>
               )}
-              <button
-                type="button"
-                disabled={actionBusy}
-                onClick={() => void completeSession()}
-                className="py-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/20 text-emerald-200 font-bold"
-              >
+              <button type="button" disabled={actionBusy} onClick={() => void completeSession()} className="py-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/20 text-emerald-200 font-bold">
                 ✅ সম্পন্ন
               </button>
             </div>
