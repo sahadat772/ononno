@@ -98,9 +98,8 @@ export async function generateLessonCoverImage(
         model,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
-          // @ts-expect-error modalities support varies by SDK version
           responseModalities: ["TEXT", "IMAGE"],
-        },
+        } as Record<string, unknown>,
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parts = (response as any)?.candidates?.[0]?.content?.parts ?? [];
