@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   const rateError = await rateLimit(
     `student-ai-teacher:${auth.user.id}`,
-    rateLimitDefaults.adminAI ?? { limit: 30, windowMs: 60_000 },
+    rateLimitDefaults.adminAI,
   );
   if (rateError) return rateError;
 
