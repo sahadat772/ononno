@@ -8,6 +8,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useAccess } from '@/hooks/useAccess'
 import LockOverlay from '@/components/shared/LockOverlay'
 import StudySessionTimer from '@/components/student/StudySessionTimer'
+import AiTeacherPanel from '@/components/student/AiTeacherPanel'
 
 interface LessonContent {
   overview?: string | null
@@ -396,6 +397,7 @@ export default function LessonContentPage() {
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white">
       <StudySessionTimer sessionId={sessionFromUrl} />
+      <AiTeacherPanel lessonId={lessonId} lessonTitle={displayTitle} />
 
       {!accessLoading && !isPaid && !canDoLesson && (
         <div className="min-h-screen flex items-center justify-center p-6">
