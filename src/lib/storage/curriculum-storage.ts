@@ -29,11 +29,11 @@ export type UploadResult = {
 
 /**
  * Storage abstraction for curriculum PDFs.
- * Application code must depend only on this interface — never on a concrete
- * Supabase/Drive client for curriculum files.
+ * Application code must depend only on this interface.
  *
- * Current default: Supabase Storage (`curriculum-pdfs` bucket).
- * Future: Google Drive (Phase 10) — interface is compatible; no credentials here.
+ * Providers:
+ * - supabase (default / test)
+ * - google_drive (Phase 3 — set CURRICULUM_STORAGE_PROVIDER=google_drive)
  */
 export interface CurriculumStorageProvider {
   readonly name: CurriculumStorageProviderName;
@@ -55,7 +55,6 @@ export interface CurriculumStorageProvider {
 
   getMetadata(path: string): Promise<CurriculumFileMetadata | null>;
 
-  /** List objects under a path prefix (for catalog discovery). */
   list(prefix?: string): Promise<CurriculumStorageListItem[]>;
 }
 
@@ -69,7 +68,7 @@ export function getDefaultStorageProviderName(): CurriculumStorageProviderName {
 
 /**
  * Resolve storage provider by name.
- * Google Drive is future-compatible: selecting it throws a clear error until Phase 10.
+ * Google Drive requires GOOGLE_DRIVE_* env vars (server-only).
  */
 export function createCurriculumStorage(
   supabase: SupabaseClient,
