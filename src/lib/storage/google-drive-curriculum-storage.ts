@@ -1,3 +1,4 @@
+import { Readable } from "stream";
 import { google, type drive_v3 } from "googleapis";
 import type {
   CurriculumFileMetadata,
@@ -37,7 +38,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
   readonly name = "google_drive" as const;
   private drive: drive_v3.Drive | null = null;
   private rootFolderId: string | null = null;
-  /** path prefix → folderId cache (per-instance) */
   private folderCache = new Map<string, string>();
 
   private getClient(): drive_v3.Drive {
@@ -116,7 +116,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     return created.data.id;
   }
 
-  /** Ensure full folder chain under root; return parent folder id for file. */
   private async ensurePathFolders(dirParts: string[]): Promise<string> {
     let parent = this.rootId();
     let prefix = "";
@@ -154,13 +153,16 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     });
     const f = res.data.files?.[0];
     if (!f?.id) return null;
-    return { id: f.id, size: f.size ?? undefined, mimeType: f.mimeType ?? undefined };
+    return {
+      id: f.id,
+      size: f.size ?? undefined,
+      mimeType: f.mimeType ?? undefined,
+    };
   }
 
   private async resolveFile(
     path: string,
   ): Promise<{ id: string; size?: string; mimeType?: string }> {
-    // Allow direct Drive file id (stored as provider_file_id)
     if (/^[a-zA-Z0-9_-]{10,}$/.test(path) && !path.includes("/")) {
       const drive = this.getClient();
       const meta = await drive.files.get({
@@ -211,7 +213,7 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
 
     const media = {
       mimeType: input.contentType ?? "application/pdf",
-      body: ReadableFromBuffer(body),
+      body: Readable.from(body),
     };
 
     if (existing && input.upsert) {
@@ -270,8 +272,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     const drive = this.getClient();
     const file = await this.resolveFile(path);
 
-    // Temporary link: anyone with link can read (revoked after short window ideally).
-    // Service accounts on shared drives: permission create may need domain settings.
     try {
       await drive.permissions.create({
         fileId: file.id,
@@ -293,7 +293,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
       throw new Error("STORAGE_NOT_FOUND: no shareable link");
     }
 
-    // Note: Drive does not support custom TTL on anyone-links the same as Supabase signed URLs.
     void expiresInSeconds;
     return link;
   }
@@ -360,8 +359,7 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     });
 
     return (res.data.files ?? []).map((f) => {
-      const isFolder =
-        f.mimeType === "application/vnd.google-apps.folder";
+      const isFolder = f.mimeType === "application/vnd.google-apps.folder";
       const name = f.name ?? "unknown";
       const path = normalized ? `${normalized}/${name}` : name;
       return {
@@ -374,11 +372,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
       };
     });
   }
-}
-
-function ReadableFromBuffer(buf: Buffer) {
-  const { Readable } = require("stream") as typeof import("stream");
-  return Readable.from(buf);
 }
 
 export function createGoogleDriveCurriculumStorage(): GoogleDriveCurriculumStorage {
