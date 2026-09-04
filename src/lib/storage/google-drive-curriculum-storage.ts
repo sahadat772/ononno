@@ -12,12 +12,8 @@ import type {
  *
  * Server-only credentials (never NEXT_PUBLIC_*):
  * - GOOGLE_DRIVE_CLIENT_EMAIL
- * - GOOGLE_DRIVE_PRIVATE_KEY  (PEM; \n escaped ok)
- * - GOOGLE_DRIVE_FOLDER_ID    (shared root folder ID)
- *
- * Logical paths stay the same as Supabase:
- *   curriculum/class-{n}/{subjectSlug}/{file}.pdf
- * Nested Drive folders mirror that structure under the root folder.
+ * - GOOGLE_DRIVE_PRIVATE_KEY
+ * - GOOGLE_DRIVE_FOLDER_ID
  */
 
 function requireEnv(name: string): string {
@@ -32,6 +28,30 @@ function requireEnv(name: string): string {
 
 function normalizePrivateKey(raw: string): string {
   return raw.replace(/\\n/g, "\n").replace(/"/g, "");
+}
+
+function formatDriveError(e: unknown, context: string): Error {
+  const anyErr = e as {
+    message?: string;
+    errors?: { message?: string; reason?: string }[];
+    response?: { data?: { error?: { message?: string } } };
+  };
+  const apiMsg =
+    anyErr?.response?.data?.error?.message ||
+    anyErr?.errors?.[0]?.message ||
+    (e instanceof Error ? e.message : String(e));
+  const lower = String(apiMsg).toLowerCase();
+  if (lower.includes("file not found") || lower.includes("not found")) {
+    return new Error(
+      `GOOGLE_DRIVE_FOLDER_NOT_FOUND (${context}): GOOGLE_DRIVE_FOLDER_ID ভুল, অথবা service account-কে সেই folder-এ Editor share করা হয়নি। Detail: ${apiMsg}`,
+    );
+  }
+  if (lower.includes("insufficient") || lower.includes("permission")) {
+    return new Error(
+      `GOOGLE_DRIVE_PERMISSION (${context}): service account-কে Drive folder-এ Editor দাও। ${apiMsg}`,
+    );
+  }
+  return new Error(`GOOGLE_DRIVE_ERROR (${context}): ${apiMsg}`);
 }
 
 export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
@@ -103,17 +123,21 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     if (existing) return existing;
 
     const drive = this.getClient();
-    const created = await drive.files.create({
-      requestBody: {
-        name,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [parentId],
-      },
-      fields: "id",
-      supportsAllDrives: true,
-    });
-    if (!created.data.id) throw new Error("GOOGLE_DRIVE_FOLDER_CREATE_FAILED");
-    return created.data.id;
+    try {
+      const created = await drive.files.create({
+        requestBody: {
+          name,
+          mimeType: "application/vnd.google-apps.folder",
+          parents: [parentId],
+        },
+        fields: "id",
+        supportsAllDrives: true,
+      });
+      if (!created.data.id) throw new Error("GOOGLE_DRIVE_FOLDER_CREATE_FAILED");
+      return created.data.id;
+    } catch (e) {
+      throw formatDriveError(e, `ensureFolder parent=${parentId} name=${name}`);
+    }
   }
 
   private async ensurePathFolders(dirParts: string[]): Promise<string> {
@@ -194,8 +218,24 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     upsert?: boolean;
   }): Promise<UploadResult> {
     const drive = this.getClient();
+
+    try {
+      await drive.files.get({
+        fileId: this.rootId(),
+        fields: "id, name",
+        supportsAllDrives: true,
+      });
+    } catch (e) {
+      throw formatDriveError(e, "root folder check");
+    }
+
     const { dirParts, fileName } = this.splitPath(input.path);
-    const parentId = await this.ensurePathFolders(dirParts);
+    let parentId: string;
+    try {
+      parentId = await this.ensurePathFolders(dirParts);
+    } catch (e) {
+      throw formatDriveError(e, "ensurePathFolders");
+    }
 
     const existing = await this.findFileInFolder(parentId, fileName);
     if (existing && !input.upsert) {
@@ -216,38 +256,45 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
       body: Readable.from(body),
     };
 
-    if (existing && input.upsert) {
-      const updated = await drive.files.update({
-        fileId: existing.id,
+    try {
+      if (existing && input.upsert) {
+        const updated = await drive.files.update({
+          fileId: existing.id,
+          media,
+          fields: "id",
+          supportsAllDrives: true,
+        });
+        return {
+          path: input.path,
+          provider: "google_drive",
+          providerFileId: updated.data.id ?? existing.id,
+        };
+      }
+
+      const created = await drive.files.create({
+        requestBody: {
+          name: fileName,
+          parents: [parentId],
+          appProperties: { ononno_path: input.path },
+        },
         media,
         fields: "id",
         supportsAllDrives: true,
       });
+
+      if (!created.data.id) throw new Error("PDF_UPLOAD_FAILED");
+
       return {
         path: input.path,
         provider: "google_drive",
-        providerFileId: updated.data.id ?? existing.id,
+        providerFileId: created.data.id,
       };
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("GOOGLE_DRIVE_")) throw e;
+      if (e instanceof Error && e.message.startsWith("PDF_UPLOAD_FAILED"))
+        throw e;
+      throw formatDriveError(e, "upload");
     }
-
-    const created = await drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [parentId],
-        appProperties: { ononno_path: input.path },
-      },
-      media,
-      fields: "id",
-      supportsAllDrives: true,
-    });
-
-    if (!created.data.id) throw new Error("PDF_UPLOAD_FAILED");
-
-    return {
-      path: input.path,
-      provider: "google_drive",
-      providerFileId: created.data.id,
-    };
   }
 
   async download(path: string): Promise<Blob> {
