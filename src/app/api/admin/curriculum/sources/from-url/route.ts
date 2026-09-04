@@ -44,9 +44,155 @@ function guessFileName(url: string, contentDisposition: string | null): string {
   return `curriculum-${Date.now()}.pdf`;
 }
 
+/** Extract Google Drive file id from common share/view URLs. */
+function extractGoogleDriveFileId(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./, "");
+    if (
+      host !== "drive.google.com" &&
+      host !== "docs.google.com" &&
+      host !== "drive.usercontent.google.com"
+    ) {
+      return null;
+    }
+    const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
+    if (fileMatch?.[1]) return fileMatch[1];
+    const openId = u.searchParams.get("id");
+    if (openId) return openId;
+    if (u.pathname.includes("/uc")) {
+      const id = u.searchParams.get("id");
+      if (id) return id;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function isShareFolderPage(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    // NCTB eGov cloud share, Nextcloud-style, generic folder shares
+    if (host.includes("egovcloud.gov.bd")) return true;
+    if (u.pathname.includes("/index.php/s/")) return true;
+    if (host.includes("drive.google.com") && u.pathname.includes("/folders/"))
+      return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+/**
+ * Turn viewer/share URLs into a fetchable download URL when possible.
+ */
+function resolveDownloadUrl(raw: string): {
+  url: string;
+  note?: string;
+  blocked?: string;
+} {
+  if (isShareFolderPage(raw)) {
+    return {
+      url: raw,
+      blocked:
+        "এটি folder/share page, direct PDF নয়। NCTB Cloud-এ file খুলে Download নাও, অথবা Google Drive file link ব্যবহার করো (নিচে format)।",
+    };
+  }
+
+  const gId = extractGoogleDriveFileId(raw);
+  if (gId) {
+    return {
+      url: `https://drive.google.com/uc?export=download&id=${gId}`,
+      note: "google_drive_uc",
+    };
+  }
+
+  return { url: raw };
+}
+
+async function fetchPdfBuffer(
+  startUrl: string,
+): Promise<{ buffer: Buffer; finalUrl: string; contentDisposition: string | null }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    let url = startUrl;
+    let remote = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/pdf,*/*",
+        "User-Agent":
+          "Mozilla/5.0 (compatible; ONONNOCurriculumBot/1.0; +https://ononno.app)",
+      },
+    });
+
+    if (!remote.ok) {
+      throw Object.assign(new Error(`HTTP_${remote.status}`), {
+        status: remote.status,
+      });
+    }
+
+    let contentType = (remote.headers.get("content-type") || "").toLowerCase();
+    let ab = await remote.arrayBuffer();
+    let buffer = Buffer.from(ab);
+
+    // Google virus-scan interstitial (HTML) for larger files
+    const asText = buffer.subarray(0, 800).toString("utf8");
+    const isHtml =
+      contentType.includes("text/html") ||
+      asText.trimStart().toLowerCase().startsWith("<!doctype") ||
+      asText.includes("<html");
+
+    if (isHtml && extractGoogleDriveFileId(startUrl)) {
+      const confirm =
+        /confirm=([0-9A-Za-z_\-]+)/.exec(asText)?.[1] ||
+        /name="confirm"\s+value="([^\"]+)"/.exec(asText)?.[1];
+      const id =
+        extractGoogleDriveFileId(startUrl) ||
+        /[?&]id=([0-9A-Za-z_\-]+)/.exec(asText)?.[1];
+      if (id) {
+        const retryUrl = confirm
+          ? `https://drive.google.com/uc?export=download&confirm=${confirm}&id=${id}`
+          : `https://drive.google.com/uc?export=download&confirm=t&id=${id}`;
+        remote = await fetch(retryUrl, {
+          method: "GET",
+          redirect: "follow",
+          signal: controller.signal,
+          headers: {
+            Accept: "application/pdf,*/*",
+            "User-Agent":
+              "Mozilla/5.0 (compatible; ONONNOCurriculumBot/1.0; +https://ononno.app)",
+          },
+        });
+        if (!remote.ok) {
+          throw Object.assign(new Error(`HTTP_${remote.status}`), {
+            status: remote.status,
+          });
+        }
+        contentType = (remote.headers.get("content-type") || "").toLowerCase();
+        ab = await remote.arrayBuffer();
+        buffer = Buffer.from(ab);
+        url = retryUrl;
+      }
+    }
+
+    return {
+      buffer,
+      finalUrl: url,
+      contentDisposition: remote.headers.get("content-disposition"),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * POST /api/admin/curriculum/sources/from-url
- * Download a direct PDF URL → storage (Supabase or Drive) → curriculum_sources row.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -99,6 +245,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const resolved = resolveDownloadUrl(url);
+    if (resolved.blocked) {
+      return NextResponse.json(
+        {
+          error: "NOT_DIRECT_PDF",
+          message: resolved.blocked,
+          hint: {
+            googleDriveExample:
+              "https://drive.google.com/uc?export=download&id=FILE_ID",
+            orViewLink:
+              "https://drive.google.com/file/d/FILE_ID/view — এখন auto convert হয়",
+            nctbCloud:
+              "Share page কাজ করে না — file download করে PC থেকে Supabase/Drive-এ তোলো, বা direct .pdf URL দাও",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
     const [{ data: klass }, { data: subject }] = await Promise.all([
       auth.supabase
         .from("curriculum_classes")
@@ -131,64 +296,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-    let remote: Response;
+    let buffer: Buffer;
+    let contentDisposition: string | null;
     try {
-      remote = await fetch(url, {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
-        headers: {
-          Accept: "application/pdf,*/*",
-          "User-Agent":
-            "ONONNOCurriculumBot/1.0 (+https://ononno.app; admin-import)",
-        },
-      });
+      const fetched = await fetchPdfBuffer(resolved.url);
+      buffer = fetched.buffer;
+      contentDisposition = fetched.contentDisposition;
     } catch (e) {
-      clearTimeout(timer);
       const aborted = e instanceof Error && e.name === "AbortError";
+      const status =
+        e && typeof e === "object" && "status" in e
+          ? Number((e as { status: number }).status)
+          : 0;
       return NextResponse.json(
         {
           error: "DOWNLOAD_FAILED",
           message: aborted
             ? "Download timeout — PDF খুব বড় বা লিংক ধীর।"
-            : "URL থেকে download করা যায়নি।",
-        },
-        { status: 502 },
-      );
-    } finally {
-      clearTimeout(timer);
-    }
-
-    if (!remote.ok) {
-      return NextResponse.json(
-        {
-          error: "DOWNLOAD_FAILED",
-          message: `Remote HTTP ${remote.status} — লিংক চেক করো (direct PDF URL লাগবে)।`,
+            : status
+              ? `Remote HTTP ${status} — file public/shared আছে কিনা চেক করো।"
+              : "URL থেকে download করা যায়নি।",
         },
         { status: 502 },
       );
     }
 
-    const contentType = (remote.headers.get("content-type") || "").toLowerCase();
-    const contentLength = Number(remote.headers.get("content-length") || 0);
-    if (contentLength > MAX_BYTES) {
+    if (buffer.byteLength > MAX_BYTES) {
       return NextResponse.json(
         {
           error: "PDF_TOO_LARGE",
-          message: "PDF 50MB-এর বেশি — ছোট ফাইল বা storage-এ ম্যানুয়াল upload করো।",
+          message:
+            "PDF 50MB-এর বেশি — manual upload (Supabase/Drive) ব্যবহার করো।",
         },
-        { status: 413 },
-      );
-    }
-
-    const ab = await remote.arrayBuffer();
-    const buffer = Buffer.from(ab);
-    if (buffer.byteLength > MAX_BYTES) {
-      return NextResponse.json(
-        { error: "PDF_TOO_LARGE", message: "PDF 50MB-এর বেশি।" },
         { status: 413 },
       );
     }
@@ -203,15 +342,13 @@ export async function POST(req: NextRequest) {
     }
 
     const header = buffer.subarray(0, 5).toString("utf8");
-    const looksPdf =
-      header.startsWith("%PDF") || contentType.includes("application/pdf");
-    if (!looksPdf) {
+    if (!header.startsWith("%PDF")) {
       return NextResponse.json(
         {
           error: "NOT_A_PDF",
           message:
-            "Response PDF নয়। NCTB viewer পেজ নয় — direct .pdf download link দাও।",
-          contentType: contentType || null,
+            "Download HTML/viewer এসেছে, PDF নয়। Google Drive-এ file → Share → Anyone with link; অথবা PC-তে download করে storage-এ তোলো। NCTB eGov share page support নেই।",
+          hint: `Direct format: https://drive.google.com/uc?export=download&id=1UX9fbOBUKrf3mMh6E0I-Gw2emoQV-XWy`,
         },
         { status: 400 },
       );
@@ -237,10 +374,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const gId = extractGoogleDriveFileId(url);
     const fileName = guessFileName(
       url,
-      remote.headers.get("content-disposition"),
+      contentDisposition,
+    ).replace(
+      /^curriculum-\d+\.pdf$/,
+      gId ? `drive-${gId.slice(0, 12)}.pdf` : `curriculum-${Date.now()}.pdf`,
     );
+
     const storagePath = buildCurriculumPdfPath({
       classNumber: klass.class_number,
       subjectSlug: subject.slug || subject.name || "subject",
