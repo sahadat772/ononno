@@ -44,7 +44,6 @@ function guessFileName(url: string, contentDisposition: string | null): string {
   return `curriculum-${Date.now()}.pdf`;
 }
 
-/** Extract Google Drive file id from common share/view URLs. */
 function extractGoogleDriveFileId(raw: string): string | null {
   try {
     const u = new URL(raw);
@@ -74,7 +73,6 @@ function isShareFolderPage(url: string): boolean {
   try {
     const u = new URL(url);
     const host = u.hostname;
-    // NCTB eGov cloud share, Nextcloud-style, generic folder shares
     if (host.includes("egovcloud.gov.bd")) return true;
     if (u.pathname.includes("/index.php/s/")) return true;
     if (host.includes("drive.google.com") && u.pathname.includes("/folders/"))
@@ -85,9 +83,6 @@ function isShareFolderPage(url: string): boolean {
   return false;
 }
 
-/**
- * Turn viewer/share URLs into a fetchable download URL when possible.
- */
 function resolveDownloadUrl(raw: string): {
   url: string;
   note?: string;
@@ -97,7 +92,7 @@ function resolveDownloadUrl(raw: string): {
     return {
       url: raw,
       blocked:
-        "এটি folder/share page, direct PDF নয়। NCTB Cloud-এ file খুলে Download নাও, অথবা Google Drive file link ব্যবহার করো (নিচে format)।",
+        "এটি folder/share page, direct PDF নয়। NCTB Cloud-এ file খুলে Download নাও, অথবা Google Drive file link ব্যবহার করো।",
     };
   }
 
@@ -114,7 +109,11 @@ function resolveDownloadUrl(raw: string): {
 
 async function fetchPdfBuffer(
   startUrl: string,
-): Promise<{ buffer: Buffer; finalUrl: string; contentDisposition: string | null }> {
+): Promise<{
+  buffer: Buffer;
+  finalUrl: string;
+  contentDisposition: string | null;
+}> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -141,20 +140,19 @@ async function fetchPdfBuffer(
     let ab = await remote.arrayBuffer();
     let buffer = Buffer.from(ab);
 
-    // Google virus-scan interstitial (HTML) for larger files
     const asText = buffer.subarray(0, 800).toString("utf8");
     const isHtml =
       contentType.includes("text/html") ||
       asText.trimStart().toLowerCase().startsWith("<!doctype") ||
       asText.includes("<html");
 
-    if (isHtml && extractGoogleDriveFileId(startUrl)) {
+    if (isHtml) {
+      const idFromStart = extractGoogleDriveFileId(startUrl);
       const confirm =
         /confirm=([0-9A-Za-z_\-]+)/.exec(asText)?.[1] ||
-        /name="confirm"\s+value="([^\"]+)"/.exec(asText)?.[1];
+        /name="confirm"\s+value="([^"]+)"/.exec(asText)?.[1];
       const id =
-        extractGoogleDriveFileId(startUrl) ||
-        /[?&]id=([0-9A-Za-z_\-]+)/.exec(asText)?.[1];
+        idFromStart || /[?&]id=([0-9A-Za-z_\-]+)/.exec(asText)?.[1] || null;
       if (id) {
         const retryUrl = confirm
           ? `https://drive.google.com/uc?export=download&confirm=${confirm}&id=${id}`
@@ -174,7 +172,6 @@ async function fetchPdfBuffer(
             status: remote.status,
           });
         }
-        contentType = (remote.headers.get("content-type") || "").toLowerCase();
         ab = await remote.arrayBuffer();
         buffer = Buffer.from(ab);
         url = retryUrl;
@@ -191,9 +188,6 @@ async function fetchPdfBuffer(
   }
 }
 
-/**
- * POST /api/admin/curriculum/sources/from-url
- */
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireRole(["admin"]);
@@ -252,12 +246,10 @@ export async function POST(req: NextRequest) {
           error: "NOT_DIRECT_PDF",
           message: resolved.blocked,
           hint: {
-            googleDriveExample:
+            googleDrive:
               "https://drive.google.com/uc?export=download&id=FILE_ID",
-            orViewLink:
-              "https://drive.google.com/file/d/FILE_ID/view — এখন auto convert হয়",
-            nctbCloud:
-              "Share page কাজ করে না — file download করে PC থেকে Supabase/Drive-এ তোলো, বা direct .pdf URL দাও",
+            viewLinkAlsoOk: "/file/d/FILE_ID/view auto-convert হয়",
+            nctbCloud: "Share page কাজ করে না — PC download → storage",
           },
         },
         { status: 400 },
@@ -314,7 +306,7 @@ export async function POST(req: NextRequest) {
           message: aborted
             ? "Download timeout — PDF খুব বড় বা লিংক ধীর।"
             : status
-              ? `Remote HTTP ${status} — file public/shared আছে কিনা চেক করো।"
+              ? `Remote HTTP ${status} — file public/shared আছে কিনা চেক করো।`
               : "URL থেকে download করা যায়নি।",
         },
         { status: 502 },
@@ -347,8 +339,8 @@ export async function POST(req: NextRequest) {
         {
           error: "NOT_A_PDF",
           message:
-            "Download HTML/viewer এসেছে, PDF নয়। Google Drive-এ file → Share → Anyone with link; অথবা PC-তে download করে storage-এ তোলো। NCTB eGov share page support নেই।",
-          hint: `Direct format: https://drive.google.com/uc?export=download&id=1UX9fbOBUKrf3mMh6E0I-Gw2emoQV-XWy`,
+            "Download HTML/viewer এসেছে, PDF নয়। Google Drive: Share → Anyone with link; বা PC download করে storage-এ তোলো। NCTB eGov share page support নেই।",
+          hint: "https://drive.google.com/uc?export=download&id=1UX9fbOBUKrf3mMh6E0I-Gw2emoQV-XWy",
         },
         { status: 400 },
       );
@@ -375,13 +367,12 @@ export async function POST(req: NextRequest) {
     }
 
     const gId = extractGoogleDriveFileId(url);
-    const fileName = guessFileName(
-      url,
-      contentDisposition,
-    ).replace(
-      /^curriculum-\d+\.pdf$/,
-      gId ? `drive-${gId.slice(0, 12)}.pdf` : `curriculum-${Date.now()}.pdf`,
-    );
+    let fileName = guessFileName(url, contentDisposition);
+    if (/^curriculum-\d+\.pdf$/.test(fileName)) {
+      fileName = gId
+        ? `drive-${gId.slice(0, 12)}.pdf`
+        : `curriculum-${Date.now()}.pdf`;
+    }
 
     const storagePath = buildCurriculumPdfPath({
       classNumber: klass.class_number,
