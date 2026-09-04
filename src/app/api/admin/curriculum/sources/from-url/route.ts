@@ -19,7 +19,10 @@ const BodySchema = z.object({
 });
 
 const MAX_BYTES = 50 * 1024 * 1024;
-const FETCH_TIMEOUT_MS = 55_000;
+const FETCH_TIMEOUT_MS = 90_000;
+
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 function guessFileName(url: string, contentDisposition: string | null): string {
   if (contentDisposition) {
@@ -33,6 +36,7 @@ function guessFileName(url: string, contentDisposition: string | null): string {
     if (raw.toLowerCase().endsWith(".pdf")) {
       return raw.replace(/[/\\]/g, "-").slice(0, 120);
     }
+    if (raw) return `${raw.replace(/[/\\]/g, "-").slice(0, 100)}.pdf`;
   }
   try {
     const u = new URL(url);
@@ -69,13 +73,22 @@ function extractGoogleDriveFileId(raw: string): string | null {
   return null;
 }
 
+function hostIsDriveFolder(u: URL): boolean {
+  return (
+    u.hostname.includes("drive.google.com") && u.pathname.includes("/folders/")
+  );
+}
+
+/** True only for share *landing* pages — not /download endpoints. */
 function isShareFolderPage(url: string): boolean {
   try {
     const u = new URL(url);
-    const host = u.hostname;
-    if (host.includes("egovcloud.gov.bd")) return true;
-    if (u.pathname.includes("/index.php/s/")) return true;
-    if (host.includes("drive.google.com") && u.pathname.includes("/folders/"))
+    const path = u.pathname.replace(/\/+$/, "");
+    if (path.endsWith("/download")) return false;
+    if (hostIsDriveFolder(u)) return true;
+    if (u.pathname.includes("/index.php/s/") && !path.endsWith("/download"))
+      return true;
+    if (u.hostname.includes("egovcloud.gov.bd") && !path.endsWith("/download"))
       return true;
   } catch {
     /* ignore */
@@ -83,20 +96,41 @@ function isShareFolderPage(url: string): boolean {
   return false;
 }
 
+/** Nextcloud / eGov share → append /download when missing. */
+function normalizeEgovShareUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    const path = u.pathname.replace(/\/+$/, "");
+    if (
+      (u.hostname.includes("egovcloud.gov.bd") ||
+        path.includes("/index.php/s/")) &&
+      !path.endsWith("/download")
+    ) {
+      u.pathname = `${path}/download`;
+      return u.toString();
+    }
+  } catch {
+    /* ignore */
+  }
+  return raw;
+}
+
 function resolveDownloadUrl(raw: string): {
   url: string;
   note?: string;
   blocked?: string;
 } {
-  if (isShareFolderPage(raw)) {
+  const normalized = normalizeEgovShareUrl(raw);
+
+  if (isShareFolderPage(normalized)) {
     return {
-      url: raw,
+      url: normalized,
       blocked:
-        "এটি folder/share page, direct PDF নয়। NCTB Cloud-এ file খুলে Download নাও, অথবা Google Drive file link ব্যবহার করো।",
+        "এটি folder/share page, direct PDF নয়। NCTB eGov-এ /download যোগ করো, অথবা Google Drive file link দাও।",
     };
   }
 
-  const gId = extractGoogleDriveFileId(raw);
+  const gId = extractGoogleDriveFileId(normalized);
   if (gId) {
     return {
       url: `https://drive.google.com/uc?export=download&id=${gId}`,
@@ -104,7 +138,11 @@ function resolveDownloadUrl(raw: string): {
     };
   }
 
-  return { url: raw };
+  if (normalized !== raw) {
+    return { url: normalized, note: "egov_nextcloud_download" };
+  }
+
+  return { url: normalized };
 }
 
 async function fetchPdfBuffer(
@@ -125,8 +163,7 @@ async function fetchPdfBuffer(
       signal: controller.signal,
       headers: {
         Accept: "application/pdf,*/*",
-        "User-Agent":
-          "Mozilla/5.0 (compatible; ONONNOCurriculumBot/1.0; +https://ononno.app)",
+        "User-Agent": BROWSER_UA,
       },
     });
 
@@ -163,8 +200,7 @@ async function fetchPdfBuffer(
           signal: controller.signal,
           headers: {
             Accept: "application/pdf,*/*",
-            "User-Agent":
-              "Mozilla/5.0 (compatible; ONONNOCurriculumBot/1.0; +https://ononno.app)",
+            "User-Agent": BROWSER_UA,
           },
         });
         if (!remote.ok) {
@@ -246,10 +282,10 @@ export async function POST(req: NextRequest) {
           error: "NOT_DIRECT_PDF",
           message: resolved.blocked,
           hint: {
+            nctbEgov:
+              "https://drive.egovcloud.gov.bd/index.php/s/TOKEN/download",
             googleDrive:
               "https://drive.google.com/uc?export=download&id=FILE_ID",
-            viewLinkAlsoOk: "/file/d/FILE_ID/view auto-convert হয়",
-            nctbCloud: "Share page কাজ করে না — PC download → storage",
           },
         },
         { status: 400 },
@@ -339,8 +375,8 @@ export async function POST(req: NextRequest) {
         {
           error: "NOT_A_PDF",
           message:
-            "Download HTML/viewer এসেছে, PDF নয়। Google Drive: Share → Anyone with link; বা PC download করে storage-এ তোলো। NCTB eGov share page support নেই।",
-          hint: "https://drive.google.com/uc?export=download&id=1UX9fbOBUKrf3mMh6E0I-Gw2emoQV-XWy",
+            "Download HTML/viewer এসেছে, PDF নয়। NCTB: লিংকের শেষে /download থাকতে হবে।",
+          hint: "https://drive.egovcloud.gov.bd/index.php/s/CW6nYiJRMJE8trb/download",
         },
         { status: 400 },
       );
