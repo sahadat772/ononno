@@ -2,8 +2,9 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import PdfPipelineClient from "./PdfPipelineClient";
 
 /**
- * Curriculum import — catalog first (no PDF upload UI).
- * Class → Subject → existing source → Structure → Commit → Lessons AI
+ * Curriculum import:
+ * 1) Class → Subject → PDF URL → download → storage (Drive/Supabase)
+ * 2) Catalog → Extract structure → Commit → Lessons AI
  */
 export default async function ImportPage() {
   const supabase = await createServerSupabaseClient();
