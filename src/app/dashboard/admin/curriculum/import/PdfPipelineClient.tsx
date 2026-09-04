@@ -5,8 +5,8 @@ import Link from "next/link";
 import {
   CheckCircle2,
   ChevronRight,
-  Download,
   FileText,
+  FolderPlus,
   Layers,
   Loader2,
   RefreshCw,
@@ -45,59 +45,26 @@ export default function PdfPipelineClient({
   const [subjects, setSubjects] = useState(initialSubjects);
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
-  const [pdfUrl, setPdfUrl] = useState("");
-  const [pdfTitle, setPdfTitle] = useState("");
   const [sources, setSources] = useState(initialSources);
-  const [lastImportedId, setLastImportedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [folderHint, setFolderHint] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [metaLoading, setMetaLoading] = useState(false);
 
-  /** Client fallback if SSR returned empty lists (RLS / query issues). */
   useEffect(() => {
     if (classes.length > 0 && subjects.length > 0) return;
     let cancelled = false;
     (async () => {
-      setMetaLoading(true);
       try {
         const res = await fetch("/api/admin/curriculum/meta");
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
-        if (Array.isArray(data.classes) && data.classes.length) {
-          setClasses(
-            data.classes.map(
-              (c: { id: string; name: string; class_number: number }) => ({
-                id: String(c.id),
-                name: c.name,
-                class_number: c.class_number,
-              }),
-            ),
-          );
-        }
-        if (Array.isArray(data.subjects) && data.subjects.length) {
-          setSubjects(
-            data.subjects.map(
-              (s: {
-                id: string;
-                name: string;
-                name_bn?: string;
-                class_id?: string;
-              }) => ({
-                id: String(s.id),
-                name: s.name,
-                name_bn: s.name_bn || s.name,
-                class_id: s.class_id ? String(s.class_id) : "",
-              }),
-            ),
-          );
-        }
+        if (Array.isArray(data.classes)) setClasses(data.classes);
+        if (Array.isArray(data.subjects)) setSubjects(data.subjects);
       } catch {
         /* ignore */
-      } finally {
-        if (!cancelled) setMetaLoading(false);
       }
     })();
     return () => {
@@ -110,16 +77,9 @@ export default function PdfPipelineClient({
     const matched = subjects.filter(
       (s) => String(s.class_id || "") === String(classId),
     );
-    // Fallback: if DB has subjects but none match class_id, still show all
-    // so admin can pick (data hygiene issue) — label will warn.
     if (matched.length === 0 && subjects.length > 0) return subjects;
     return matched;
   }, [subjects, classId]);
-
-  const subjectMismatch =
-    Boolean(classId) &&
-    subjects.length > 0 &&
-    subjects.every((s) => String(s.class_id || "") !== String(classId));
 
   const catalog = useMemo(
     () =>
@@ -137,75 +97,67 @@ export default function PdfPipelineClient({
     [sources, classId, subjectId],
   );
 
-  async function refresh() {
-    setBusy("refresh");
+  async function createFolder() {
+    if (!classId || !subjectId) {
+      setError("আগে Class ও Subject select করো।");
+      return;
+    }
+    setBusy("folder");
     setError(null);
+    setSuccess(null);
     try {
-      const p = new URLSearchParams();
-      if (classId) p.set("class_id", classId);
-      if (subjectId) p.set("subject_id", subjectId);
-      const res = await fetch(`/api/admin/curriculum/sources?${p}`);
+      const res = await fetch("/api/admin/curriculum/storage/ensure-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId, subjectId }),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Refresh failed");
-      setSources(Array.isArray(data) ? data : []);
-      setSuccess("Catalog refreshed");
+      if (!res.ok) throw new Error(data.message || data.error || "Folder failed");
+      setFolderHint(data.folderPath || null);
+      setSuccess(
+        data.message ||
+          `Folder ready: ${data.folderPath}. এখন Drive/Supabase-এ PDF রাখো।`,
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Refresh failed");
+      setError(e instanceof Error ? e.message : "Folder create failed");
     } finally {
       setBusy(null);
     }
   }
 
-  async function downloadFromUrl() {
+  async function refreshCatalog() {
     if (!classId || !subjectId) {
-      setError("আগে Class ও Subject select করো।");
+      setError("Catalog refresh-এর জন্য Class ও Subject select করো।");
       return;
     }
-    const url = pdfUrl.trim();
-    if (!url) {
-      setError("PDF download link দাও (direct .pdf URL)।");
-      return;
-    }
-
-    setBusy("download");
+    setBusy("refresh");
     setError(null);
     setSuccess(null);
-    setDone(false);
     try {
-      const res = await fetch("/api/admin/curriculum/sources/from-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          classId,
-          subjectId,
-          url,
-          title: pdfTitle.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-
-      if (res.status === 409 && data.existingSourceId) {
-        setLastImportedId(data.existingSourceId);
-        setSuccess(
-          `এই PDF আগেই catalog-এ আছে — Extract this PDF চাপো। (${data.existingTitle || data.existingSourceId})`,
-        );
-        await refresh();
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error(data.message || data.error || "Download failed");
-      }
-
-      const source = data.source as Source;
-      setSources((prev) => [source, ...prev.filter((s) => s.id !== source.id)]);
-      setLastImportedId(source.id);
-      setSuccess(
-        `Download ও storage সম্পন্ন (${data.storageProvider || "storage"}). এখন Extract this PDF চাপো।`,
+      const syncRes = await fetch(
+        "/api/admin/curriculum/sources/sync-from-storage",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ classId, subjectId }),
+        },
       );
-      setPdfUrl("");
+      const syncData = await syncRes.json();
+      if (!syncRes.ok) {
+        throw new Error(syncData.message || syncData.error || "Sync failed");
+      }
+
+      const p = new URLSearchParams();
+      p.set("class_id", classId);
+      p.set("subject_id", subjectId);
+      const res = await fetch(`/api/admin/curriculum/sources?${p}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || "List failed");
+      setSources(Array.isArray(data) ? data : []);
+      setFolderHint(syncData.folderPath || folderHint);
+      setSuccess(syncData.message || "Catalog refreshed");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Download failed");
+      setError(e instanceof Error ? e.message : "Refresh failed");
     } finally {
       setBusy(null);
     }
@@ -249,7 +201,7 @@ export default function PdfPipelineClient({
       }
 
       setSuccess(
-        `Done: ${commitData.chapterCount ?? 0} chapters, ${commitData.lessonCount ?? 0} lessons. Continue on Lessons page.`,
+        `Done: ${commitData.chapterCount ?? 0} chapters, ${commitData.lessonCount ?? 0} lessons.`,
       );
       setDone(true);
       setSources((prev) =>
@@ -266,8 +218,6 @@ export default function PdfPipelineClient({
     }
   }
 
-  const canDownload = Boolean(classId && subjectId && pdfUrl.trim());
-
   return (
     <section className="space-y-5">
       <div className="rounded-2xl border border-emerald-400/25 bg-slate-950/80 p-5">
@@ -277,15 +227,14 @@ export default function PdfPipelineClient({
           </div>
           <div>
             <h1 className="text-lg font-bold text-white">
-              Import — Link / Catalog
+              Import — Folder / Catalog
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Class → Subject → PDF link download (Drive/Supabase) → Extract +
-              Commit. Study generation Lessons page-এ।
+              Folder তৈরি → তুমি PDF রাখো (Drive/Supabase) → Refresh catalog →
+              Extract. Study generation Lessons page-এ।
             </p>
             <p className="mt-1 text-[11px] text-slate-600">
               Loaded: {classes.length} classes, {subjects.length} subjects
-              {metaLoading ? " · loading…" : ""}
             </p>
           </div>
         </div>
@@ -302,13 +251,17 @@ export default function PdfPipelineClient({
         </div>
       )}
 
+      {/* Card 1: Create folder */}
       <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
         <h2 className="flex items-center gap-2 text-sm font-bold text-white">
-          <Download className="size-4 text-amber-300" />
-          ১) PDF link থেকে storage-এ আনো
+          <FolderPlus className="size-4 text-amber-300" />
+          ১) Class / Subject → Create folder
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          আগে Class, তারপর Subject select করো। Direct .pdf URL দাও।
+          Drive-এ path:{" "}
+          <code className="text-slate-300">curriculum/class-X/subject/</code>
+          বানাবে। তারপর তুমি নিজে (Gmail) সেই folder-এ PDF রাখবে — server PDF
+          upload করবে না।
         </p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -319,7 +272,6 @@ export default function PdfPipelineClient({
               onChange={(e) => {
                 setClassId(e.target.value);
                 setSubjectId("");
-                setLastImportedId(null);
               }}
               className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0a1020] px-3 py-2.5 text-sm text-white"
             >
@@ -332,112 +284,63 @@ export default function PdfPipelineClient({
             </select>
           </label>
           <label className="block text-xs text-slate-400">
-            Subject{" "}
-            {!classId && (
-              <span className="text-amber-400/80">(আগে Class select করো)</span>
-            )}
+            Subject
             <select
               value={subjectId}
-              onChange={(e) => {
-                setSubjectId(e.target.value);
-                setLastImportedId(null);
-              }}
+              onChange={(e) => setSubjectId(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0a1020] px-3 py-2.5 text-sm text-white"
             >
               <option value="">
-                {!classId
-                  ? "আগে Class বেছে নাও"
-                  : availableSubjects.length === 0
-                    ? "এই class-এ subject নেই"
-                    : "Subject বেছে নাও"}
+                {!classId ? "আগে Class বেছে নাও" : "Subject বেছে নাও"}
               </option>
               {availableSubjects.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name_bn || s.name}
-                  {!s.class_id ? " (no class_id)" : ""}
                 </option>
               ))}
             </select>
           </label>
         </div>
 
-        {subjectMismatch && (
-          <p className="mt-2 text-xs text-amber-300/90">
-            এই class-এর সাথে match করা subject_id পাওয়া যায়নি — সব subject
-            দেখানো হচ্ছে। Admin-এ subject-এর class_id ঠিক আছে কিনা চেক করো।
-          </p>
-        )}
-
-        {classId && availableSubjects.length === 0 && subjects.length === 0 && (
-          <p className="mt-2 text-xs text-rose-300">
-            Subject list খালি। Curriculum-এ subject add করো, অথবা page reload
-            করো।
-          </p>
-        )}
-
-        <label className="mt-3 block text-xs text-slate-400">
-          Title (optional)
-          <input
-            value={pdfTitle}
-            onChange={(e) => setPdfTitle(e.target.value)}
-            placeholder="যেমন: NCTB Class 1 বাংলা"
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0a1020] px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
-          />
-        </label>
-
-        <label className="mt-3 block text-xs text-slate-400">
-          PDF download link
-          <input
-            value={pdfUrl}
-            onChange={(e) => setPdfUrl(e.target.value)}
-            placeholder="https://.../something.pdf"
-            className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0a1020] px-3 py-2.5 text-sm text-white placeholder:text-slate-600"
-          />
-        </label>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!canDownload || Boolean(busy)}
-            onClick={() => void downloadFromUrl()}
-            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 disabled:opacity-50"
-          >
-            {busy === "download" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Download className="size-3.5" />
-            )}
-            Download & Store
-          </button>
-
-          {lastImportedId && (
-            <button
-              type="button"
-              disabled={Boolean(busy)}
-              onClick={() => void extractAndCommit(lastImportedId)}
-              className="inline-flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50"
-            >
-              {busy === lastImportedId ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <WandSparkles className="size-3.5" />
-              )}
-              Extract this PDF
-            </button>
+        <button
+          type="button"
+          disabled={!classId || !subjectId || Boolean(busy)}
+          onClick={() => void createFolder()}
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 disabled:opacity-50"
+        >
+          {busy === "folder" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <FolderPlus className="size-3.5" />
           )}
-        </div>
+          Create folder
+        </button>
+
+        {folderHint && (
+          <p className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-sky-200">
+            Path: <code className="text-white">{folderHint}</code>
+            <br />
+            Google Drive → ONONNO-Curriculum → এই path-এ PDF upload করো (তোমার
+            Gmail দিয়ে)।
+          </p>
+        )}
       </div>
 
+      {/* Card 2: Catalog + extract */}
       <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
         <h2 className="flex items-center gap-2 text-sm font-bold text-white">
           <FileText className="size-4 text-sky-300" />
-          ২) Catalog (আগে থাকা PDF)
+          ২) Refresh catalog → Extract
         </h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Storage (Drive/Supabase) folder থেকে PDF খুঁজে catalog-এ আনবে, তারপর
+          Extract + Commit — আগের মতো।
+        </p>
 
         <button
           type="button"
-          disabled={Boolean(busy)}
-          onClick={() => void refresh()}
+          disabled={!classId || !subjectId || Boolean(busy)}
+          onClick={() => void refreshCatalog()}
           className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 disabled:opacity-50"
         >
           {busy === "refresh" ? (
@@ -451,16 +354,13 @@ export default function PdfPipelineClient({
         <div className="mt-4 divide-y divide-white/8 rounded-xl border border-white/8">
           {catalog.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-slate-500">
-              এই filter-এ কোনো PDF source নেই — উপরে link দিয়ে Download &
-              Store করো।
+              কোনো PDF source নেই — folder-এ PDF রেখে Refresh catalog চাপো।
             </p>
           ) : (
             catalog.map((s) => (
               <div
                 key={s.id}
-                className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
-                  lastImportedId === s.id ? "bg-violet-500/10" : ""
-                }`}
+                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">
