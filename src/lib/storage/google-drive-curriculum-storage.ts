@@ -13,7 +13,7 @@ import type {
  * Server-only credentials (never NEXT_PUBLIC_*):
  * - GOOGLE_DRIVE_CLIENT_EMAIL
  * - GOOGLE_DRIVE_PRIVATE_KEY
- * - GOOGLE_DRIVE_FOLDER_ID
+ * - GOOGLE_DRIVE_FOLDER_ID  (bare id only, not ?usp=sharing)
  */
 
 function requireEnv(name: string): string {
@@ -30,6 +30,26 @@ function normalizePrivateKey(raw: string): string {
   return raw.replace(/\\n/g, "\n").replace(/"/g, "");
 }
 
+/** Strip URL / ?usp=sharing — Google API needs bare folder id only. */
+function sanitizeDriveId(raw: string): string {
+  let v = raw.trim().replace(/^["']|["']$/g, "");
+  try {
+    if (v.startsWith("http://") || v.startsWith("https://")) {
+      const u = new URL(v);
+      const m = u.pathname.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (m?.[1]) return m[1];
+      const openId = u.searchParams.get("id");
+      if (openId) return openId;
+    }
+  } catch {
+    /* ignore */
+  }
+  v = v.split("?")[0].split("&")[0].trim();
+  const folderMatch = v.match(/folders\/([a-zA-Z0-9_-]+)/);
+  if (folderMatch?.[1]) return folderMatch[1];
+  return v;
+}
+
 function formatDriveError(e: unknown, context: string): Error {
   const anyErr = e as {
     message?: string;
@@ -43,7 +63,7 @@ function formatDriveError(e: unknown, context: string): Error {
   const lower = String(apiMsg).toLowerCase();
   if (lower.includes("file not found") || lower.includes("not found")) {
     return new Error(
-      `GOOGLE_DRIVE_FOLDER_NOT_FOUND (${context}): GOOGLE_DRIVE_FOLDER_ID ভুল, অথবা service account-কে সেই folder-এ Editor share করা হয়নি। Detail: ${apiMsg}`,
+      `GOOGLE_DRIVE_FOLDER_NOT_FOUND (${context}): GOOGLE_DRIVE_FOLDER_ID ভুল (শুধু id দাও, ?usp=sharing নয়), অথবা service account-কে folder-এ Editor share করা হয়নি। Detail: ${apiMsg}`,
     );
   }
   if (lower.includes("insufficient") || lower.includes("permission")) {
@@ -65,7 +85,7 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
 
     const email = requireEnv("GOOGLE_DRIVE_CLIENT_EMAIL");
     const key = normalizePrivateKey(requireEnv("GOOGLE_DRIVE_PRIVATE_KEY"));
-    this.rootFolderId = requireEnv("GOOGLE_DRIVE_FOLDER_ID");
+    this.rootFolderId = sanitizeDriveId(requireEnv("GOOGLE_DRIVE_FOLDER_ID"));
 
     const auth = new google.auth.JWT({
       email,
