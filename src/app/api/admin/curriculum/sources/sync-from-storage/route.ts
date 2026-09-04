@@ -7,6 +7,7 @@ import {
   buildCurriculumFolderPath,
   createCurriculumStorage,
   getDefaultStorageProviderName,
+  sanitizePathSegment,
 } from "@/lib/storage";
 
 const BodySchema = z.object({
@@ -14,10 +15,27 @@ const BodySchema = z.object({
   subjectId: z.string().uuid(),
 });
 
+function isPdfItem(i: {
+  name: string;
+  isFolder: boolean;
+  contentType?: string;
+}): boolean {
+  if (i.isFolder) return false;
+  const n = i.name.toLowerCase();
+  const ct = (i.contentType || "").toLowerCase();
+  return (
+    n.endsWith(".pdf") ||
+    ct.includes("pdf") ||
+    ct === "application/octet-stream"
+  );
+}
+
 /**
  * POST /api/admin/curriculum/sources/sync-from-storage
- * List PDFs under curriculum/class-X/subject/ and register missing rows in curriculum_sources.
- * Admin places files manually (Gmail → Drive or Supabase dashboard).
+ *
+ * Class + Subject → fixed folder:
+ *   curriculum/class-{n}/{subjectSlug}/
+ * যেকোনো নামের PDF সেই folder-এ থাকলেই catalog-এ আসবে।
  */
 export async function POST(req: NextRequest) {
   try {
@@ -70,9 +88,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const subjectSlug = sanitizePathSegment(
+      subject.slug || subject.name || subject.name_bn || "subject",
+      "subject",
+    );
+
     const folderPath = buildCurriculumFolderPath({
       classNumber: klass.class_number,
-      subjectSlug: subject.slug || subject.name || "subject",
+      subjectSlug,
     });
 
     const providerName = getDefaultStorageProviderName();
@@ -90,17 +113,20 @@ export async function POST(req: NextRequest) {
             e instanceof Error
               ? e.message
               : "Storage folder list করা যায়নি।",
+          folderPath,
         },
         { status: 500 },
       );
     }
 
-    const pdfs = items.filter(
-      (i) =>
-        !i.isFolder &&
-        (i.name.toLowerCase().endsWith(".pdf") ||
-          (i.contentType || "").includes("pdf")),
-    );
+    const directoryListing = items.map((i) => ({
+      name: i.name,
+      isFolder: i.isFolder,
+      path: i.path,
+    }));
+
+    // যেকোনো PDF নাম — শুধু এই class/subject folder-এর ভিতর
+    const pdfs = items.filter(isPdfItem);
 
     const added: unknown[] = [];
     const skipped: string[] = [];
@@ -118,8 +144,23 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      // Same file id already registered under different path?
+      if (pdf.providerFileId) {
+        const { data: byId } = await auth.supabase
+          .from("curriculum_sources")
+          .select("id")
+          .eq("provider_file_id", pdf.providerFileId)
+          .maybeSingle();
+        if (byId) {
+          skipped.push(storagePath);
+          continue;
+        }
+      }
+
       const contentHash = createHash("sha256")
-        .update(`sync:${providerName}:${storagePath}:${pdf.providerFileId || ""}`)
+        .update(
+          `sync:${providerName}:${storagePath}:${pdf.providerFileId || pdf.name}`,
+        )
         .digest("hex");
 
       const title =
@@ -166,17 +207,28 @@ export async function POST(req: NextRequest) {
       skipped: skipped.length,
     });
 
+    const emptyMsg =
+      `এই folder-এ PDF নেই।\n` +
+      `সঠিক path (Class + Subject অনুযায়ী):\n` +
+      `  ${folderPath}/\n` +
+      `Drive: ONONNO-Curriculum → ${folderPath.replace(/\//g, " → ")}\n` +
+      `PDF যেকোনো নামে রাখো (যেমন book.pdf) — শুধু এই folder-এর ভিতর।\n` +
+      (directoryListing.length
+        ? `Folder-এ এখন যা আছে: ${directoryListing.map((d) => d.name).join(", ")}`
+        : `Folder খালি বা এখনো তৈরি/sync হয়নি। আগে Create folder, তারপর Gmail দিয়ে PDF রাখো।`);
+
     return NextResponse.json({
       folderPath,
       provider: providerName,
       found: pdfs.length,
       added: added.length,
       skipped: skipped.length,
+      directoryListing,
       sources: added,
       message:
         pdfs.length === 0
-          ? `Folder খালি বা পাওয়া যায়নি: ${folderPath} — আগে PDF রাখো, তারপর আবার Refresh catalog।`
-          : `Catalog sync: ${added.length} নতুন, ${skipped.length} আগে থেকে ছিল।`,
+          ? emptyMsg
+          : `Catalog sync OK — folder ${folderPath}: ${added.length} নতুন PDF, ${skipped.length} আগে থেকে ছিল। নাম যাই হোক, folder ঠিক থাকলেই চলবে।`,
     });
   } catch (error) {
     console.error("[sync-from-storage]", error);
