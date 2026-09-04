@@ -19,6 +19,7 @@ export type CurriculumStorageListItem = {
   contentType?: string;
   isFolder: boolean;
   updatedAt?: string;
+  providerFileId?: string | null;
 };
 
 export type UploadResult = {
@@ -27,14 +28,6 @@ export type UploadResult = {
   providerFileId?: string | null;
 };
 
-/**
- * Storage abstraction for curriculum PDFs.
- * Application code must depend only on this interface.
- *
- * Providers:
- * - supabase (default / test)
- * - google_drive (Phase 3 — set CURRICULUM_STORAGE_PROVIDER=google_drive)
- */
 export interface CurriculumStorageProvider {
   readonly name: CurriculumStorageProviderName;
 
@@ -66,10 +59,6 @@ export function getDefaultStorageProviderName(): CurriculumStorageProviderName {
   return "supabase";
 }
 
-/**
- * Resolve storage provider by name.
- * Google Drive requires GOOGLE_DRIVE_* env vars (server-only).
- */
 export function createCurriculumStorage(
   supabase: SupabaseClient,
   providerName: CurriculumStorageProviderName = getDefaultStorageProviderName(),
