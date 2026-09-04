@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -33,36 +33,104 @@ type Source = {
 };
 
 export default function PdfPipelineClient({
-  classes,
-  subjects,
+  classes: initialClasses,
+  subjects: initialSubjects,
   initialSources,
 }: {
   classes: CurriculumClass[];
   subjects: CurriculumSubject[];
   initialSources: Source[];
 }) {
+  const [classes, setClasses] = useState(initialClasses);
+  const [subjects, setSubjects] = useState(initialSubjects);
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfTitle, setPdfTitle] = useState("");
   const [sources, setSources] = useState(initialSources);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [lastImportedId, setLastImportedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [metaLoading, setMetaLoading] = useState(false);
 
-  const availableSubjects = useMemo(
-    () => subjects.filter((s) => !classId || s.class_id === classId),
-    [subjects, classId],
-  );
+  /** Client fallback if SSR returned empty lists (RLS / query issues). */
+  useEffect(() => {
+    if (classes.length > 0 && subjects.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      setMetaLoading(true);
+      try {
+        const res = await fetch("/api/admin/curriculum/meta");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data.classes) && data.classes.length) {
+          setClasses(
+            data.classes.map(
+              (c: { id: string; name: string; class_number: number }) => ({
+                id: String(c.id),
+                name: c.name,
+                class_number: c.class_number,
+              }),
+            ),
+          );
+        }
+        if (Array.isArray(data.subjects) && data.subjects.length) {
+          setSubjects(
+            data.subjects.map(
+              (s: {
+                id: string;
+                name: string;
+                name_bn?: string;
+                class_id?: string;
+              }) => ({
+                id: String(s.id),
+                name: s.name,
+                name_bn: s.name_bn || s.name,
+                class_id: s.class_id ? String(s.class_id) : "",
+              }),
+            ),
+          );
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setMetaLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classes.length, subjects.length]);
+
+  const availableSubjects = useMemo(() => {
+    if (!classId) return [];
+    const matched = subjects.filter(
+      (s) => String(s.class_id || "") === String(classId),
+    );
+    // Fallback: if DB has subjects but none match class_id, still show all
+    // so admin can pick (data hygiene issue) — label will warn.
+    if (matched.length === 0 && subjects.length > 0) return subjects;
+    return matched;
+  }, [subjects, classId]);
+
+  const subjectMismatch =
+    Boolean(classId) &&
+    subjects.length > 0 &&
+    subjects.every((s) => String(s.class_id || "") !== String(classId));
 
   const catalog = useMemo(
     () =>
       sources.filter((s) => {
-        if (classId && s.class_id && s.class_id !== classId) return false;
-        if (subjectId && s.subject_id && s.subject_id !== subjectId)
+        if (classId && s.class_id && String(s.class_id) !== String(classId))
+          return false;
+        if (
+          subjectId &&
+          s.subject_id &&
+          String(s.subject_id) !== String(subjectId)
+        )
           return false;
         return true;
       }),
@@ -118,9 +186,8 @@ export default function PdfPipelineClient({
 
       if (res.status === 409 && data.existingSourceId) {
         setLastImportedId(data.existingSourceId);
-        setActiveId(data.existingSourceId);
         setSuccess(
-          `এই PDF আগেই catalog-এ আছে — নিচে Extract this PDF চাপো। (${data.existingTitle || data.existingSourceId})`,
+          `এই PDF আগেই catalog-এ আছে — Extract this PDF চাপো। (${data.existingTitle || data.existingSourceId})`,
         );
         await refresh();
         return;
@@ -133,7 +200,6 @@ export default function PdfPipelineClient({
       const source = data.source as Source;
       setSources((prev) => [source, ...prev.filter((s) => s.id !== source.id)]);
       setLastImportedId(source.id);
-      setActiveId(source.id);
       setSuccess(
         `Download ও storage সম্পন্ন (${data.storageProvider || "storage"}). এখন Extract this PDF চাপো।`,
       );
@@ -147,7 +213,6 @@ export default function PdfPipelineClient({
 
   async function extractAndCommit(id: string) {
     setBusy(id);
-    setActiveId(id);
     setError(null);
     setSuccess(null);
     setDone(false);
@@ -218,6 +283,10 @@ export default function PdfPipelineClient({
               Class → Subject → PDF link download (Drive/Supabase) → Extract +
               Commit. Study generation Lessons page-এ।
             </p>
+            <p className="mt-1 text-[11px] text-slate-600">
+              Loaded: {classes.length} classes, {subjects.length} subjects
+              {metaLoading ? " · loading…" : ""}
+            </p>
           </div>
         </div>
       </div>
@@ -233,17 +302,13 @@ export default function PdfPipelineClient({
         </div>
       )}
 
-      {/* Step 1: class / subject / URL */}
       <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
         <h2 className="flex items-center gap-2 text-sm font-bold text-white">
           <Download className="size-4 text-amber-300" />
           ১) PDF link থেকে storage-এ আনো
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          Direct <span className="text-slate-300">.pdf</span> download URL দাও
-          (viewer পেজ নয়)। System download করে{" "}
-          <span className="text-slate-300">CURRICULUM_STORAGE_PROVIDER</span>{" "}
-          অনুযায়ী Drive বা Supabase-এ রাখবে।
+          আগে Class, তারপর Subject select করো। Direct .pdf URL দাও।
         </p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -267,25 +332,48 @@ export default function PdfPipelineClient({
             </select>
           </label>
           <label className="block text-xs text-slate-400">
-            Subject
+            Subject{" "}
+            {!classId && (
+              <span className="text-amber-400/80">(আগে Class select করো)</span>
+            )}
             <select
               value={subjectId}
               onChange={(e) => {
                 setSubjectId(e.target.value);
                 setLastImportedId(null);
               }}
-              disabled={!classId}
-              className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0a1020] px-3 py-2.5 text-sm text-white disabled:opacity-50"
+              className="mt-1 w-full rounded-lg border border-slate-600 bg-[#0a1020] px-3 py-2.5 text-sm text-white"
             >
-              <option value="">Subject বেছে নাও</option>
+              <option value="">
+                {!classId
+                  ? "আগে Class বেছে নাও"
+                  : availableSubjects.length === 0
+                    ? "এই class-এ subject নেই"
+                    : "Subject বেছে নাও"}
+              </option>
               {availableSubjects.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name_bn || s.name}
+                  {!s.class_id ? " (no class_id)" : ""}
                 </option>
               ))}
             </select>
           </label>
         </div>
+
+        {subjectMismatch && (
+          <p className="mt-2 text-xs text-amber-300/90">
+            এই class-এর সাথে match করা subject_id পাওয়া যায়নি — সব subject
+            দেখানো হচ্ছে। Admin-এ subject-এর class_id ঠিক আছে কিনা চেক করো।
+          </p>
+        )}
+
+        {classId && availableSubjects.length === 0 && subjects.length === 0 && (
+          <p className="mt-2 text-xs text-rose-300">
+            Subject list খালি। Curriculum-এ subject add করো, অথবা page reload
+            করো।
+          </p>
+        )}
 
         <label className="mt-3 block text-xs text-slate-400">
           Title (optional)
@@ -340,16 +428,11 @@ export default function PdfPipelineClient({
         </div>
       </div>
 
-      {/* Step 2: existing catalog */}
       <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
         <h2 className="flex items-center gap-2 text-sm font-bold text-white">
           <FileText className="size-4 text-sky-300" />
           ২) Catalog (আগে থাকা PDF)
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
-          আগে import করা sources — Refresh করে list নাও, তারপর Extract +
-          Commit।
-        </p>
 
         <button
           type="button"
@@ -418,10 +501,6 @@ export default function PdfPipelineClient({
           <h2 className="flex items-center gap-2 text-sm font-bold text-sky-200">
             <CheckCircle2 className="size-4" /> Hierarchy ready
           </h2>
-          <p className="mt-2 text-xs text-slate-400">
-            Lessons page → select 1–2 lessons → Generate study → Approve →
-            Publish
-          </p>
           <Link
             href="/dashboard/admin/curriculum/lessons"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2.5 text-xs font-bold text-white"
