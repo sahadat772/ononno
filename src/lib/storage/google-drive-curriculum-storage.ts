@@ -7,15 +7,6 @@ import type {
   UploadResult,
 } from "./curriculum-storage";
 
-/**
- * Phase 3 — Google Drive curriculum PDF storage.
- *
- * Server-only credentials (never NEXT_PUBLIC_*):
- * - GOOGLE_DRIVE_CLIENT_EMAIL
- * - GOOGLE_DRIVE_PRIVATE_KEY
- * - GOOGLE_DRIVE_FOLDER_ID  (bare id only, not ?usp=sharing)
- */
-
 function requireEnv(name: string): string {
   const v = process.env[name]?.trim();
   if (!v) {
@@ -30,7 +21,6 @@ function normalizePrivateKey(raw: string): string {
   return raw.replace(/\\n/g, "\n").replace(/"/g, "");
 }
 
-/** Strip URL / ?usp=sharing — Google API needs bare folder id only. */
 function sanitizeDriveId(raw: string): string {
   let v = raw.trim().replace(/^["']|["']$/g, "");
   try {
@@ -63,12 +53,17 @@ function formatDriveError(e: unknown, context: string): Error {
   const lower = String(apiMsg).toLowerCase();
   if (lower.includes("file not found") || lower.includes("not found")) {
     return new Error(
-      `GOOGLE_DRIVE_FOLDER_NOT_FOUND (${context}): GOOGLE_DRIVE_FOLDER_ID ভুল (শুধু id দাও, ?usp=sharing নয়), অথবা service account-কে folder-এ Editor share করা হয়নি। Detail: ${apiMsg}`,
+      `GOOGLE_DRIVE_FOLDER_NOT_FOUND (${context}): GOOGLE_DRIVE_FOLDER_ID ভুল, অথবা service account share নেই। Detail: ${apiMsg}`,
     );
   }
   if (lower.includes("insufficient") || lower.includes("permission")) {
     return new Error(
-      `GOOGLE_DRIVE_PERMISSION (${context}): service account-কে Drive folder-এ Editor দাও। ${apiMsg}`,
+      `GOOGLE_DRIVE_PERMISSION (${context}): service account-কে Editor দাও। ${apiMsg}`,
+    );
+  }
+  if (lower.includes("storage quota")) {
+    return new Error(
+      `GOOGLE_DRIVE_QUOTA (${context}): Service account দিয়ে PDF upload হয় না। তুমি নিজে Gmail দিয়ে folder-এ PDF রাখো; system শুধু পড়বে।`,
     );
   }
   return new Error(`GOOGLE_DRIVE_ERROR (${context}): ${apiMsg}`);
@@ -82,17 +77,14 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
 
   private getClient(): drive_v3.Drive {
     if (this.drive) return this.drive;
-
     const email = requireEnv("GOOGLE_DRIVE_CLIENT_EMAIL");
     const key = normalizePrivateKey(requireEnv("GOOGLE_DRIVE_PRIVATE_KEY"));
     this.rootFolderId = sanitizeDriveId(requireEnv("GOOGLE_DRIVE_FOLDER_ID"));
-
     const auth = new google.auth.JWT({
       email,
       key,
       scopes: ["https://www.googleapis.com/auth/drive"],
     });
-
     this.drive = google.drive({ version: "v3", auth });
     return this.drive;
   }
@@ -105,12 +97,9 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
   private splitPath(path: string): { dirParts: string[]; fileName: string } {
     const normalized = path.replace(/^\/+|\/+$/g, "");
     const parts = normalized.split("/").filter(Boolean);
-    if (parts.length === 0) {
-      throw new Error("STORAGE_INVALID_PATH");
-    }
+    if (parts.length === 0) throw new Error("STORAGE_INVALID_PATH");
     const fileName = parts[parts.length - 1]!;
-    const dirParts = parts.slice(0, -1);
-    return { dirParts, fileName };
+    return { dirParts: parts.slice(0, -1), fileName };
   }
 
   private async findChildFolder(
@@ -124,7 +113,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
       `'${parentId}' in parents`,
       "trashed = false",
     ].join(" and ");
-
     const res = await drive.files.list({
       q,
       fields: "files(id, name)",
@@ -135,13 +123,9 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     return res.data.files?.[0]?.id ?? null;
   }
 
-  private async ensureFolder(
-    parentId: string,
-    name: string,
-  ): Promise<string> {
+  private async ensureFolder(parentId: string, name: string): Promise<string> {
     const existing = await this.findChildFolder(parentId, name);
     if (existing) return existing;
-
     const drive = this.getClient();
     try {
       const created = await drive.files.create({
@@ -176,6 +160,15 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     return parent;
   }
 
+  async ensureFolderPath(folderPath: string): Promise<string> {
+    const parts = folderPath
+      .replace(/^\/+|\/+$/g, "")
+      .split("/")
+      .filter(Boolean);
+    if (!parts.length) return this.rootId();
+    return this.ensurePathFolders(parts);
+  }
+
   private async findFileInFolder(
     parentId: string,
     fileName: string,
@@ -187,7 +180,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
       `'${parentId}' in parents`,
       "trashed = false",
     ].join(" and ");
-
     const res = await drive.files.list({
       q,
       fields: "files(id, name, size, mimeType)",
@@ -214,16 +206,13 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
         fields: "id, size, mimeType, trashed",
         supportsAllDrives: true,
       });
-      if (meta.data.trashed || !meta.data.id) {
-        throw new Error("STORAGE_NOT_FOUND");
-      }
+      if (meta.data.trashed || !meta.data.id) throw new Error("STORAGE_NOT_FOUND");
       return {
         id: meta.data.id,
         size: meta.data.size ?? undefined,
         mimeType: meta.data.mimeType ?? undefined,
       };
     }
-
     const { dirParts, fileName } = this.splitPath(path);
     const parent = await this.ensurePathFolders(dirParts);
     const found = await this.findFileInFolder(parent, fileName);
@@ -238,7 +227,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     upsert?: boolean;
   }): Promise<UploadResult> {
     const drive = this.getClient();
-
     try {
       await drive.files.get({
         fileId: this.rootId(),
@@ -248,7 +236,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     } catch (e) {
       throw formatDriveError(e, "root folder check");
     }
-
     const { dirParts, fileName } = this.splitPath(input.path);
     let parentId: string;
     try {
@@ -256,26 +243,18 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     } catch (e) {
       throw formatDriveError(e, "ensurePathFolders");
     }
-
     const existing = await this.findFileInFolder(parentId, fileName);
     if (existing && !input.upsert) {
       throw new Error("PDF_UPLOAD_FAILED: file already exists on Google Drive");
     }
-
     let body: Buffer;
-    if (Buffer.isBuffer(input.data)) {
-      body = input.data;
-    } else if (input.data instanceof Uint8Array) {
-      body = Buffer.from(input.data);
-    } else {
-      body = Buffer.from(await input.data.arrayBuffer());
-    }
-
+    if (Buffer.isBuffer(input.data)) body = input.data;
+    else if (input.data instanceof Uint8Array) body = Buffer.from(input.data);
+    else body = Buffer.from(await input.data.arrayBuffer());
     const media = {
       mimeType: input.contentType ?? "application/pdf",
       body: Readable.from(body),
     };
-
     try {
       if (existing && input.upsert) {
         const updated = await drive.files.update({
@@ -290,7 +269,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
           providerFileId: updated.data.id ?? existing.id,
         };
       }
-
       const created = await drive.files.create({
         requestBody: {
           name: fileName,
@@ -301,9 +279,7 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
         fields: "id",
         supportsAllDrives: true,
       });
-
       if (!created.data.id) throw new Error("PDF_UPLOAD_FAILED");
-
       return {
         path: input.path,
         provider: "google_drive",
@@ -321,24 +297,16 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     const drive = this.getClient();
     const file = await this.resolveFile(path);
     const res = await drive.files.get(
-      {
-        fileId: file.id,
-        alt: "media",
-        supportsAllDrives: true,
-      },
+      { fileId: file.id, alt: "media", supportsAllDrives: true },
       { responseType: "arraybuffer" },
     );
-
     const buf = Buffer.from(res.data as ArrayBuffer);
-    return new Blob([buf], {
-      type: file.mimeType ?? "application/pdf",
-    });
+    return new Blob([buf], { type: file.mimeType ?? "application/pdf" });
   }
 
   async getSignedUrl(path: string, expiresInSeconds = 3600): Promise<string> {
     const drive = this.getClient();
     const file = await this.resolveFile(path);
-
     try {
       await drive.permissions.create({
         fileId: file.id,
@@ -348,18 +316,13 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     } catch (e) {
       console.warn("[google-drive] permission create:", e);
     }
-
     const meta = await drive.files.get({
       fileId: file.id,
       fields: "webContentLink, webViewLink",
       supportsAllDrives: true,
     });
-
     const link = meta.data.webContentLink || meta.data.webViewLink;
-    if (!link) {
-      throw new Error("STORAGE_NOT_FOUND: no shareable link");
-    }
-
+    if (!link) throw new Error("STORAGE_NOT_FOUND: no shareable link");
     void expiresInSeconds;
     return link;
   }
@@ -368,10 +331,7 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     const drive = this.getClient();
     try {
       const file = await this.resolveFile(path);
-      await drive.files.delete({
-        fileId: file.id,
-        supportsAllDrives: true,
-      });
+      await drive.files.delete({ fileId: file.id, supportsAllDrives: true });
     } catch (e) {
       if (e instanceof Error && e.message.includes("STORAGE_NOT_FOUND")) return;
       throw e;
@@ -406,7 +366,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
     const drive = this.getClient();
     const normalized = prefix.replace(/^\/+|\/+$/g, "");
     let parentId = this.rootId();
-
     if (normalized) {
       const parts = normalized.split("/").filter(Boolean);
       for (const part of parts) {
@@ -415,7 +374,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
         parentId = next;
       }
     }
-
     const res = await drive.files.list({
       q: `'${parentId}' in parents and trashed = false`,
       fields: "files(id, name, size, mimeType, modifiedTime)",
@@ -424,7 +382,6 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
       includeItemsFromAllDrives: true,
       orderBy: "name",
     });
-
     return (res.data.files ?? []).map((f) => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
       const name = f.name ?? "unknown";
@@ -436,6 +393,7 @@ export class GoogleDriveCurriculumStorage implements CurriculumStorageProvider {
         contentType: f.mimeType ?? undefined,
         isFolder,
         updatedAt: f.modifiedTime ?? undefined,
+        providerFileId: f.id ?? null,
       };
     });
   }
