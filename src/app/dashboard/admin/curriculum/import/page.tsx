@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * Curriculum import:
- * 1) Class → Subject → PDF URL → download → storage
- * 2) Catalog → Extract → Commit → Lessons AI
+ * 1) Class → Subject → Create folder (Drive/Supabase path)
+ * 2) Admin places PDF manually in that folder
+ * 3) Refresh catalog → Extract + Commit → Lessons AI
  */
 export default async function ImportPage() {
   const auth = await createServerSupabaseClient();
@@ -37,12 +38,8 @@ export default async function ImportPage() {
       .limit(50),
   ]);
 
-  const classes = (classesRes.data ?? []).filter(
-    (c) => c.is_active !== false,
-  );
-  const subjects = (subjectsRes.data ?? []).filter(
-    (s) => s.is_active !== false,
-  );
+  const classes = (classesRes.data ?? []).filter((c) => c.is_active !== false);
+  const subjects = (subjectsRes.data ?? []).filter((s) => s.is_active !== false);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
