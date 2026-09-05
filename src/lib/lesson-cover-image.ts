@@ -4,21 +4,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CURRICULUM_PDF_BUCKET } from "@/lib/storage/supabase-curriculum-storage";
 
 /**
- * Image models tried in order (Sep 2026).
- * Native Gemini image models first — more reliable for API keys than Imagen alone.
+ * Native Gemini image models (Nano Banana family) — Sep 2026.
+ * Prefer these; Imagen 3 is often 404 on consumer API keys.
  */
 export const COVER_NATIVE_MODELS = [
   "gemini-3.1-flash-image",
   "gemini-2.5-flash-image",
-  "gemini-3.1-flash-image-preview",
+  "gemini-3-pro-image",
 ] as const;
 
-export const COVER_IMAGEN_MODELS = [
-  "imagen-4.0-generate-001",
-  "imagen-3.0-generate-002",
-] as const;
+/** Optional last-resort Imagen (may 404 on many keys). */
+export const COVER_IMAGEN_MODELS = ["imagen-4.0-generate-001"] as const;
 
-/** @deprecated use COVER_IMAGEN_MODELS */
+/** @deprecated */
 export const COVER_IMAGE_MODELS = COVER_IMAGEN_MODELS;
 
 export function buildLessonCoverPrompt(opts: {
@@ -61,53 +59,89 @@ export type CoverImageResult = {
 function extractInlineImage(response: unknown): CoverImageResult | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = response as any;
-  const parts =
-    r?.candidates?.[0]?.content?.parts ??
-    r?.response?.candidates?.[0]?.content?.parts ??
-    [];
-  for (const part of parts) {
-    const inline = part?.inlineData || part?.inline_data;
-    if (inline?.data) {
-      return {
-        bytes: Buffer.from(String(inline.data), "base64"),
-        mimeType: String(inline.mimeType || inline.mime_type || "image/png"),
-        model: "",
-      };
+
+  const partLists: unknown[][] = [];
+  const c0 = r?.candidates?.[0];
+  if (c0?.content?.parts) partLists.push(c0.content.parts);
+  if (r?.response?.candidates?.[0]?.content?.parts) {
+    partLists.push(r.response.candidates[0].content.parts);
+  }
+  // Some SDK versions expose data on response directly
+  if (Array.isArray(r?.parts)) partLists.push(r.parts);
+
+  for (const parts of partLists) {
+    for (const part of parts) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const p = part as any;
+      const inline = p?.inlineData || p?.inline_data;
+      if (inline?.data) {
+        return {
+          bytes: Buffer.from(String(inline.data), "base64"),
+          mimeType: String(
+            inline.mimeType || inline.mime_type || "image/png",
+          ),
+          model: "",
+        };
+      }
     }
   }
   return null;
 }
 
+function errMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
 /**
- * Generate one cover image.
- * 1) Gemini native image models
- * 2) Imagen generateImages
+ * Generate one cover image via Gemini native image models.
+ * Uses responseModalities + imageConfig (required for Nano Banana).
  */
 export async function generateLessonCoverImage(
   prompt: string,
 ): Promise<CoverImageResult> {
-  let lastError: unknown;
+  const errors: string[] = [];
+
+  const modalityVariants: Array<Record<string, unknown>> = [
+    {
+      responseModalities: ["IMAGE"],
+      imageConfig: { aspectRatio: "16:9" },
+    },
+    {
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: { aspectRatio: "16:9" },
+    },
+    {
+      responseModalities: ["IMAGE"],
+    },
+  ];
 
   for (const model of COVER_NATIVE_MODELS) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-          responseModalities: ["TEXT", "IMAGE"],
-        } as Record<string, unknown>,
-      });
-      const extracted = extractInlineImage(response);
-      if (extracted) {
-        return { ...extracted, model };
+    for (const config of modalityVariants) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: config as never,
+        });
+        const extracted = extractInlineImage(response);
+        if (extracted) {
+          return { ...extracted, model };
+        }
+        errors.push(`${model}: NO_IMAGE_PART`);
+      } catch (e) {
+        const msg = errMessage(e).slice(0, 220);
+        errors.push(`${model}: ${msg}`);
+        console.warn(`[cover-image] ${model} failed`, msg);
       }
-      throw new Error("NO_IMAGE_PART");
-    } catch (e) {
-      lastError = e;
-      console.warn(`[cover-image] native model ${model} failed`, e);
     }
   }
 
+  // Last resort: Imagen 4 only (Imagen 3 is widely 404)
   for (const model of COVER_IMAGEN_MODELS) {
     try {
       const response = await ai.models.generateImages({
@@ -118,26 +152,29 @@ export async function generateLessonCoverImage(
           aspectRatio: "16:9",
         },
       });
-
       const generated = response.generatedImages?.[0];
       const imageBytes = generated?.image?.imageBytes;
-      if (!imageBytes) throw new Error("NO_IMAGE_BYTES");
-
+      if (!imageBytes) {
+        errors.push(`${model}: NO_IMAGE_BYTES`);
+        continue;
+      }
       const buf =
         typeof imageBytes === "string"
           ? Buffer.from(imageBytes, "base64")
           : Buffer.from(imageBytes as ArrayBuffer);
-
       return { bytes: buf, mimeType: "image/png", model };
     } catch (e) {
-      lastError = e;
-      console.warn(`[cover-image] imagen model ${model} failed`, e);
+      const msg = errMessage(e).slice(0, 220);
+      errors.push(`${model}: ${msg}`);
+      console.warn(`[cover-image] imagen ${model} failed`, msg);
     }
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("COVER_IMAGE_GENERATION_FAILED");
+  throw new Error(
+    "COVER_IMAGE_GENERATION_FAILED: " +
+      errors.slice(0, 6).join(" | ") +
+      " — GEMINI_API_KEY-এ image model (gemini-3.1-flash-image) access আছে কিনা চেক করো।",
+  );
 }
 
 export function coverStoragePath(lessonId: string) {
@@ -160,7 +197,7 @@ export async function uploadLessonCover(opts: {
       upsert: true,
     });
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(`STORAGE_UPLOAD: ${error.message}`);
 
   const { data: signed } = await opts.supabase.storage
     .from(CURRICULUM_PDF_BUCKET)
