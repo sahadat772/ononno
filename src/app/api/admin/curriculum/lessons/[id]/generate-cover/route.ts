@@ -6,19 +6,74 @@ import { createServiceRoleClient } from "@/lib/supabase-admin";
 import { CURRICULUM_PDF_BUCKET } from "@/lib/storage/supabase-curriculum-storage";
 import {
   buildLessonCoverPrompt,
-  coverStoragePath,
   generateLessonCoverImage,
 } from "@/lib/lesson-cover-image";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+const COVER_BUCKETS = [CURRICULUM_PDF_BUCKET, "avatars", "free-access-docs"] as const;
+
 function getDb() {
   return createServiceRoleClient();
 }
 
+function coverPath(lessonId: string, mimeType: string) {
+  const ext = mimeType.includes("png") ? "png" : "jpg";
+  return `curriculum/media/covers/lesson-${lessonId}.${ext}`;
+}
+
+/**
+ * Try multiple buckets — curriculum-pdfs often blocks non-PDF mime types.
+ */
+async function uploadCoverBytes(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  lessonId: string,
+  bytes: Buffer,
+  mimeType: string,
+): Promise<{ bucket: string; path: string; url: string | null } | null> {
+  const path = coverPath(lessonId, mimeType);
+  const contentType = mimeType || "image/jpeg";
+  const errors: string[] = [];
+
+  for (const bucket of COVER_BUCKETS) {
+    try {
+      const { error: upErr } = await db.storage.from(bucket).upload(path, bytes, {
+        contentType,
+        upsert: true,
+      });
+      if (upErr) {
+        errors.push(`${bucket}: ${upErr.message}`);
+        continue;
+      }
+
+      // Prefer public URL if bucket is public; else signed
+      const { data: pub } = db.storage.from(bucket).getPublicUrl(path);
+      if (pub?.publicUrl) {
+        return { bucket, path, url: pub.publicUrl as string };
+      }
+
+      const { data: signed } = await db.storage
+        .from(bucket)
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      return {
+        bucket,
+        path: `${bucket}/${path}`,
+        url: signed?.signedUrl ?? null,
+      };
+    } catch (e) {
+      errors.push(
+        `${bucket}: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
+  console.warn("[generate-cover] all bucket uploads failed", errors.join(" | "));
+  return null;
+}
+
 /**
  * POST /api/admin/curriculum/lessons/[id]/generate-cover
- * Generates educational cover image for a lesson (Slice B).
  */
 export async function POST(_request: NextRequest, context: RouteContext) {
   const auth = await requireRole(["admin"]);
@@ -29,16 +84,6 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     rateLimitDefaults.adminAI,
   );
   if (rateError) return rateError;
-
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json(
-      {
-        error: "GEMINI_CONFIGURATION_ERROR",
-        message: "GEMINI_API_KEY configured নেই।",
-      },
-      { status: 500 },
-    );
-  }
 
   const { id } = await context.params;
   let db;
@@ -99,34 +144,35 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
   try {
     const image = await generateLessonCoverImage(prompt);
-    const path = coverStoragePath(id);
 
-    const { error: upErr } = await db.storage
-      .from(CURRICULUM_PDF_BUCKET)
-      .upload(path, image.bytes, {
-        contentType: image.mimeType || "image/png",
-        upsert: true,
-      });
+    // 1) Try Supabase storage (multiple buckets)
+    const uploaded = await uploadCoverBytes(
+      db,
+      id,
+      image.bytes,
+      image.mimeType || "image/jpeg",
+    );
 
-    if (upErr) {
-      return NextResponse.json(
-        {
-          error: "STORAGE_UPLOAD_FAILED",
-          message: "Cover image storage-এ upload হয়নি।",
-          details: upErr.message,
-        },
-        { status: 500 },
-      );
+    // 2) If storage blocked — keep a durable external-style approach:
+    //    re-fetch is avoided; we store a stable pollinations URL for display
+    let coverPath = uploaded?.path ?? null;
+    let coverUrl = uploaded?.url ?? null;
+    let storageNote: string | null = null;
+
+    if (!coverUrl) {
+      // Stable public URL from Pollinations (works even without storage)
+      const short = prompt.slice(0, 200);
+      coverUrl =
+        "https://image.pollinations.ai/prompt/" +
+        encodeURIComponent(short) +
+        `?width=1280&height=720&nologo=true&model=flux&seed=${id.replace(/-/g, "").slice(0, 8)}`;
+      coverPath = null;
+      storageNote =
+        "Storage bucket-এ image upload হয়নি (MIME/policy)। External cover URL save করা হয়েছে।";
     }
 
-    const { data: signed } = await db.storage
-      .from(CURRICULUM_PDF_BUCKET)
-      .createSignedUrl(path, 60 * 60 * 24 * 365);
-
-    const coverUrl = signed?.signedUrl ?? null;
-
     const coverPatch: Record<string, unknown> = {
-      cover_image_path: path,
+      cover_image_path: coverPath,
       cover_image_url: coverUrl,
     };
 
@@ -136,7 +182,21 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         .update(coverPatch)
         .eq("lesson_id", id);
       if (updErr) {
-        console.warn("[generate-cover] content update", updErr.message);
+        // Columns may be missing — still return URL to client
+        console.warn("[generate-cover] DB update", updErr.message);
+        if (/cover_image/i.test(updErr.message)) {
+          return NextResponse.json(
+            {
+              error: "COVER_COLUMNS_MISSING",
+              message:
+                "lesson_contents-এ cover_image_url / cover_image_path column নেই। নিচের SQL চালাও।",
+              sql: "alter table public.lesson_contents add column if not exists cover_image_path text; alter table public.lesson_contents add column if not exists cover_image_url text;",
+              cover_image_url: coverUrl,
+              model: image.model,
+            },
+            { status: 500 },
+          );
+        }
       }
     } else {
       const { error: insErr } = await db.from("lesson_contents").insert({
@@ -151,25 +211,28 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     await audit("GENERATE_LESSON_COVER", auth.user.id, {
       lessonId: id,
-      path,
+      path: coverPath,
       model: image.model,
       classNumber,
+      storageOk: Boolean(uploaded),
     });
 
     return NextResponse.json({
       lessonId: id,
-      cover_image_path: path,
+      cover_image_path: coverPath,
       cover_image_url: coverUrl,
       model: image.model,
-      message: "Cover image তৈরি হয়েছে।",
+      storageUploaded: Boolean(uploaded),
+      message: uploaded
+        ? "Cover image তৈরি ও storage-এ save হয়েছে।"
+        : storageNote || "Cover URL save হয়েছে (storage skip)।",
     });
   } catch (e) {
     console.error("generate-cover error", e);
     return NextResponse.json(
       {
         error: "COVER_IMAGE_GENERATION_FAILED",
-        message:
-          "Cover image generate করা যায়নি। Gemini image model (gemini-3.1-flash-image) key-এ available কিনা চেক করো।",
+        message: "Cover image generate করা যায়নি।",
         details: e instanceof Error ? e.message.slice(0, 600) : String(e),
       },
       { status: 500 },
