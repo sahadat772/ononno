@@ -81,7 +81,6 @@ export async function PATCH(
       orderIndex,
     } = body;
 
-    // Lesson আছে কিনা check
     const { data: existing } = await auth.supabase
       .from("curriculum_lessons")
       .select("id, chapter_id")
@@ -95,7 +94,6 @@ export async function PATCH(
       );
     }
 
-    // Slug duplicate check (নিজেকে বাদ দিয়ে)
     if (slug) {
       const { data: slugExisting } = await auth.supabase
         .from("curriculum_lessons")
@@ -178,23 +176,38 @@ export async function DELETE(
       );
     }
 
-    // Soft delete
+    // Soft delete + fully remove from student catalog
     const { error } = await auth.supabase
       .from("curriculum_lessons")
-      .update({ is_active: false })
+      .update({
+        is_active: false,
+        is_published: false,
+        workflow_status: "archived",
+      })
       .eq("id", id);
 
     if (error) {
       console.error("Lesson DELETE error:", error);
       return NextResponse.json(
-        { error: "Lesson মুছে ফেলা যায়নি।" },
+        { error: "Lesson মুছে ফেলা যায়নি।", details: error.message },
         { status: 500 },
       );
     }
 
-    await audit("DELETE_LESSON", auth.user.id, { id, title: existing.title });
+    await audit("DELETE_LESSON", auth.user.id, {
+      id,
+      title: existing.title,
+      unpublished: true,
+      archived: true,
+    });
 
-    return NextResponse.json({ message: "Lesson মুছে ফেলা হয়েছে।" });
+    return NextResponse.json({
+      message: "Lesson মুছে ফেলা হয়েছে (unpublished + archived)।",
+      id,
+      is_active: false,
+      is_published: false,
+      workflow_status: "archived",
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
