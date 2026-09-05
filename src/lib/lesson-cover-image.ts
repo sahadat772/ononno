@@ -4,13 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CURRICULUM_PDF_BUCKET } from "@/lib/storage/supabase-curriculum-storage";
 
 /**
- * Cover image strategy (production-safe):
- * 1) One Gemini Nano Banana attempt (if quota allows)
- * 2) Free Pollinations Flux fallback (no Gemini quota)
+ * Cover strategy for platform dignity:
  *
- * Env (optional):
- *   COVER_IMAGE_PROVIDER = auto | gemini | pollinations
- *   default: auto
+ * default (auto): branded SVG illustration (predictable, NCTB-safe, no weird AI art)
+ * COVER_IMAGE_PROVIDER=pollinations | gemini → external AI (optional)
  */
 export const COVER_NATIVE_MODELS = [
   "gemini-2.5-flash-image",
@@ -19,6 +16,25 @@ export const COVER_NATIVE_MODELS = [
 
 /** @deprecated */
 export const COVER_IMAGE_MODELS = COVER_NATIVE_MODELS;
+
+const SUBJECT_THEMES: Record<string, { from: string; to: string; accent: string; emoji: string }> = {
+  bangla: { from: "#1e3a5f", to: "#0f766e", accent: "#fbbf24", emoji: "📖" },
+  বাংলা: { from: "#1e3a5f", to: "#0f766e", accent: "#fbbf24", emoji: "📖" },
+  english: { from: "#1e1b4b", to: "#4c1d95", accent: "#a78bfa", emoji: "🔤" },
+  math: { from: "#0c4a6e", to: "#0369a1", accent: "#38bdf8", emoji: "🔢" },
+  mathematics: { from: "#0c4a6e", to: "#0369a1", accent: "#38bdf8", emoji: "🔢" },
+  গণিত: { from: "#0c4a6e", to: "#0369a1", accent: "#38bdf8", emoji: "🔢" },
+  science: { from: "#14532d", to: "#047857", accent: "#6ee7b7", emoji: "🔬" },
+  বিজ্ঞান: { from: "#14532d", to: "#047857", accent: "#6ee7b7", emoji: "🔬" },
+};
+
+function themeFor(subjectName?: string | null) {
+  const key = (subjectName || "").toLowerCase().trim();
+  for (const [k, v] of Object.entries(SUBJECT_THEMES)) {
+    if (key.includes(k.toLowerCase())) return v;
+  }
+  return { from: "#0f172a", to: "#1e293b", accent: "#f59e0b", emoji: "📚" };
+}
 
 export function buildLessonCoverPrompt(opts: {
   title: string;
@@ -29,21 +45,19 @@ export function buildLessonCoverPrompt(opts: {
   const depth = classNumberToDepth(opts.classNumber);
   const age =
     depth === "light"
-      ? "for young children age 6–8, very simple, friendly, colorful cartoon-like"
+      ? "for young children age 6–8, simple friendly educational illustration"
       : depth === "standard"
-        ? "for primary school children, clear educational illustration"
-        : "for secondary students, clean modern educational illustration";
+        ? "for primary school, clear educational illustration"
+        : "for secondary students, clean educational illustration";
 
-  const topic = [opts.title, opts.subjectName, opts.overview?.slice(0, 120)]
-    .filter(Boolean)
-    .join(" — ");
+  const topic = [opts.title, opts.subjectName].filter(Boolean).join(" — ");
 
   return [
-    "Educational illustration, Bangladesh school lesson cover,",
-    age + ",",
-    "topic: " + topic + ",",
-    "soft flat vector, warm cheerful colors, adventure-friendly scene,",
-    "no text, no letters, no watermark, no logo, child-safe, landscape 16:9",
+    "Educational cover for Bangladesh NCTB school lesson.",
+    age + ".",
+    "Lesson: " + topic + ".",
+    "Show school-friendly scene matching the lesson title only.",
+    "Soft flat illustration, warm colors, NO text, NO letters, NO watermark.",
   ].join(" ");
 }
 
@@ -53,13 +67,66 @@ export type CoverImageResult = {
   model: string;
 };
 
+/** Escape for SVG text */
+function esc(s: string) {
+  return s
+    .replace(/&/g, "&")
+    .replace(/</g, "<")
+    .replace(/>/g, ">")
+    .replace(/"/g, """);
+}
+
+/**
+ * Branded SVG cover — dignified, consistent, no random AI artifacts.
+ */
+export function generateBrandedSvgCover(opts: {
+  title: string;
+  subjectName?: string | null;
+  classNumber?: number | null;
+}): CoverImageResult {
+  const theme = themeFor(opts.subjectName);
+  const title = (opts.title || "পাঠ").slice(0, 42);
+  const subtitle = [opts.subjectName, opts.classNumber != null ? `শ্রেণি ${opts.classNumber}` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${theme.from}"/>
+      <stop offset="100%" stop-color="${theme.to}"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="70%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="${theme.accent}" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="${theme.accent}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect width="1280" height="720" fill="url(#glow)"/>
+  <!-- decorative rings -->
+  <circle cx="1040" cy="160" r="120" fill="none" stroke="${theme.accent}" stroke-opacity="0.25" stroke-width="3"/>
+  <circle cx="1040" cy="160" r="70" fill="none" stroke="${theme.accent}" stroke-opacity="0.4" stroke-width="2"/>
+  <circle cx="200" cy="560" r="90" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+  <!-- card -->
+  <rect x="80" y="180" width="720" height="360" rx="28" fill="#0b1220" fill-opacity="0.45" stroke="#ffffff" stroke-opacity="0.12"/>
+  <text x="120" y="280" font-family="system-ui,Segoe UI,sans-serif" font-size="42" fill="#ffffff" font-weight="700">${esc(theme.emoji)} ONONNO</text>
+  <text x="120" y="360" font-family="system-ui,Segoe UI,sans-serif" font-size="36" fill="#f8fafc" font-weight="600">${esc(title)}</text>
+  <text x="120" y="420" font-family="system-ui,Segoe UI,sans-serif" font-size="22" fill="${theme.accent}">${esc(subtitle || "NCTB Curriculum Lesson")}</text>
+  <text x="120" y="490" font-family="system-ui,Segoe UI,sans-serif" font-size="18" fill="#94a3b8">শেখো · বুঝো · এগিয়ে যাও</text>
+</svg>`;
+
+  return {
+    bytes: Buffer.from(svg, "utf8"),
+    mimeType: "image/svg+xml",
+    model: "ononno-branded-svg",
+  };
+}
+
 function extractInlineImage(response: unknown): CoverImageResult | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = response as any;
-  const parts =
-    r?.candidates?.[0]?.content?.parts ??
-    r?.response?.candidates?.[0]?.content?.parts ??
-    [];
+  const parts = r?.candidates?.[0]?.content?.parts ?? [];
   for (const part of parts) {
     const inline = part?.inlineData || part?.inline_data;
     if (inline?.data) {
@@ -88,15 +155,10 @@ function isQuotaError(msg: string): boolean {
     m.includes("429") ||
     m.includes("quota") ||
     m.includes("resource_exhausted") ||
-    m.includes("rate limit") ||
-    m.includes("exceeded your current quota")
+    m.includes("rate limit")
   );
 }
 
-/**
- * Free image fallback — Pollinations (Flux).
- * No API key required. Used when Gemini image quota is exhausted.
- */
 export async function generateCoverViaPollinations(
   prompt: string,
 ): Promise<CoverImageResult> {
@@ -111,21 +173,11 @@ export async function generateCoverViaPollinations(
     headers: { Accept: "image/*" },
     signal: AbortSignal.timeout(60_000),
   });
-
-  if (!res.ok) {
-    throw new Error(`POLLINATIONS_HTTP_${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(`POLLINATIONS_HTTP_${res.status}`);
   const ct = res.headers.get("content-type") || "image/jpeg";
-  if (!ct.includes("image")) {
-    throw new Error(`POLLINATIONS_NOT_IMAGE: ${ct}`);
-  }
-
+  if (!ct.includes("image")) throw new Error(`POLLINATIONS_NOT_IMAGE: ${ct}`);
   const ab = await res.arrayBuffer();
-  if (!ab.byteLength || ab.byteLength < 1000) {
-    throw new Error("POLLINATIONS_EMPTY_IMAGE");
-  }
-
+  if (!ab.byteLength || ab.byteLength < 1000) throw new Error("POLLINATIONS_EMPTY_IMAGE");
   return {
     bytes: Buffer.from(ab),
     mimeType: ct.includes("png") ? "image/png" : "image/jpeg",
@@ -133,11 +185,8 @@ export async function generateCoverViaPollinations(
   };
 }
 
-async function generateCoverViaGemini(
-  prompt: string,
-): Promise<CoverImageResult> {
+async function generateCoverViaGemini(prompt: string): Promise<CoverImageResult> {
   let lastErr = "";
-
   for (const model of COVER_NATIVE_MODELS) {
     try {
       const response = await ai.models.generateContent({
@@ -153,53 +202,56 @@ async function generateCoverViaGemini(
       lastErr = `${model}: NO_IMAGE_PART`;
     } catch (e) {
       lastErr = `${model}: ${errMessage(e).slice(0, 200)}`;
-      console.warn("[cover-image] gemini failed", lastErr);
-      if (isQuotaError(lastErr)) {
-        // Don't burn more Gemini image quota
-        throw new Error(`GEMINI_IMAGE_QUOTA: ${lastErr}`);
-      }
+      if (isQuotaError(lastErr)) throw new Error(`GEMINI_IMAGE_QUOTA: ${lastErr}`);
     }
   }
-
   throw new Error(lastErr || "GEMINI_IMAGE_FAILED");
 }
 
 /**
- * Generate cover: Gemini (1–2 tries) → Pollinations fallback.
+ * Generate cover image.
+ * Default = branded SVG (platform dignity).
+ * Set COVER_IMAGE_PROVIDER=pollinations|gemini for AI art.
  */
 export async function generateLessonCoverImage(
   prompt: string,
+  meta?: { title?: string; subjectName?: string | null; classNumber?: number | null },
 ): Promise<CoverImageResult> {
-  const provider = (
-    process.env.COVER_IMAGE_PROVIDER || "auto"
-  ).toLowerCase();
+  const provider = (process.env.COVER_IMAGE_PROVIDER || "branded").toLowerCase();
 
   if (provider === "pollinations") {
     return generateCoverViaPollinations(prompt);
   }
-
   if (provider === "gemini") {
     return generateCoverViaGemini(prompt);
   }
-
-  // auto
-  try {
-    return await generateCoverViaGemini(prompt);
-  } catch (e) {
-    const msg = errMessage(e);
-    console.warn("[cover-image] gemini path failed, trying pollinations", msg);
+  if (provider === "auto") {
     try {
-      return await generateCoverViaPollinations(prompt);
-    } catch (e2) {
-      throw new Error(
-        `COVER_IMAGE_GENERATION_FAILED: Gemini(${msg.slice(0, 180)}) | Pollinations(${errMessage(e2).slice(0, 120)})`,
-      );
+      return await generateCoverViaGemini(prompt);
+    } catch {
+      try {
+        return await generateCoverViaPollinations(prompt);
+      } catch {
+        return generateBrandedSvgCover({
+          title: meta?.title || "পাঠ",
+          subjectName: meta?.subjectName,
+          classNumber: meta?.classNumber,
+        });
+      }
     }
   }
+
+  // branded (default) — recommended for production dignity
+  return generateBrandedSvgCover({
+    title: meta?.title || "পাঠ",
+    subjectName: meta?.subjectName,
+    classNumber: meta?.classNumber,
+  });
 }
 
-export function coverStoragePath(lessonId: string) {
-  return `curriculum/media/covers/lesson-${lessonId}.png`;
+export function coverStoragePath(lessonId: string, mimeType?: string) {
+  const ext = mimeType?.includes("svg") ? "svg" : mimeType?.includes("png") ? "png" : "jpg";
+  return `curriculum/media/covers/lesson-${lessonId}.${ext}`;
 }
 
 export async function uploadLessonCover(opts: {
@@ -208,15 +260,12 @@ export async function uploadLessonCover(opts: {
   bytes: Buffer;
   mimeType?: string;
 }): Promise<{ path: string; url: string | null }> {
-  const path = coverStoragePath(opts.lessonId);
+  const path = coverStoragePath(opts.lessonId, opts.mimeType);
   const contentType = opts.mimeType || "image/png";
 
   const { error } = await opts.supabase.storage
     .from(CURRICULUM_PDF_BUCKET)
-    .upload(path, opts.bytes, {
-      contentType,
-      upsert: true,
-    });
+    .upload(path, opts.bytes, { contentType, upsert: true });
 
   if (error) throw new Error(`STORAGE_UPLOAD: ${error.message}`);
 
@@ -227,10 +276,6 @@ export async function uploadLessonCover(opts: {
   return { path, url: signed?.signedUrl ?? null };
 }
 
-/**
- * Full pipeline: prompt → image → storage.
- * Returns null on soft failure (does not throw).
- */
 export async function generateAndStoreLessonCover(opts: {
   supabase: SupabaseClient;
   lessonId: string;
@@ -246,7 +291,11 @@ export async function generateAndStoreLessonCover(opts: {
       classNumber: opts.classNumber,
       subjectName: opts.subjectName,
     });
-    const img = await generateLessonCoverImage(prompt);
+    const img = await generateLessonCoverImage(prompt, {
+      title: opts.title,
+      subjectName: opts.subjectName,
+      classNumber: opts.classNumber,
+    });
     const stored = await uploadLessonCover({
       supabase: opts.supabase,
       lessonId: opts.lessonId,
