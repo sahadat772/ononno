@@ -104,7 +104,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     const { error: upErr } = await db.storage
       .from(CURRICULUM_PDF_BUCKET)
       .upload(path, image.bytes, {
-        contentType: image.mimeType,
+        contentType: image.mimeType || "image/png",
         upsert: true,
       });
 
@@ -112,7 +112,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       return NextResponse.json(
         {
           error: "STORAGE_UPLOAD_FAILED",
-          message: "Cover image upload ব্যর্থ।",
+          message: "Cover image storage-এ upload হয়নি।",
           details: upErr.message,
         },
         { status: 500 },
@@ -121,56 +121,32 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     const { data: signed } = await db.storage
       .from(CURRICULUM_PDF_BUCKET)
-      .createSignedUrl(path, 60 * 60 * 24 * 7);
+      .createSignedUrl(path, 60 * 60 * 24 * 365);
 
     const coverUrl = signed?.signedUrl ?? null;
 
-    // Ensure lesson_contents row exists
-    const upsert: Record<string, unknown> = {
-      lesson_id: id,
+    const coverPatch: Record<string, unknown> = {
       cover_image_path: path,
       cover_image_url: coverUrl,
     };
 
-    let { error: saveErr } = await db
-      .from("lesson_contents")
-      .upsert(upsert, { onConflict: "lesson_id" });
-
-    // Column missing → soft fail with guidance
-    if (saveErr && /cover_image/i.test(saveErr.message ?? "")) {
-      return NextResponse.json(
-        {
-          error: "MIGRATION_REQUIRED",
-          message:
-            "lesson_contents-এ cover_image_path column নেই। SQL migration 20260902_lesson_cover_image.sql চালাও।",
-          details: saveErr.message,
-          storagePath: path,
-        },
-        { status: 409 },
-      );
-    }
-
-    if (saveErr) {
-      // Row may need only update if upsert conflict on other constraints
+    if (content) {
       const { error: updErr } = await db
         .from("lesson_contents")
-        .update({
-          cover_image_path: path,
-          cover_image_url: coverUrl,
-        })
+        .update(coverPatch)
         .eq("lesson_id", id);
-      saveErr = updErr;
-    }
-
-    if (saveErr) {
-      return NextResponse.json(
-        {
-          error: "SAVE_FAILED",
-          message: "Cover path save ব্যর্থ।",
-          details: saveErr.message,
-        },
-        { status: 500 },
-      );
+      if (updErr) {
+        console.warn("[generate-cover] content update", updErr.message);
+      }
+    } else {
+      const { error: insErr } = await db.from("lesson_contents").insert({
+        lesson_id: id,
+        ...coverPatch,
+        is_ai_generated: false,
+      });
+      if (insErr) {
+        console.warn("[generate-cover] content insert", insErr.message);
+      }
     }
 
     await audit("GENERATE_LESSON_COVER", auth.user.id, {
@@ -193,8 +169,8 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       {
         error: "COVER_IMAGE_GENERATION_FAILED",
         message:
-          "Cover image generate করা যায়নি। Imagen model API key-তে enabled আছে কিনা চেক করো।",
-        details: e instanceof Error ? e.message.slice(0, 400) : String(e),
+          "Cover image generate করা যায়নি। Gemini image model (gemini-3.1-flash-image) key-এ available কিনা চেক করো।",
+        details: e instanceof Error ? e.message.slice(0, 600) : String(e),
       },
       { status: 500 },
     );
