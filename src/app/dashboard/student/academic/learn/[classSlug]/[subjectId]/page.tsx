@@ -25,6 +25,7 @@ interface Subject {
 
 interface LessonProgress {
     chapter_id: string
+    lesson_id?: string
     status: string
     score: number
 }
@@ -37,6 +38,7 @@ export default function ChapterListPage() {
     const [subject, setSubject] = useState<Subject | null>(null)
     const [chapters, setChapters] = useState<Chapter[]>([])
     const [progress, setProgress] = useState<LessonProgress[]>([])
+    const [lessonTotals, setLessonTotals] = useState<Record<string, number>>({})
     const [loading, setLoading] = useState(true)
     const [totalXP, setTotalXP] = useState(0)
     const [streak, setStreak] = useState(0)
@@ -53,13 +55,19 @@ export default function ChapterListPage() {
                 .single()
             if (sub) setSubject(sub)
 
-            // Chapters that have at least one published lesson (or active chapters)
             const { data: publishedLessons } = await supabase
                 .from('curriculum_lessons')
-                .select('chapter_id')
+                .select('id, chapter_id')
                 .eq('subject_id', subjectId)
                 .eq('is_active', true)
                 .eq('is_published', true)
+
+            const totals: Record<string, number> = {}
+            for (const l of publishedLessons ?? []) {
+                if (!l.chapter_id) continue
+                totals[l.chapter_id] = (totals[l.chapter_id] || 0) + 1
+            }
+            setLessonTotals(totals)
 
             const chapterIds = [
                 ...new Set((publishedLessons ?? []).map((l) => l.chapter_id).filter(Boolean)),
@@ -80,7 +88,7 @@ export default function ChapterListPage() {
             if (user) {
                 const { data: prog } = await supabase
                     .from('learning_progress')
-                    .select('*')
+                    .select('chapter_id, lesson_id, status, score')
                     .eq('user_id', user.id)
                     .eq('subject_id', subjectId)
                 if (prog) setProgress(prog)
@@ -98,14 +106,22 @@ export default function ChapterListPage() {
 
             setLoading(false)
         }
-        fetchData()
+        void fetchData()
     }, [subjectId])
 
     const getChapterProgress = (chapterId: string) => {
-        const chapterProgress = progress.filter(p => p.chapter_id === chapterId)
-        if (chapterProgress.length === 0) return 0
-        const completed = chapterProgress.filter(p => p.status === 'completed').length
-        return Math.round((completed / chapterProgress.length) * 100)
+        const total = lessonTotals[chapterId] || 0
+        if (total === 0) return 0
+        const completedIds = new Set(
+            progress
+                .filter((p) => p.chapter_id === chapterId && p.status === 'completed' && p.lesson_id)
+                .map((p) => p.lesson_id as string),
+        )
+        const legacy = progress.filter(
+            (p) => p.chapter_id === chapterId && p.status === 'completed' && !p.lesson_id,
+        ).length
+        const completed = Math.min(total, completedIds.size + legacy)
+        return Math.round((completed / total) * 100)
     }
 
     const isChapterUnlocked = (index: number) => {
@@ -114,6 +130,8 @@ export default function ChapterListPage() {
         if (!prevChapter) return false
         return getChapterProgress(prevChapter.id) >= 60
     }
+
+    const overallCompleted = progress.filter((p) => p.status === 'completed').length
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white">
@@ -157,9 +175,7 @@ export default function ChapterListPage() {
                         <div className="flex items-center justify-center gap-3">
                             <span className="text-gray-400 text-sm">{chapters.length}টি অধ্যায়</span>
                             <span className="text-gray-600">•</span>
-                            <span className="text-gray-400 text-sm">
-                                {progress.filter(p => p.status === 'completed').length} সম্পন্ন
-                            </span>
+                            <span className="text-gray-400 text-sm">{overallCompleted} সম্পন্ন</span>
                         </div>
                     </motion.div>
                 )}
@@ -171,128 +187,85 @@ export default function ChapterListPage() {
                         ))}
                     </div>
                 ) : chapters.length === 0 ? (
-                    <div className="text-center py-16">
-                        <div className="text-6xl mb-4">📝</div>
-                        <h3 className="text-white font-bold text-xl mb-2">অধ্যায় শীঘ্রই আসছে</h3>
-                        <p className="text-gray-400 text-sm">Admin এখনো published lesson যোগ করেননি</p>
-                        <div className="mt-6 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-left max-w-sm mx-auto">
-                            <p className="text-blue-400 text-sm font-semibold mb-2">💡 Admin workflow:</p>
-                            <p className="text-gray-400 text-xs">
-                                Lessons → Review → Generate (1) → Approve → Publish
-                            </p>
-                        </div>
+                    <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
+                        <p className="text-4xl mb-3">📖</p>
+                        <p className="font-bold text-white">এখনো published chapter নেই</p>
+                        <p className="text-gray-400 text-sm mt-2">Admin lesson publish করলে এখানে অধ্যায় দেখা যাবে।</p>
                     </div>
                 ) : (
-                    <div className="relative">
-                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-linear-to-b from-white/20 via-white/10 to-transparent -translate-x-1/2 hidden md:block" />
+                    <div className="space-y-4">
+                        {chapters.map((chapter, index) => {
+                            const unlocked = isChapterUnlocked(index)
+                            const chapterProg = getChapterProgress(chapter.id)
+                            const completed = chapterProg >= 100
+                            const inProgress = chapterProg > 0 && chapterProg < 100
+                            const totalLessons = lessonTotals[chapter.id] || 0
 
-                        <div className="space-y-6">
-                            {chapters.map((chapter, index) => {
-                                const chapterProg = getChapterProgress(chapter.id)
-                                const unlocked = isChapterUnlocked(index)
-                                const completed = chapterProg >= 100
-                                const inProgress = chapterProg > 0 && chapterProg < 100
-
-                                return (
-                                    <motion.div
-                                        key={chapter.id}
-                                        initial={{ opacity: 0, y: 30 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.1 }}
-                                        className={`relative ${index % 2 === 0 ? 'md:pr-1/2' : 'md:pl-1/2'}`}
-                                    >
-                                        <Link
-                                            href={unlocked ? `/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapter.id}` : '#'}
-                                        >
-                                            <motion.div
-                                                whileHover={unlocked ? { scale: 1.03, y: -4 } : {}}
-                                                whileTap={unlocked ? { scale: 0.97 } : {}}
-                                                className={`rounded-3xl border p-5 transition-all duration-300 ${!unlocked
-                                                        ? 'border-white/5 bg-white/[0.02] opacity-50 cursor-not-allowed'
-                                                        : completed
-                                                            ? 'border-emerald-500/40 bg-emerald-500/10 cursor-pointer'
-                                                            : inProgress
-                                                                ? 'border-blue-500/40 bg-blue-500/10 cursor-pointer'
-                                                                : 'border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold flex-shrink-0 shadow-lg ${!unlocked
-                                                            ? 'bg-white/5 text-gray-600'
-                                                            : completed
-                                                                ? 'bg-linear-to-br from-emerald-500 to-teal-500'
+                            return (
+                                <motion.div
+                                    key={chapter.id}
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.06 }}
+                                >
+                                    {unlocked ? (
+                                        <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapter.id}`}>
+                                            <div className="rounded-3xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer">
+                                                <div className="flex gap-4">
+                                                    <div
+                                                        className={`grid size-14 shrink-0 place-items-center rounded-2xl text-2xl ${
+                                                            completed
+                                                                ? 'bg-emerald-500/20 border border-emerald-400/40'
                                                                 : inProgress
-                                                                    ? 'bg-linear-to-br from-blue-500 to-cyan-500'
-                                                                    : 'bg-linear-to-br from-violet-500 to-purple-500'
-                                                        }`}>
-                                                        {!unlocked ? '🔒' : completed ? '✅' : inProgress ? '📖' : chapter.chapter_number}
+                                                                  ? 'bg-sky-500/20 border border-sky-400/40'
+                                                                  : 'bg-white/5 border border-white/10'
+                                                        }`}
+                                                    >
+                                                        {completed ? '✅' : inProgress ? '📖' : chapter.chapter_number}
                                                     </div>
-
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                                                            <span className="text-xs text-gray-500">
-                                                                অধ্যায় {chapter.chapter_number}
-                                                            </span>
-                                                            {completed && (
-                                                                <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                                                                    ✅ সম্পন্ন
-                                                                </span>
-                                                            )}
-                                                            {inProgress && (
-                                                                <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
-                                                                    📖 চলছে
-                                                                </span>
-                                                            )}
-                                                            {!unlocked && (
-                                                                <span className="text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30 px-2 py-0.5 rounded-full">
-                                                                    🔒 locked
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <h3 className={`font-bold text-lg mb-1 ${!unlocked ? 'text-gray-600' : 'text-white'}`}>
+                                                        <h3 className="font-bold text-lg text-white mb-1">
                                                             {chapter.title_bn || chapter.title}
                                                         </h3>
                                                         {chapter.description && (
                                                             <p className="text-gray-400 text-sm truncate">{chapter.description}</p>
                                                         )}
-
-                                                        {unlocked && (
-                                                            <div className="mt-2">
-                                                                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                                    <span>অগ্রগতি</span>
-                                                                    <span>{chapterProg}%</span>
-                                                                </div>
-                                                                <div className="w-full bg-white/10 rounded-full h-2">
-                                                                    <motion.div
-                                                                        initial={{ width: 0 }}
-                                                                        animate={{ width: `${chapterProg}%` }}
-                                                                        transition={{ duration: 0.8, delay: index * 0.1 }}
-                                                                        className={`h-2 rounded-full ${completed
-                                                                                ? 'bg-linear-to-r from-emerald-500 to-teal-500'
-                                                                                : 'bg-linear-to-r from-blue-500 to-cyan-500'
-                                                                            }`}
-                                                                    />
-                                                                </div>
+                                                        <div className="mt-2">
+                                                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                                <span>অগ্রগতি · {totalLessons} পাঠ</span>
+                                                                <span>{chapterProg}%</span>
                                                             </div>
-                                                        )}
+                                                            <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                                                                <motion.div
+                                                                    initial={{ width: 0 }}
+                                                                    animate={{ width: `${chapterProg}%` }}
+                                                                    transition={{ duration: 0.8, delay: index * 0.1 }}
+                                                                    className={`h-2 rounded-full ${
+                                                                        completed
+                                                                            ? 'bg-linear-to-r from-emerald-500 to-teal-500'
+                                                                            : 'bg-linear-to-r from-blue-500 to-cyan-500'
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        </div>
                                                     </div>
-
-                                                    {unlocked && (
-                                                        <span className="text-gray-400 text-xl flex-shrink-0">→</span>
-                                                    )}
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         </Link>
-
-                                        {!unlocked && index > 0 && (
-                                            <p className="text-center text-xs text-gray-600 mt-2">
-                                                আগের অধ্যায়ে ৬০% পেলে unlock হবে
-                                            </p>
-                                        )}
-                                    </motion.div>
-                                )
-                            })}
-                        </div>
+                                    ) : (
+                                        <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-5 opacity-60">
+                                            <div className="flex gap-4 items-center">
+                                                <div className="grid size-14 place-items-center rounded-2xl bg-white/5 text-2xl">🔒</div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-gray-600">{chapter.title_bn || chapter.title}</h3>
+                                                    <p className="text-gray-600 text-sm">আগের অধ্যায় ৬০% সম্পন্ন করলে আনলক হবে</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )
+                        })}
                     </div>
                 )}
             </div>
