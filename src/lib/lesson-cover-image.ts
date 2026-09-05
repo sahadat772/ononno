@@ -3,11 +3,23 @@ import { classNumberToDepth } from "@/lib/study-depth";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CURRICULUM_PDF_BUCKET } from "@/lib/storage/supabase-curriculum-storage";
 
-/** Preferred Imagen models (tried in order). */
-export const COVER_IMAGE_MODELS = [
+/**
+ * Image models tried in order (Sep 2026).
+ * Native Gemini image models first — more reliable for API keys than Imagen alone.
+ */
+export const COVER_NATIVE_MODELS = [
+  "gemini-3.1-flash-image",
+  "gemini-2.5-flash-image",
+  "gemini-3.1-flash-image-preview",
+] as const;
+
+export const COVER_IMAGEN_MODELS = [
   "imagen-4.0-generate-001",
   "imagen-3.0-generate-002",
 ] as const;
+
+/** @deprecated use COVER_IMAGEN_MODELS */
+export const COVER_IMAGE_MODELS = COVER_IMAGEN_MODELS;
 
 export function buildLessonCoverPrompt(opts: {
   title: string;
@@ -18,24 +30,25 @@ export function buildLessonCoverPrompt(opts: {
   const depth = classNumberToDepth(opts.classNumber);
   const age =
     depth === "light"
-      ? "for young children age 6–8, very simple, friendly, colorful"
+      ? "for young children age 6–8, very simple, friendly, colorful cartoon-like"
       : depth === "standard"
         ? "for primary school children, clear educational illustration"
-        : "for secondary students, clean educational diagram-style illustration";
+        : "for secondary students, clean modern educational illustration";
 
-  const topic = [opts.title, opts.subjectName, opts.overview?.slice(0, 200)]
+  const topic = [opts.title, opts.subjectName, opts.overview?.slice(0, 180)]
     .filter(Boolean)
     .join(" — ");
 
   return [
-    "Educational illustration for a Bangladesh school lesson.",
+    "Create one educational illustration for a Bangladesh school lesson cover.",
     age + ".",
     "Topic: " + topic + ".",
-    "Style: soft flat illustration, warm colors, no text overlays, no watermarks,",
-    "no logos, no real book page scan, child-safe, classroom-friendly.",
-    "Single clear focal scene that helps a student understand the lesson theme.",
+    "Style: soft flat vector illustration, warm cheerful colors,",
+    "no written text, no letters, no watermarks, no logos,",
+    "no scanned textbook page, child-safe, classroom-friendly.",
+    "Show a single clear scene that matches the lesson theme (adventure-friendly).",
     "Do not copy any copyrighted textbook artwork.",
-    "Landscape 16:9 composition.",
+    "Wide landscape composition suitable as a lesson banner.",
   ].join(" ");
 }
 
@@ -45,16 +58,57 @@ export type CoverImageResult = {
   model: string;
 };
 
+function extractInlineImage(response: unknown): CoverImageResult | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = response as any;
+  const parts =
+    r?.candidates?.[0]?.content?.parts ??
+    r?.response?.candidates?.[0]?.content?.parts ??
+    [];
+  for (const part of parts) {
+    const inline = part?.inlineData || part?.inline_data;
+    if (inline?.data) {
+      return {
+        bytes: Buffer.from(String(inline.data), "base64"),
+        mimeType: String(inline.mimeType || inline.mime_type || "image/png"),
+        model: "",
+      };
+    }
+  }
+  return null;
+}
+
 /**
- * Generate one cover image via Gemini Imagen.
- * Throws if all models fail.
+ * Generate one cover image.
+ * 1) Gemini native image models
+ * 2) Imagen generateImages
  */
 export async function generateLessonCoverImage(
   prompt: string,
 ): Promise<CoverImageResult> {
   let lastError: unknown;
 
-  for (const model of COVER_IMAGE_MODELS) {
+  for (const model of COVER_NATIVE_MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseModalities: ["TEXT", "IMAGE"],
+        } as Record<string, unknown>,
+      });
+      const extracted = extractInlineImage(response);
+      if (extracted) {
+        return { ...extracted, model };
+      }
+      throw new Error("NO_IMAGE_PART");
+    } catch (e) {
+      lastError = e;
+      console.warn(`[cover-image] native model ${model} failed`, e);
+    }
+  }
+
+  for (const model of COVER_IMAGEN_MODELS) {
     try {
       const response = await ai.models.generateImages({
         model,
@@ -67,55 +121,17 @@ export async function generateLessonCoverImage(
 
       const generated = response.generatedImages?.[0];
       const imageBytes = generated?.image?.imageBytes;
-      if (!imageBytes) {
-        throw new Error("NO_IMAGE_BYTES");
-      }
+      if (!imageBytes) throw new Error("NO_IMAGE_BYTES");
 
       const buf =
         typeof imageBytes === "string"
           ? Buffer.from(imageBytes, "base64")
           : Buffer.from(imageBytes as ArrayBuffer);
 
-      return {
-        bytes: buf,
-        mimeType: "image/png",
-        model,
-      };
+      return { bytes: buf, mimeType: "image/png", model };
     } catch (e) {
       lastError = e;
-      console.warn(`[cover-image] model ${model} failed`, e);
-    }
-  }
-
-  // Fallback: Gemini multimodal image generation
-  const flashModels = [
-    "gemini-2.0-flash-preview-image-generation",
-    "gemini-2.5-flash-image",
-  ];
-  for (const model of flashModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-          responseModalities: ["TEXT", "IMAGE"],
-        } as Record<string, unknown>,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parts = (response as any)?.candidates?.[0]?.content?.parts ?? [];
-      for (const part of parts) {
-        const inline = part?.inlineData || part?.inline_data;
-        if (inline?.data) {
-          return {
-            bytes: Buffer.from(String(inline.data), "base64"),
-            mimeType: String(inline.mimeType || inline.mime_type || "image/png"),
-            model,
-          };
-        }
-      }
-    } catch (e) {
-      lastError = e;
-      console.warn(`[cover-image] flash model ${model} failed`, e);
+      console.warn(`[cover-image] imagen model ${model} failed`, e);
     }
   }
 
@@ -154,7 +170,7 @@ export async function uploadLessonCover(opts: {
 }
 
 /**
- * Full pipeline: prompt → image → storage → paths.
+ * Full pipeline: prompt → image → storage.
  * Returns null on soft failure (does not throw).
  */
 export async function generateAndStoreLessonCover(opts: {
