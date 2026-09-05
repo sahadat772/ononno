@@ -18,13 +18,14 @@ function getDb() {
 }
 
 function coverPath(lessonId: string, mimeType: string) {
-  const ext = mimeType.includes("png") ? "png" : "jpg";
+  const ext = mimeType.includes("svg")
+    ? "svg"
+    : mimeType.includes("png")
+      ? "png"
+      : "jpg";
   return `curriculum/media/covers/lesson-${lessonId}.${ext}`;
 }
 
-/**
- * Try multiple buckets — curriculum-pdfs often blocks non-PDF mime types.
- */
 async function uploadCoverBytes(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
@@ -34,7 +35,6 @@ async function uploadCoverBytes(
 ): Promise<{ bucket: string; path: string; url: string | null } | null> {
   const path = coverPath(lessonId, mimeType);
   const contentType = mimeType || "image/jpeg";
-  const errors: string[] = [];
 
   for (const bucket of COVER_BUCKETS) {
     try {
@@ -42,12 +42,8 @@ async function uploadCoverBytes(
         contentType,
         upsert: true,
       });
-      if (upErr) {
-        errors.push(`${bucket}: ${upErr.message}`);
-        continue;
-      }
+      if (upErr) continue;
 
-      // Prefer public URL if bucket is public; else signed
       const { data: pub } = db.storage.from(bucket).getPublicUrl(path);
       if (pub?.publicUrl) {
         return { bucket, path, url: pub.publicUrl as string };
@@ -61,20 +57,13 @@ async function uploadCoverBytes(
         path: `${bucket}/${path}`,
         url: signed?.signedUrl ?? null,
       };
-    } catch (e) {
-      errors.push(
-        `${bucket}: ${e instanceof Error ? e.message : String(e)}`,
-      );
+    } catch {
+      /* try next bucket */
     }
   }
-
-  console.warn("[generate-cover] all bucket uploads failed", errors.join(" | "));
   return null;
 }
 
-/**
- * POST /api/admin/curriculum/lessons/[id]/generate-cover
- */
 export async function POST(_request: NextRequest, context: RouteContext) {
   const auth = await requireRole(["admin"]);
   if ("error" in auth) return auth.error;
@@ -143,32 +132,39 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   });
 
   try {
-    const image = await generateLessonCoverImage(prompt);
+    const image = await generateLessonCoverImage(prompt, {
+      title,
+      subjectName,
+      classNumber,
+    });
 
-    // 1) Try Supabase storage (multiple buckets)
     const uploaded = await uploadCoverBytes(
       db,
       id,
       image.bytes,
-      image.mimeType || "image/jpeg",
+      image.mimeType || "image/svg+xml",
     );
 
-    // 2) If storage blocked — keep a durable external-style approach:
-    //    re-fetch is avoided; we store a stable pollinations URL for display
     let coverPath = uploaded?.path ?? null;
     let coverUrl = uploaded?.url ?? null;
-    let storageNote: string | null = null;
+
+    // SVG can always be embedded as data URL if storage fails
+    if (!coverUrl && image.mimeType.includes("svg")) {
+      coverUrl =
+        "data:image/svg+xml;base64," +
+        Buffer.from(image.bytes).toString("base64");
+      coverPath = null;
+    }
 
     if (!coverUrl) {
-      // Stable public URL from Pollinations (works even without storage)
-      const short = prompt.slice(0, 200);
-      coverUrl =
-        "https://image.pollinations.ai/prompt/" +
-        encodeURIComponent(short) +
-        `?width=1280&height=720&nologo=true&model=flux&seed=${id.replace(/-/g, "").slice(0, 8)}`;
-      coverPath = null;
-      storageNote =
-        "Storage bucket-এ image upload হয়নি (MIME/policy)। External cover URL save করা হয়েছে।";
+      return NextResponse.json(
+        {
+          error: "STORAGE_UPLOAD_FAILED",
+          message: "Cover generate হয়েছে কিন্তু URL save হয়নি।",
+          model: image.model,
+        },
+        { status: 500 },
+      );
     }
 
     const coverPatch: Record<string, unknown> = {
@@ -181,32 +177,24 @@ export async function POST(_request: NextRequest, context: RouteContext) {
         .from("lesson_contents")
         .update(coverPatch)
         .eq("lesson_id", id);
-      if (updErr) {
-        // Columns may be missing — still return URL to client
-        console.warn("[generate-cover] DB update", updErr.message);
-        if (/cover_image/i.test(updErr.message)) {
-          return NextResponse.json(
-            {
-              error: "COVER_COLUMNS_MISSING",
-              message:
-                "lesson_contents-এ cover_image_url / cover_image_path column নেই। নিচের SQL চালাও।",
-              sql: "alter table public.lesson_contents add column if not exists cover_image_path text; alter table public.lesson_contents add column if not exists cover_image_url text;",
-              cover_image_url: coverUrl,
-              model: image.model,
-            },
-            { status: 500 },
-          );
-        }
+      if (updErr && /cover_image/i.test(updErr.message)) {
+        return NextResponse.json(
+          {
+            error: "COVER_COLUMNS_MISSING",
+            message:
+              "lesson_contents-এ cover columns নেই। SQL চালাও: alter table public.lesson_contents add column if not exists cover_image_path text; alter table public.lesson_contents add column if not exists cover_image_url text;",
+            cover_image_url: coverUrl,
+            model: image.model,
+          },
+          { status: 500 },
+        );
       }
     } else {
-      const { error: insErr } = await db.from("lesson_contents").insert({
+      await db.from("lesson_contents").insert({
         lesson_id: id,
         ...coverPatch,
         is_ai_generated: false,
       });
-      if (insErr) {
-        console.warn("[generate-cover] content insert", insErr.message);
-      }
     }
 
     await audit("GENERATE_LESSON_COVER", auth.user.id, {
@@ -224,8 +212,8 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       model: image.model,
       storageUploaded: Boolean(uploaded),
       message: uploaded
-        ? "Cover image তৈরি ও storage-এ save হয়েছে।"
-        : storageNote || "Cover URL save হয়েছে (storage skip)।",
+        ? "Branded cover save হয়েছে।"
+        : "Cover data-URL হিসেবে save হয়েছে।",
     });
   } catch (e) {
     console.error("generate-cover error", e);
