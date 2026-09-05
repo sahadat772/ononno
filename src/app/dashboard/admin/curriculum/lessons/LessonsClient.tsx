@@ -113,9 +113,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
             if (!res.ok) return
             const data = await res.json()
             if (Array.isArray(data)) setLessons(data)
-        } catch {
-            /* keep list */
-        }
+        } catch { /* keep list */ }
     }
 
     const filteredSubjects = useMemo(() =>
@@ -133,8 +131,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
     const filteredLessons = useMemo(() => {
         const keyword = search.trim().toLowerCase()
         return lessons.filter((item) => {
-            const matchSearch = !keyword || [item.title, item.title_bn, item.slug]
-                .some((v) => v.toLowerCase().includes(keyword))
+            const matchSearch = !keyword || [item.title, item.title_bn, item.slug].some((v) => v.toLowerCase().includes(keyword))
             const matchClass = !filterClass || item.class_id === filterClass
             const matchSubject = !filterSubject || item.subject_id === filterSubject
             const matchChapter = !filterChapter || item.chapter_id === filterChapter
@@ -151,16 +148,6 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
 
     const publishedCount = lessons.filter(l => l.is_published).length
     const draftCount = lessons.filter(l => !l.is_published && l.is_active).length
-    const readyToGenerate = lessons.filter(l => l.workflow_status === 'reviewed').length
-
-    const nextAfterGenerated = useMemo(() => {
-        if (!lastGeneratedId) return null
-        const idx = lessons.findIndex(l => l.id === lastGeneratedId)
-        if (idx < 0) return null
-        return lessons.slice(idx + 1).find(l =>
-            l.workflow_status === 'reviewed' || l.workflow_status === 'extracted' || l.workflow_status === 'draft'
-        ) ?? null
-    }, [lastGeneratedId, lessons])
 
     const openEdit = (item: CurriculumLesson) => { setSelectedLesson(item); setEditOpen(true) }
     const openDelete = (item: CurriculumLesson) => { setSelectedLesson(item); setDeleteOpen(true) }
@@ -171,12 +158,10 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
         try {
             const res = await fetch(`/api/admin/curriculum/lessons/${item.id}/generate-cover`, { method: 'POST' })
             const data = await res.json()
-            if (!res.ok) {
-                throw new Error((data.message || data.error || 'Cover generate fails') + (data.details ? `\n${data.details}` : ''))
-            }
+            if (!res.ok) throw new Error((data.message || data.error || 'Cover fails') + (data.details ? `\n${data.details}` : ''))
             setHint(data.message || 'Cover generate হয়েছে।')
         } catch (e) {
-            window.alert(e instanceof Error ? e.message : 'Cover generate fails')
+            window.alert(e instanceof Error ? e.message : 'Cover fails')
         } finally {
             setWorkflowBusy(null)
         }
@@ -196,9 +181,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                 : `/api/admin/curriculum/lessons/${item.id}/generate`
 
             const response = await fetch(
-                action === "generate"
-                    ? generateUrl
-                    : `/api/admin/curriculum/lessons/${item.id}/workflow`,
+                action === "generate" ? generateUrl : `/api/admin/curriculum/lessons/${item.id}/workflow`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -207,17 +190,14 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
             )
             const data = await response.json()
             if (!response.ok) {
-                const detail = data.details ? `\n\nDetail: ${String(data.details).slice(0, 400)}` : ''
-                throw new Error((data.message || data.error || "Workflow update করা যায়নি।") + detail)
+                throw new Error((data.message || data.error || 'Workflow fails') + (data.details ? `\n${String(data.details).slice(0, 400)}` : ''))
             }
 
             if (action === 'generate') {
                 setLastGeneratedId(item.id)
-                setHint(data.cached ? (data.message || 'Cached content') : 'Study draft save হয়েছে। Approve → Publish করুন।')
+                setHint(data.cached ? (data.message || 'Cached') : 'Study draft save হয়েছে।')
             }
-            if (action === 'restore') {
-                setHint('Lesson restore হয়েছে (reviewed)। এখন Generate চাপুন।')
-            }
+            if (action === 'restore') setHint('Lesson restore হয়েছে (reviewed)। এখন Generate চাপুন।')
 
             const nextStatus =
                 action === 'review' || action === 'restore' ? 'reviewed' :
@@ -230,12 +210,8 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                     l.id === item.id
                         ? {
                             ...l,
-                            workflow_status: (data.workflow_status || data.lesson?.workflow_status || nextStatus) as CurriculumLesson['workflow_status'],
-                            is_published:
-                                action === 'publish' ? true
-                                : action === 'generate' && opts?.force ? false
-                                : action === 'restore' ? false
-                                : l.is_published,
+                            workflow_status: (data.workflow_status || nextStatus) as CurriculumLesson['workflow_status'],
+                            is_published: action === 'publish' ? true : (action === 'restore' || (action === 'generate' && force)) ? false : l.is_published,
                             is_active: action === 'restore' ? true : l.is_active,
                         }
                         : l,
@@ -243,7 +219,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
             )
             void softRefresh()
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "Workflow update করা যায়নি।")
+            window.alert(error instanceof Error ? error.message : 'Workflow fails')
         } finally {
             setWorkflowBusy(null)
         }
@@ -270,7 +246,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                             <h1 className="text-[clamp(1.65rem,3vw,2.55rem)] font-extrabold tracking-tight">
                                 Lesson <span className="bg-linear-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">Management</span>
                             </h1>
-                            <p className="mt-0.5 text-sm text-slate-400">Generate → Approve → Publish · Archived restore করা যায়</p>
+                            <p className="mt-0.5 text-sm text-slate-400">Archived → Restore → Generate → Approve → Publish</p>
                         </div>
                     </div>
                     <button onClick={() => setOpenModal(true)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-linear-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-bold">
@@ -278,15 +254,13 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                     </button>
                 </header>
 
-                {hint && (
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{hint}</div>
-                )}
+                {hint && <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{hint}</div>}
 
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard label="Total Lessons" value={lessons.length} text="All curriculum lessons" color="blue" icon={<BookOpen className="size-6" />} />
                     <StatCard label="Published" value={publishedCount} text="Live for students" color="green" icon={<Eye className="size-6" />} />
                     <StatCard label="Draft" value={draftCount} text="Not yet published" color="amber" icon={<Filter className="size-6" />} />
-                    <StatCard label="Results" value={filteredLessons.length} text={search ? `Matching "${search}"` : 'All shown'} color="purple" icon={<Zap className="size-6" />} />
+                    <StatCard label="Results" value={filteredLessons.length} text="All shown" color="purple" icon={<Zap className="size-6" />} />
                 </section>
 
                 <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15]">
@@ -311,21 +285,23 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                                 <option value="draft">Draft</option>
                                 <option value="reviewed">Reviewed</option>
                                 <option value="generated">Generated</option>
-                                <option value="inactive">Inactive</option>
                                 <option value="archived">Archived</option>
+                                <option value="inactive">Inactive</option>
                             </select>
                             <label className="relative">
                                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search lesson..." className="h-10 w-48 rounded-lg border border-slate-600 bg-[#0a1020] pl-9 pr-3 text-sm" />
+                                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="h-10 w-48 rounded-lg border border-slate-600 bg-[#0a1020] pl-9 pr-3 text-sm" />
                             </label>
                         </div>
                     </div>
 
                     <div className="divide-y divide-slate-800/90">
                         {filteredLessons.length === 0 ? (
-                            <div className="py-16 text-center"><FolderOpen className="mx-auto size-10 text-slate-600" /><p className="mt-3 font-bold">No lessons found</p></div>
-                        ) : filteredLessons.map((item) => (
-                            <article key={item.id} className="grid items-center gap-4 px-5 py-3 md:grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_220px]">
+                            <div className="py-16 text-center"><p className="font-bold">No lessons found</p></div>
+                        ) : filteredLessons.map((item) => {
+                            const isArchived = String(item.workflow_status || '').toLowerCase() === 'archived' || item.is_active === false
+                            return (
+                            <article key={item.id} className="grid items-center gap-3 px-5 py-3 md:grid-cols-[60px_minmax(160px,1fr)_100px_90px_60px_100px_minmax(200px,auto)]">
                                 <div className="grid size-11 place-items-center rounded-xl border border-amber-400/45 bg-amber-400/10 text-lg font-black text-amber-300">{item.lesson_number}</div>
                                 <div>
                                     <p className="font-bold text-white">{item.title_bn}</p>
@@ -335,43 +311,50 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                                 <p className="text-sm text-slate-400 truncate">{item.curriculum_subjects?.name_bn ?? '—'}</p>
                                 <p className="text-sm font-semibold text-amber-200">{item.xp_reward}</p>
                                 <WorkflowBadge status={item.workflow_status} />
-                                <div className="flex flex-wrap gap-1.5">
-                                    {(item.workflow_status === 'draft' || item.workflow_status === 'extracted') && (
-                                        <ActionButton label="Mark reviewed" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, 'review')}><CheckCircle2 className="size-3.5" /></ActionButton>
+                                <div className="flex flex-wrap gap-1.5 justify-end">
+                                    {isArchived && (
+                                        <>
+                                            <button type="button" disabled={workflowBusy === `${item.id}:restore`} onClick={() => { if (window.confirm('Restore → reviewed?')) void runWorkflow(item, 'restore') }}
+                                                className="inline-flex h-8 items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 text-[11px] font-bold text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-40">
+                                                <CheckCircle2 className="size-3.5" /> Restore
+                                            </button>
+                                            <button type="button" disabled={!!workflowBusy} onClick={() => { if (window.confirm('Restore + Generate?')) void (async () => { await runWorkflow(item, 'restore'); await runWorkflow(item, 'generate', { force: true }) })() }}
+                                                className="inline-flex h-8 items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 text-[11px] font-bold text-amber-200 hover:bg-amber-500/25 disabled:opacity-40">
+                                                <WandSparkles className="size-3.5" /> Generate
+                                            </button>
+                                        </>
                                     )}
-                                    {item.workflow_status === 'reviewed' && (
-                                        <ActionButton label="Generate study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, 'generate')}><WandSparkles className="size-3.5" /></ActionButton>
+                                    {!isArchived && (item.workflow_status === 'draft' || item.workflow_status === 'extracted') && (
+                                        <ActionButton label="Review" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, 'review')}><CheckCircle2 className="size-3.5" /></ActionButton>
                                     )}
-                                    {item.workflow_status === 'generated' && (
+                                    {!isArchived && item.workflow_status === 'reviewed' && (
+                                        <ActionButton label="Generate" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, 'generate')}><WandSparkles className="size-3.5" /></ActionButton>
+                                    )}
+                                    {!isArchived && item.workflow_status === 'generated' && (
                                         <>
                                             <ActionButton label="Approve" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, 'approve')}><CheckCircle2 className="size-3.5" /></ActionButton>
-                                            <ActionButton label="Force re-generate" disabled={workflowBusy === `${item.id}:generate`} onClick={() => { if (window.confirm('নতুন study?')) void runWorkflow(item, 'generate', { force: true }) }}><WandSparkles className="size-3.5" /></ActionButton>
+                                            <ActionButton label="Force gen" disabled={workflowBusy === `${item.id}:generate`} onClick={() => { if (window.confirm('Force generate?')) void runWorkflow(item, 'generate', { force: true }) }}><WandSparkles className="size-3.5" /></ActionButton>
                                             <ActionButton label="Cover" disabled={workflowBusy === `${item.id}:cover`} onClick={() => void generateCover(item)}><ImageIcon className="size-3.5" /></ActionButton>
                                         </>
                                     )}
-                                    {item.workflow_status === 'approved' && (
+                                    {!isArchived && item.workflow_status === 'approved' && (
                                         <>
                                             <ActionButton label="Publish" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, 'publish')}><Send className="size-3.5" /></ActionButton>
                                             <ActionButton label="Cover" disabled={workflowBusy === `${item.id}:cover`} onClick={() => void generateCover(item)}><ImageIcon className="size-3.5" /></ActionButton>
                                         </>
                                     )}
-                                    {(item.workflow_status === 'published' || item.is_published) && (
+                                    {!isArchived && (item.workflow_status === 'published' || item.is_published) && (
                                         <>
-                                            <ActionButton label="Force re-generate" disabled={workflowBusy === `${item.id}:generate`} onClick={() => { if (window.confirm('Unpublish + regenerate?')) void runWorkflow(item, 'generate', { force: true }) }}><WandSparkles className="size-3.5" /></ActionButton>
+                                            <ActionButton label="Force gen" disabled={workflowBusy === `${item.id}:generate`} onClick={() => { if (window.confirm('Unpublish + regenerate?')) void runWorkflow(item, 'generate', { force: true }) }}><WandSparkles className="size-3.5" /></ActionButton>
                                             <ActionButton label="Cover" disabled={workflowBusy === `${item.id}:cover`} onClick={() => void generateCover(item)}><ImageIcon className="size-3.5" /></ActionButton>
-                                        </>
-                                    )}
-                                    {(item.workflow_status === 'archived' || item.is_active === false) && (
-                                        <>
-                                            <ActionButton label="Restore" disabled={workflowBusy === `${item.id}:restore`} onClick={() => { if (window.confirm('Restore → reviewed?')) void runWorkflow(item, 'restore') }}><CheckCircle2 className="size-3.5" /></ActionButton>
-                                            <ActionButton label="Restore + Generate" disabled={workflowBusy === `${item.id}:generate`} onClick={() => { if (window.confirm('Restore + Generate?')) void (async () => { await runWorkflow(item, 'restore'); await runWorkflow(item, 'generate', { force: true }) })() }}><WandSparkles className="size-3.5" /></ActionButton>
                                         </>
                                     )}
                                     <ActionButton label="Edit" onClick={() => openEdit(item)}><Pencil className="size-3.5" /></ActionButton>
                                     <ActionButton label="Delete" danger onClick={() => openDelete(item)}><Trash2 className="size-3.5" /></ActionButton>
                                 </div>
                             </article>
-                        ))}
+                            )
+                        })}
                     </div>
                 </section>
             </div>
