@@ -46,9 +46,7 @@ export default function ClassSubjectsPage() {
     const [subjects, setSubjects] = useState<Subject[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    /** subjectId → 0–100 */
     const [progress, setProgress] = useState<Record<string, number>>({})
-    /** subjectId → { done, total } */
     const [counts, setCounts] = useState<Record<string, { done: number; total: number }>>({})
 
     useEffect(() => {
@@ -90,7 +88,7 @@ export default function ClassSubjectsPage() {
                 if (!cls) {
                     setClassInfo(null)
                     setSubjects([])
-                    setError(`Class "${classSlug}" পাওয়া যায়নি। Admin curriculum_classes-এ slug check করুন।`)
+                    setError(`Class "${classSlug}" পাওয়া যায়নি।`)
                     return
                 }
 
@@ -104,7 +102,6 @@ export default function ClassSubjectsPage() {
                     .order('order_index')
 
                 if (subErr) {
-                    console.error('subjects fetch', subErr)
                     setError('Subjects load করা যায়নি।')
                     setSubjects([])
                     return
@@ -113,26 +110,46 @@ export default function ClassSubjectsPage() {
                 const subjectList = subs ?? []
                 setSubjects(subjectList)
 
-                // Published lessons for this class (denominator)
-                const { data: published } = await supabase
-                    .from('curriculum_lessons')
-                    .select('id, subject_id')
-                    .eq('class_id', cls.id)
-                    .eq('is_active', true)
-                    .eq('is_published', true)
+                // Prefer subject_id; fallback class_id if some rows miss class_id
+                let published =
+                    (
+                        await supabase
+                            .from('curriculum_lessons')
+                            .select('id, subject_id')
+                            .eq('class_id', cls.id)
+                            .eq('is_active', true)
+                            .eq('is_published', true)
+                    ).data ?? []
+
+                if (published.length === 0 && subjectList.length > 0) {
+                    const ids = subjectList.map((s) => s.id)
+                    const { data } = await supabase
+                        .from('curriculum_lessons')
+                        .select('id, subject_id')
+                        .in('subject_id', ids)
+                        .eq('is_active', true)
+                        .eq('is_published', true)
+                    published = data ?? []
+                }
 
                 const totalBySubject: Record<string, number> = {}
                 const publishedIds = new Set<string>()
-                for (const l of published ?? []) {
+                const lessonToSubject = new Map<string, string>()
+                for (const l of published) {
                     if (!l.subject_id) continue
+                    const lid = String(l.id)
                     totalBySubject[l.subject_id] = (totalBySubject[l.subject_id] || 0) + 1
-                    publishedIds.add(l.id)
+                    publishedIds.add(lid)
+                    lessonToSubject.set(lid, String(l.subject_id))
                 }
 
-                // Student completions (numerator)
-                const { data: { user } } = await supabase.auth.getUser()
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser()
                 const doneBySubject: Record<string, number> = {}
+
                 if (user && publishedIds.size > 0) {
+                    // Do NOT filter subject_id — rows may have null subject_id
                     const { data: prog } = await supabase
                         .from('learning_progress')
                         .select('lesson_id, subject_id, status')
@@ -141,10 +158,13 @@ export default function ClassSubjectsPage() {
 
                     const seen = new Set<string>()
                     for (const row of prog ?? []) {
-                        if (!row.lesson_id || !publishedIds.has(row.lesson_id)) continue
-                        if (seen.has(row.lesson_id)) continue
-                        seen.add(row.lesson_id)
-                        const sid = row.subject_id as string
+                        if (!row.lesson_id) continue
+                        const lid = String(row.lesson_id)
+                        if (!publishedIds.has(lid) || seen.has(lid)) continue
+                        seen.add(lid)
+                        const sid =
+                            (row.subject_id ? String(row.subject_id) : null) ||
+                            lessonToSubject.get(lid)
                         if (!sid) continue
                         doneBySubject[sid] = (doneBySubject[sid] || 0) + 1
                     }
@@ -188,7 +208,11 @@ export default function ClassSubjectsPage() {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white px-4 py-8">
-            <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto mb-8">
+            <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-5xl mx-auto mb-8"
+            >
                 <Link
                     href="/dashboard/student/academic"
                     className="text-sm text-gray-400 hover:text-white transition-colors inline-flex items-center gap-2"
@@ -202,11 +226,14 @@ export default function ClassSubjectsPage() {
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
                                     <p className="text-gray-400 text-sm mb-1">NCTB Curriculum</p>
-                                    <h1 className={`text-3xl font-bold bg-linear-to-r ${sectorColor} bg-clip-text text-transparent`}>
+                                    <h1
+                                        className={`text-3xl font-bold bg-linear-to-r ${sectorColor} bg-clip-text text-transparent`}
+                                    >
                                         {classInfo.name}
                                     </h1>
                                     <p className="text-gray-400 mt-1">
-                                        {subjects.length}টি বিষয় · {overall.done}/{overall.total} পাঠ সম্পন্ন
+                                        {subjects.length}টি বিষয় · {overall.done}/{overall.total} পাঠ
+                                        সম্পন্ন
                                     </p>
                                 </div>
                                 <div className="text-6xl">📚</div>
@@ -234,18 +261,19 @@ export default function ClassSubjectsPage() {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[...Array(6)].map((_, i) => (
-                            <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-6 animate-pulse h-40" />
+                            <div
+                                key={i}
+                                className="rounded-2xl bg-white/5 border border-white/5 p-6 animate-pulse h-40"
+                            />
                         ))}
                     </div>
                 ) : error ? (
                     <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
-                        <p className="text-4xl mb-3">📭</p>
                         <p className="text-amber-200 font-semibold">{error}</p>
                     </div>
                 ) : subjects.length === 0 ? (
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
                         <p className="text-white font-semibold">এই ক্লাসে এখনো subject নেই</p>
-                        <p className="text-gray-400 text-sm mt-2">Admin subject add ও lesson publish করলে এখানে দেখা যাবে।</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -293,12 +321,16 @@ function SubjectCard({
             <Link href={`/dashboard/student/academic/learn/${classSlug}/${subject.id}`}>
                 <div className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer group h-full">
                     <div className="flex items-start justify-between mb-4">
-                        <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-3xl shadow-lg`}>
+                        <div
+                            className={`w-14 h-14 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-3xl shadow-lg`}
+                        >
                             {subject.icon || '📖'}
                         </div>
                         <div className="text-right">
                             <p className="text-xs text-gray-500">অগ্রগতি</p>
-                            <p className={`text-lg font-bold bg-linear-to-r ${color} bg-clip-text text-transparent`}>
+                            <p
+                                className={`text-lg font-bold bg-linear-to-r ${color} bg-clip-text text-transparent`}
+                            >
                                 {progress}%
                             </p>
                             <p className="text-[10px] text-gray-500 mt-0.5">
@@ -321,8 +353,11 @@ function SubjectCard({
                         />
                     </div>
 
-                    <div className={`text-sm font-semibold bg-linear-to-r ${color} bg-clip-text text-transparent flex items-center gap-1`}>
-                        {progress >= 100 ? 'সম্পন্ন ✨' : progress > 0 ? 'চালিয়ে যাও' : 'শুরু করো'} <span>→</span>
+                    <div
+                        className={`text-sm font-semibold bg-linear-to-r ${color} bg-clip-text text-transparent flex items-center gap-1`}
+                    >
+                        {progress >= 100 ? 'সম্পন্ন ✨' : progress > 0 ? 'চালিয়ে যাও' : 'শুরু করো'}{' '}
+                        <span>→</span>
                     </div>
                 </div>
             </Link>
