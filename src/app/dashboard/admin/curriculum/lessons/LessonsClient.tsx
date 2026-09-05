@@ -189,7 +189,12 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
             )
             const data = await response.json()
             if (!response.ok) {
-                throw new Error(data.message || data.error || "Workflow update করা যায়নি।")
+                const detail = data.details
+                    ? `\n\nDetail: ${String(data.details).slice(0, 400)}`
+                    : ''
+                throw new Error(
+                    (data.message || data.error || "Workflow update করা যায়নি।") + detail,
+                )
             }
 
             if (action === 'generate') {
@@ -251,7 +256,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                                 Lesson <span className="bg-linear-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">Management</span>
                             </h1>
                             <p className="mt-0.5 text-sm text-slate-400">
-                                একবারে <strong className="text-amber-200">১টা lesson</strong> — ছাত্র-পাঠ্য study Generate → Approve → Publish
+                                একবারে <strong className="text-amber-200">১টা lesson</strong> — Generate → Approve → Publish
                             </p>
                         </div>
                     </div>
@@ -264,7 +269,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                 <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 px-4 py-3 text-sm text-violet-100">
                     <p className="font-semibold">Architecture workflow</p>
                     <p className="mt-1 text-xs text-violet-200/80">
-                        PDF (TG) → Extract TOC → Review → <strong>Generate ছাত্র study</strong> → Approve → Publish → Student
+                        PDF → Extract → Review → <strong>Generate</strong> → Approve → Publish
                     </p>
                     <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate}</p>
                 </div>
@@ -292,7 +297,6 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                             <h2 className="flex items-center gap-2 text-lg font-bold">
                                 <FolderOpen className="size-5 text-amber-300" /> Curriculum Lessons
                             </h2>
-                            <p className="mt-1 text-xs text-slate-400">Review → Generate → Approve → Publish (no full page reload)</p>
                         </div>
                         <div className="flex gap-3 flex-wrap">
                             <select value={filterClass}
@@ -332,16 +336,6 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                         </div>
                     </div>
 
-                    <div className="hidden grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_160px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
-                        <span>No.</span>
-                        <span>Title</span>
-                        <span>Chapter</span>
-                        <span>Subject</span>
-                        <span>XP</span>
-                        <span>Workflow</span>
-                        <span>Actions</span>
-                    </div>
-
                     <div className="divide-y divide-slate-800/90">
                         {filteredLessons.length === 0 ? (
                             <div className="py-16 text-center">
@@ -369,11 +363,9 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                                         </ActionButton>
                                     )}
                                     {item.workflow_status === 'reviewed' && (
-                                        <>
-                                            <ActionButton label="Generate study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, 'generate')}>
-                                                <WandSparkles className="size-3.5" />
-                                            </ActionButton>
-                                        </>
+                                        <ActionButton label="Generate study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, 'generate')}>
+                                            <WandSparkles className="size-3.5" />
+                                        </ActionButton>
                                     )}
                                     {item.workflow_status === 'generated' && (
                                         <>
