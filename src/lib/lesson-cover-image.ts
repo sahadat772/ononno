@@ -4,20 +4,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CURRICULUM_PDF_BUCKET } from "@/lib/storage/supabase-curriculum-storage";
 
 /**
- * Native Gemini image models (Nano Banana family) — Sep 2026.
- * Prefer these; Imagen 3 is often 404 on consumer API keys.
+ * Cover image strategy (production-safe):
+ * 1) One Gemini Nano Banana attempt (if quota allows)
+ * 2) Free Pollinations Flux fallback (no Gemini quota)
+ *
+ * Env (optional):
+ *   COVER_IMAGE_PROVIDER = auto | gemini | pollinations
+ *   default: auto
  */
 export const COVER_NATIVE_MODELS = [
-  "gemini-3.1-flash-image",
   "gemini-2.5-flash-image",
-  "gemini-3-pro-image",
+  "gemini-3.1-flash-image",
 ] as const;
 
-/** Optional last-resort Imagen (may 404 on many keys). */
-export const COVER_IMAGEN_MODELS = ["imagen-4.0-generate-001"] as const;
-
 /** @deprecated */
-export const COVER_IMAGE_MODELS = COVER_IMAGEN_MODELS;
+export const COVER_IMAGE_MODELS = COVER_NATIVE_MODELS;
 
 export function buildLessonCoverPrompt(opts: {
   title: string;
@@ -33,20 +34,16 @@ export function buildLessonCoverPrompt(opts: {
         ? "for primary school children, clear educational illustration"
         : "for secondary students, clean modern educational illustration";
 
-  const topic = [opts.title, opts.subjectName, opts.overview?.slice(0, 180)]
+  const topic = [opts.title, opts.subjectName, opts.overview?.slice(0, 120)]
     .filter(Boolean)
     .join(" — ");
 
   return [
-    "Create one educational illustration for a Bangladesh school lesson cover.",
-    age + ".",
-    "Topic: " + topic + ".",
-    "Style: soft flat vector illustration, warm cheerful colors,",
-    "no written text, no letters, no watermarks, no logos,",
-    "no scanned textbook page, child-safe, classroom-friendly.",
-    "Show a single clear scene that matches the lesson theme (adventure-friendly).",
-    "Do not copy any copyrighted textbook artwork.",
-    "Wide landscape composition suitable as a lesson banner.",
+    "Educational illustration, Bangladesh school lesson cover,",
+    age + ",",
+    "topic: " + topic + ",",
+    "soft flat vector, warm cheerful colors, adventure-friendly scene,",
+    "no text, no letters, no watermark, no logo, child-safe, landscape 16:9",
   ].join(" ");
 }
 
@@ -59,30 +56,18 @@ export type CoverImageResult = {
 function extractInlineImage(response: unknown): CoverImageResult | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = response as any;
-
-  const partLists: unknown[][] = [];
-  const c0 = r?.candidates?.[0];
-  if (c0?.content?.parts) partLists.push(c0.content.parts);
-  if (r?.response?.candidates?.[0]?.content?.parts) {
-    partLists.push(r.response.candidates[0].content.parts);
-  }
-  // Some SDK versions expose data on response directly
-  if (Array.isArray(r?.parts)) partLists.push(r.parts);
-
-  for (const parts of partLists) {
-    for (const part of parts) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const p = part as any;
-      const inline = p?.inlineData || p?.inline_data;
-      if (inline?.data) {
-        return {
-          bytes: Buffer.from(String(inline.data), "base64"),
-          mimeType: String(
-            inline.mimeType || inline.mime_type || "image/png",
-          ),
-          model: "",
-        };
-      }
+  const parts =
+    r?.candidates?.[0]?.content?.parts ??
+    r?.response?.candidates?.[0]?.content?.parts ??
+    [];
+  for (const part of parts) {
+    const inline = part?.inlineData || part?.inline_data;
+    if (inline?.data) {
+      return {
+        bytes: Buffer.from(String(inline.data), "base64"),
+        mimeType: String(inline.mimeType || inline.mime_type || "image/png"),
+        model: "",
+      };
     }
   }
   return null;
@@ -97,84 +82,120 @@ function errMessage(e: unknown): string {
   }
 }
 
+function isQuotaError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("429") ||
+    m.includes("quota") ||
+    m.includes("resource_exhausted") ||
+    m.includes("rate limit") ||
+    m.includes("exceeded your current quota")
+  );
+}
+
 /**
- * Generate one cover image via Gemini native image models.
- * Uses responseModalities + imageConfig (required for Nano Banana).
+ * Free image fallback — Pollinations (Flux).
+ * No API key required. Used when Gemini image quota is exhausted.
+ */
+export async function generateCoverViaPollinations(
+  prompt: string,
+): Promise<CoverImageResult> {
+  const short = prompt.slice(0, 280);
+  const url =
+    "https://image.pollinations.ai/prompt/" +
+    encodeURIComponent(short) +
+    "?width=1280&height=720&nologo=true&model=flux&enhance=true";
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "image/*" },
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!res.ok) {
+    throw new Error(`POLLINATIONS_HTTP_${res.status}`);
+  }
+
+  const ct = res.headers.get("content-type") || "image/jpeg";
+  if (!ct.includes("image")) {
+    throw new Error(`POLLINATIONS_NOT_IMAGE: ${ct}`);
+  }
+
+  const ab = await res.arrayBuffer();
+  if (!ab.byteLength || ab.byteLength < 1000) {
+    throw new Error("POLLINATIONS_EMPTY_IMAGE");
+  }
+
+  return {
+    bytes: Buffer.from(ab),
+    mimeType: ct.includes("png") ? "image/png" : "image/jpeg",
+    model: "pollinations-flux",
+  };
+}
+
+async function generateCoverViaGemini(
+  prompt: string,
+): Promise<CoverImageResult> {
+  let lastErr = "";
+
+  for (const model of COVER_NATIVE_MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseModalities: ["IMAGE"],
+          imageConfig: { aspectRatio: "16:9" },
+        } as never,
+      });
+      const extracted = extractInlineImage(response);
+      if (extracted) return { ...extracted, model };
+      lastErr = `${model}: NO_IMAGE_PART`;
+    } catch (e) {
+      lastErr = `${model}: ${errMessage(e).slice(0, 200)}`;
+      console.warn("[cover-image] gemini failed", lastErr);
+      if (isQuotaError(lastErr)) {
+        // Don't burn more Gemini image quota
+        throw new Error(`GEMINI_IMAGE_QUOTA: ${lastErr}`);
+      }
+    }
+  }
+
+  throw new Error(lastErr || "GEMINI_IMAGE_FAILED");
+}
+
+/**
+ * Generate cover: Gemini (1–2 tries) → Pollinations fallback.
  */
 export async function generateLessonCoverImage(
   prompt: string,
 ): Promise<CoverImageResult> {
-  const errors: string[] = [];
+  const provider = (
+    process.env.COVER_IMAGE_PROVIDER || "auto"
+  ).toLowerCase();
 
-  const modalityVariants: Array<Record<string, unknown>> = [
-    {
-      responseModalities: ["IMAGE"],
-      imageConfig: { aspectRatio: "16:9" },
-    },
-    {
-      responseModalities: ["TEXT", "IMAGE"],
-      imageConfig: { aspectRatio: "16:9" },
-    },
-    {
-      responseModalities: ["IMAGE"],
-    },
-  ];
-
-  for (const model of COVER_NATIVE_MODELS) {
-    for (const config of modalityVariants) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: config as never,
-        });
-        const extracted = extractInlineImage(response);
-        if (extracted) {
-          return { ...extracted, model };
-        }
-        errors.push(`${model}: NO_IMAGE_PART`);
-      } catch (e) {
-        const msg = errMessage(e).slice(0, 220);
-        errors.push(`${model}: ${msg}`);
-        console.warn(`[cover-image] ${model} failed`, msg);
-      }
-    }
+  if (provider === "pollinations") {
+    return generateCoverViaPollinations(prompt);
   }
 
-  // Last resort: Imagen 4 only (Imagen 3 is widely 404)
-  for (const model of COVER_IMAGEN_MODELS) {
+  if (provider === "gemini") {
+    return generateCoverViaGemini(prompt);
+  }
+
+  // auto
+  try {
+    return await generateCoverViaGemini(prompt);
+  } catch (e) {
+    const msg = errMessage(e);
+    console.warn("[cover-image] gemini path failed, trying pollinations", msg);
     try {
-      const response = await ai.models.generateImages({
-        model,
-        prompt,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: "16:9",
-        },
-      });
-      const generated = response.generatedImages?.[0];
-      const imageBytes = generated?.image?.imageBytes;
-      if (!imageBytes) {
-        errors.push(`${model}: NO_IMAGE_BYTES`);
-        continue;
-      }
-      const buf =
-        typeof imageBytes === "string"
-          ? Buffer.from(imageBytes, "base64")
-          : Buffer.from(imageBytes as ArrayBuffer);
-      return { bytes: buf, mimeType: "image/png", model };
-    } catch (e) {
-      const msg = errMessage(e).slice(0, 220);
-      errors.push(`${model}: ${msg}`);
-      console.warn(`[cover-image] imagen ${model} failed`, msg);
+      return await generateCoverViaPollinations(prompt);
+    } catch (e2) {
+      throw new Error(
+        `COVER_IMAGE_GENERATION_FAILED: Gemini(${msg.slice(0, 180)}) | Pollinations(${errMessage(e2).slice(0, 120)})`,
+      );
     }
   }
-
-  throw new Error(
-    "COVER_IMAGE_GENERATION_FAILED: " +
-      errors.slice(0, 6).join(" | ") +
-      " — GEMINI_API_KEY-এ image model (gemini-3.1-flash-image) access আছে কিনা চেক করো।",
-  );
 }
 
 export function coverStoragePath(lessonId: string) {
