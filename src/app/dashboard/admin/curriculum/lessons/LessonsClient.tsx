@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, BookOpen, CheckCircle2, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Send, Trash2, WandSparkles, Zap } from 'lucide-react'
+import { ArrowLeft, BookOpen, CheckCircle2, CirclePlus, Eye, Filter, FolderOpen, Image as ImageIcon, Pencil, Search, Send, Trash2, WandSparkles, Zap } from 'lucide-react'
 import AddLessonModal from './AddLessonModal'
 import EditLessonModal from './EditLessonModal'
 import DeleteLessonModal from './DeleteLessonModal'
@@ -164,6 +164,30 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
     const openEdit = (item: CurriculumLesson) => { setSelectedLesson(item); setEditOpen(true) }
     const openDelete = (item: CurriculumLesson) => { setSelectedLesson(item); setDeleteOpen(true) }
 
+    const generateCover = async (item: CurriculumLesson) => {
+        setWorkflowBusy(`${item.id}:cover`)
+        setHint(null)
+        try {
+            const res = await fetch(`/api/admin/curriculum/lessons/${item.id}/generate-cover`, {
+                method: 'POST',
+            })
+            const data = await res.json()
+            if (!res.ok) {
+                throw new Error(
+                    (data.message || data.error || 'Cover generate fails') +
+                    (data.details ? `\n${data.details}` : ''),
+                )
+            }
+            setHint(data.cover_image_url
+                ? 'Cover image generate হয়েছে।'
+                : (data.message || 'Cover request complete।'))
+        } catch (e) {
+            window.alert(e instanceof Error ? e.message : 'Cover generate fails')
+        } finally {
+            setWorkflowBusy(null)
+        }
+    }
+
     const runWorkflow = async (
         item: CurriculumLesson,
         action: "review" | "generate" | "approve" | "publish",
@@ -218,7 +242,12 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                         ? {
                             ...l,
                             workflow_status: (data.lesson?.workflow_status || nextStatus) as CurriculumLesson['workflow_status'],
-                            is_published: action === 'publish' ? true : l.is_published,
+                            is_published:
+                                action === 'publish'
+                                    ? true
+                                    : action === 'generate' && opts?.force
+                                      ? false
+                                      : l.is_published,
                         }
                         : l,
                 ),
@@ -256,7 +285,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                                 Lesson <span className="bg-linear-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">Management</span>
                             </h1>
                             <p className="mt-0.5 text-sm text-slate-400">
-                                একবারে <strong className="text-amber-200">১টা lesson</strong> — Generate → Approve → Publish
+                                Generate → Approve → Publish · Published-এ Force Re-generate + Cover আছে
                             </p>
                         </div>
                     </div>
@@ -269,7 +298,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                 <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 px-4 py-3 text-sm text-violet-100">
                     <p className="font-semibold">Architecture workflow</p>
                     <p className="mt-1 text-xs text-violet-200/80">
-                        PDF → Extract → Review → <strong>Generate</strong> → Approve → Publish
+                        PDF → Extract → Review → Generate → Approve → Publish
                     </p>
                     <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate}</p>
                 </div>
@@ -344,7 +373,7 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                             </div>
                         ) : filteredLessons.map((item) => (
                             <article key={item.id}
-                                className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_160px]">
+                                className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_120px_100px_80px_110px_200px]">
                                 <div className="grid size-11 place-items-center rounded-xl border border-amber-400/45 bg-amber-400/10 text-lg font-black text-amber-300">
                                     {item.lesson_number}
                                 </div>
@@ -377,12 +406,42 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
                                             }}>
                                                 <WandSparkles className="size-3.5" />
                                             </ActionButton>
+                                            <ActionButton label="Generate cover image" disabled={workflowBusy === `${item.id}:cover`} onClick={() => void generateCover(item)}>
+                                                <ImageIcon className="size-3.5" />
+                                            </ActionButton>
                                         </>
                                     )}
                                     {item.workflow_status === 'approved' && (
-                                        <ActionButton label="Publish" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, 'publish')}>
-                                            <Send className="size-3.5" />
-                                        </ActionButton>
+                                        <>
+                                            <ActionButton label="Publish" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, 'publish')}>
+                                                <Send className="size-3.5" />
+                                            </ActionButton>
+                                            <ActionButton label="Generate cover image" disabled={workflowBusy === `${item.id}:cover`} onClick={() => void generateCover(item)}>
+                                                <ImageIcon className="size-3.5" />
+                                            </ActionButton>
+                                        </>
+                                    )}
+                                    {(item.workflow_status === 'published' || item.is_published) && (
+                                        <>
+                                            <ActionButton
+                                                label="Force re-generate study"
+                                                disabled={workflowBusy === `${item.id}:generate`}
+                                                onClick={() => {
+                                                    if (window.confirm('Published lesson unpublish করে নতুন study generate হবে। চালিয়ে যাবে?')) {
+                                                        void runWorkflow(item, 'generate', { force: true })
+                                                    }
+                                                }}
+                                            >
+                                                <WandSparkles className="size-3.5" />
+                                            </ActionButton>
+                                            <ActionButton
+                                                label="Generate cover image"
+                                                disabled={workflowBusy === `${item.id}:cover`}
+                                                onClick={() => void generateCover(item)}
+                                            >
+                                                <ImageIcon className="size-3.5" />
+                                            </ActionButton>
+                                        </>
                                     )}
                                     <ActionButton label="Edit" onClick={() => openEdit(item)}><Pencil className="size-3.5" /></ActionButton>
                                     <ActionButton label="Delete" danger onClick={() => openDelete(item)}><Trash2 className="size-3.5" /></ActionButton>
@@ -395,7 +454,12 @@ export default function LessonsClient({ lessons: initialLessons, chapters, subje
 
             <AddLessonModal open={openModal} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setOpenModal(false)} onSuccess={() => { void softRefresh() }} />
             <EditLessonModal key={selectedLesson?.id ?? 'edit'} open={editOpen} lesson={selectedLesson} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setEditOpen(false)} onSuccess={() => { void softRefresh() }} />
-            <DeleteLessonModal open={deleteOpen} lesson={selectedLesson} onClose={() => setDeleteOpen(false)} onSuccess={() => { void softRefresh() }} />
+            <DeleteLessonModal open={deleteOpen} lesson={selectedLesson} onClose={() => setDeleteOpen(false)} onSuccess={() => {
+                if (selectedLesson) {
+                    setLessons((prev) => prev.filter((l) => l.id !== selectedLesson.id))
+                }
+                void softRefresh()
+            }} />
         </main>
     )
 }
