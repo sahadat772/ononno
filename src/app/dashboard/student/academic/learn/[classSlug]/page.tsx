@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -23,7 +23,6 @@ interface ClassInfo {
     class_number: number
 }
 
-/** Match class-1, class_1, class1, Class 1, etc. */
 function slugCandidates(raw: string): string[] {
     const s = decodeURIComponent(raw || '').trim().toLowerCase()
     const underscored = s.replace(/-/g, '_')
@@ -47,7 +46,10 @@ export default function ClassSubjectsPage() {
     const [subjects, setSubjects] = useState<Subject[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [progress] = useState<Record<string, number>>({})
+    /** subjectId → 0–100 */
+    const [progress, setProgress] = useState<Record<string, number>>({})
+    /** subjectId → { done, total } */
+    const [counts, setCounts] = useState<Record<string, { done: number; total: number }>>({})
 
     useEffect(() => {
         const fetchData = async () => {
@@ -59,7 +61,6 @@ export default function ClassSubjectsPage() {
                 const candidates = slugCandidates(classSlug)
                 let cls: ClassInfo | null = null
 
-                // 1) Try exact slug matches
                 for (const slug of candidates) {
                     const { data } = await supabase
                         .from('curriculum_classes')
@@ -73,7 +74,6 @@ export default function ClassSubjectsPage() {
                     }
                 }
 
-                // 2) Fallback: class_number from slug (class-1 → 1)
                 if (!cls) {
                     const num = parseClassNumber(classSlug)
                     if (num != null) {
@@ -110,7 +110,56 @@ export default function ClassSubjectsPage() {
                     return
                 }
 
-                setSubjects(subs ?? [])
+                const subjectList = subs ?? []
+                setSubjects(subjectList)
+
+                // Published lessons for this class (denominator)
+                const { data: published } = await supabase
+                    .from('curriculum_lessons')
+                    .select('id, subject_id')
+                    .eq('class_id', cls.id)
+                    .eq('is_active', true)
+                    .eq('is_published', true)
+
+                const totalBySubject: Record<string, number> = {}
+                const publishedIds = new Set<string>()
+                for (const l of published ?? []) {
+                    if (!l.subject_id) continue
+                    totalBySubject[l.subject_id] = (totalBySubject[l.subject_id] || 0) + 1
+                    publishedIds.add(l.id)
+                }
+
+                // Student completions (numerator)
+                const { data: { user } } = await supabase.auth.getUser()
+                const doneBySubject: Record<string, number> = {}
+                if (user && publishedIds.size > 0) {
+                    const { data: prog } = await supabase
+                        .from('learning_progress')
+                        .select('lesson_id, subject_id, status')
+                        .eq('user_id', user.id)
+                        .eq('status', 'completed')
+
+                    const seen = new Set<string>()
+                    for (const row of prog ?? []) {
+                        if (!row.lesson_id || !publishedIds.has(row.lesson_id)) continue
+                        if (seen.has(row.lesson_id)) continue
+                        seen.add(row.lesson_id)
+                        const sid = row.subject_id as string
+                        if (!sid) continue
+                        doneBySubject[sid] = (doneBySubject[sid] || 0) + 1
+                    }
+                }
+
+                const nextProgress: Record<string, number> = {}
+                const nextCounts: Record<string, { done: number; total: number }> = {}
+                for (const s of subjectList) {
+                    const total = totalBySubject[s.id] || 0
+                    const done = Math.min(doneBySubject[s.id] || 0, total)
+                    nextCounts[s.id] = { done, total }
+                    nextProgress[s.id] = total > 0 ? Math.round((done / total) * 100) : 0
+                }
+                setProgress(nextProgress)
+                setCounts(nextCounts)
             } catch (e) {
                 console.error(e)
                 setError('ডেটা load করতে সমস্যা হয়েছে।')
@@ -121,18 +170,28 @@ export default function ClassSubjectsPage() {
         void fetchData()
     }, [classSlug])
 
-    const sectorColor = 'from-blue-400 to-cyan-500'
+    const overall = useMemo(() => {
+        let done = 0
+        let total = 0
+        for (const c of Object.values(counts)) {
+            done += c.done
+            total += c.total
+        }
+        return {
+            done,
+            total,
+            pct: total > 0 ? Math.round((done / total) * 100) : 0,
+        }
+    }, [counts])
+
+    const sectorColor = 'from-sky-400 to-blue-600'
 
     return (
-        <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
-            >
+        <div className="min-h-screen bg-[#0a0a1a] text-white px-4 py-8">
+            <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto mb-8">
                 <Link
                     href="/dashboard/student/academic"
-                    className="text-blue-400 hover:text-blue-300 text-sm mb-4 inline-flex items-center gap-2"
+                    className="text-sm text-gray-400 hover:text-white transition-colors inline-flex items-center gap-2"
                 >
                     ← Learning Dashboard এ ফিরে যাও
                 </Link>
@@ -146,17 +205,24 @@ export default function ClassSubjectsPage() {
                                     <h1 className={`text-3xl font-bold bg-linear-to-r ${sectorColor} bg-clip-text text-transparent`}>
                                         {classInfo.name}
                                     </h1>
-                                    <p className="text-gray-400 mt-1">{subjects.length}টি বিষয়</p>
+                                    <p className="text-gray-400 mt-1">
+                                        {subjects.length}টি বিষয় · {overall.done}/{overall.total} পাঠ সম্পন্ন
+                                    </p>
                                 </div>
                                 <div className="text-6xl">📚</div>
                             </div>
                             <div className="mt-4">
                                 <div className="flex justify-between text-xs text-gray-400 mb-1">
                                     <span>সামগ্রিক অগ্রগতি</span>
-                                    <span>০%</span>
+                                    <span className="font-semibold text-sky-300">{overall.pct}%</span>
                                 </div>
-                                <div className="w-full bg-white/10 rounded-full h-2">
-                                    <div className={`bg-linear-to-r ${sectorColor} h-2 rounded-full w-0`} />
+                                <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${overall.pct}%` }}
+                                        transition={{ duration: 0.8 }}
+                                        className={`bg-linear-to-r ${sectorColor} h-2.5 rounded-full`}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -164,46 +230,39 @@ export default function ClassSubjectsPage() {
                 )}
             </motion.div>
 
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[...Array(6)].map((_, i) => (
-                        <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-6 animate-pulse h-40" />
-                    ))}
-                </div>
-            ) : error ? (
-                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
-                    <p className="text-4xl mb-3">📭</p>
-                    <p className="text-amber-200 font-semibold">{error}</p>
-                    <p className="text-gray-400 text-sm mt-2">
-                        Admin → Curriculum → Classes-এ slug `class_1` বা `class-1` আছে কি দেখো।
-                    </p>
-                </div>
-            ) : subjects.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
-                    <p className="text-4xl mb-3">📚</p>
-                    <p className="text-white font-semibold">এই ক্লাসে এখনো subject নেই</p>
-                    <p className="text-gray-400 text-sm mt-2">Admin subject add ও lesson publish করলে এখানে দেখা যাবে।</p>
-                </div>
-            ) : (
-                <>
-                    <div className="mb-8">
-                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <span>📌</span> বিষয়সমূহ
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {subjects.map((subject, i) => (
-                                <SubjectCard
-                                    key={subject.id}
-                                    subject={subject}
-                                    classSlug={classSlug}
-                                    index={i}
-                                    progress={progress[subject.id] || 0}
-                                />
-                            ))}
-                        </div>
+            <div className="max-w-5xl mx-auto">
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-6 animate-pulse h-40" />
+                        ))}
                     </div>
-                </>
-            )}
+                ) : error ? (
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
+                        <p className="text-4xl mb-3">📭</p>
+                        <p className="text-amber-200 font-semibold">{error}</p>
+                    </div>
+                ) : subjects.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+                        <p className="text-white font-semibold">এই ক্লাসে এখনো subject নেই</p>
+                        <p className="text-gray-400 text-sm mt-2">Admin subject add ও lesson publish করলে এখানে দেখা যাবে।</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {subjects.map((subject, i) => (
+                            <SubjectCard
+                                key={subject.id}
+                                subject={subject}
+                                classSlug={classSlug}
+                                index={i}
+                                progress={progress[subject.id] || 0}
+                                done={counts[subject.id]?.done ?? 0}
+                                total={counts[subject.id]?.total ?? 0}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
@@ -213,11 +272,15 @@ function SubjectCard({
     classSlug,
     index,
     progress,
+    done,
+    total,
 }: {
     subject: Subject
     classSlug: string
     index: number
     progress: number
+    done: number
+    total: number
 }) {
     const color = subject.color || 'from-violet-500 to-purple-600'
     return (
@@ -228,7 +291,7 @@ function SubjectCard({
             whileHover={{ y: -4, scale: 1.02 }}
         >
             <Link href={`/dashboard/student/academic/learn/${classSlug}/${subject.id}`}>
-                <div className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer group">
+                <div className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer group h-full">
                     <div className="flex items-start justify-between mb-4">
                         <div className={`w-14 h-14 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-3xl shadow-lg`}>
                             {subject.icon || '📖'}
@@ -238,6 +301,9 @@ function SubjectCard({
                             <p className={`text-lg font-bold bg-linear-to-r ${color} bg-clip-text text-transparent`}>
                                 {progress}%
                             </p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                {done}/{total} পাঠ
+                            </p>
                         </div>
                     </div>
 
@@ -246,7 +312,7 @@ function SubjectCard({
                     </h3>
                     <p className="text-gray-500 text-sm mb-3">{subject.name}</p>
 
-                    <div className="w-full bg-white/10 rounded-full h-2 mb-3">
+                    <div className="w-full bg-white/10 rounded-full h-2 mb-3 overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
@@ -256,7 +322,7 @@ function SubjectCard({
                     </div>
 
                     <div className={`text-sm font-semibold bg-linear-to-r ${color} bg-clip-text text-transparent flex items-center gap-1`}>
-                        {progress > 0 ? 'চালিয়ে যাও' : 'শুরু করো'} <span>→</span>
+                        {progress >= 100 ? 'সম্পন্ন ✨' : progress > 0 ? 'চালিয়ে যাও' : 'শুরু করো'} <span>→</span>
                     </div>
                 </div>
             </Link>
