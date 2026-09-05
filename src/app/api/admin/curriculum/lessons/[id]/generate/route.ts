@@ -23,6 +23,7 @@ type QuizQuestion = {
 };
 
 type GeneratedContent = {
+  mission_intro?: string;
   overview?: string;
   objectives?: string[];
   main_content?: string;
@@ -30,6 +31,8 @@ type GeneratedContent = {
   examples?: string[];
   vocabulary?: string[];
   practice?: string[];
+  real_world_mission?: string;
+  reflection?: string;
   summary?: string;
   extra_notes?: string;
   quiz_questions?: QuizQuestion[];
@@ -96,12 +99,13 @@ ${depthBlock}
 নিয়ম:
 1. শুধু এই পাঠের তথ্য। মিথ্যা বানাবে না। PDF-এ যা নেই তা বানাবে না।
 2. সব ফিল্ড ছাত্র-facing বাংলা।
-3. overview, objectives, main_content, ai_explanation, examples, vocabulary, practice, summary, extra_notes — volume rules মেনে লেখো।
+3. mission_intro, overview, objectives, main_content, ai_explanation, examples, vocabulary, practice, real_world_mission, reflection, summary, extra_notes — volume rules মেনে লেখো।
 4. **quiz_questions**: ঠিক ${rules.quizCount}টি MCQ। প্রতিটিতে ৪টি options। correct = 0-based index (0–3)। explanation ছোট বাংলা।
 5. শুধু valid JSON।
 
 JSON:
 {
+  "mission_intro": "ছোট উৎসাহী intro — আজকের মিশন (1–2 বাক্য)",
   "overview": "string",
   "objectives": ["string"],
   "main_content": "string",
@@ -109,6 +113,8 @@ JSON:
   "examples": ["string"],
   "vocabulary": ["শব্দ — অর্থ"],
   "practice": ["প্রশ্ন"],
+  "real_world_mission": "বাস্তব জীবনে ছোট নিরাপদ কাজ (Class উপযোগী)",
+  "reflection": "শেখার পর 1টি চিন্তার প্রশ্ন",
   "summary": "string",
   "extra_notes": "string",
   "quiz_questions": [
@@ -449,7 +455,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
       content.practice && content.practice.length > 0
         ? `অনুশীলনী:\n${content.practice.map((p, i) => `${i + 1}. ${p}`).join("\n")}`
         : "";
-    const extraNotes = [content.extra_notes, practiceBlock]
+    const missionBlock = content.mission_intro
+      ? `🎯 মিশন:\n${content.mission_intro}`
+      : "";
+    const realWorldBlock = content.real_world_mission
+      ? `🌍 বাস্তব কাজ:\n${content.real_world_mission}`
+      : "";
+    const reflectionBlock = content.reflection
+      ? `💭 চিন্তা করো:\n${content.reflection}`
+      : "";
+    const overviewMerged = [missionBlock, content.overview]
+      .filter(Boolean)
+      .join("\n\n");
+    const extraNotes = [
+      content.extra_notes,
+      practiceBlock,
+      realWorldBlock,
+      reflectionBlock,
+    ]
       .filter(Boolean)
       .join("\n\n");
 
@@ -460,7 +483,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const upsertPayload: Record<string, unknown> = {
       lesson_id: id,
-      overview: content.overview ?? null,
+      overview: overviewMerged || content.overview || null,
       objectives: content.objectives ?? [],
       main_content: content.main_content ?? null,
       ai_explanation: content.ai_explanation ?? null,
@@ -468,7 +491,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       summary: content.summary ?? null,
       extra_notes: extraNotes || null,
       is_ai_generated: true,
-      ai_prompt: `student-study+quiz v4 depth=${depthRules.depth} class=${classNumber ?? "?"} NCTB p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}; quiz=${quizQuestions.length}`,
+      ai_prompt: `student-study+quiz v5 mission class=${classNumber ?? "?"} p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}; quiz=${quizQuestions.length}`,
       quiz_questions: quizQuestions,
     };
 
@@ -549,6 +572,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       classNumber,
       coverImage: Boolean(coverPath),
       coverModel,
+      hasMission: Boolean(content.mission_intro),
+      hasRealWorld: Boolean(content.real_world_mission),
     });
 
     return NextResponse.json({
