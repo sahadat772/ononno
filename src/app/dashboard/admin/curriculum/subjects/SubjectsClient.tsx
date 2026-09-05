@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { BookOpen, CirclePlus, Eye, Filter, FolderOpen, Pencil, Search, Trash2 } from 'lucide-react'
 import AddSubjectModal from './AddSubjectModal'
 import EditSubjectModal from './EditSubjectModal'
@@ -66,13 +66,29 @@ function StatCard({ label, value, text, color, icon }: {
     )
 }
 
-export default function SubjectsClient({ subjects, classes }: Props) {
+export default function SubjectsClient({ subjects: initialSubjects, classes }: Props) {
+    const [subjects, setSubjects] = useState(initialSubjects)
     const [openModal, setOpenModal] = useState(false)
     const [editOpen, setEditOpen] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
     const [selectedSubject, setSelectedSubject] = useState<CurriculumSubject | null>(null)
     const [search, setSearch] = useState('')
     const [filterClass, setFilterClass] = useState('')
+    const [listBusy, setListBusy] = useState(false)
+
+    const softRefresh = useCallback(async () => {
+        setListBusy(true)
+        try {
+            const res = await fetch('/api/admin/curriculum/subjects')
+            if (!res.ok) return
+            const data = await res.json()
+            if (Array.isArray(data)) setSubjects(data)
+        } catch {
+            /* keep current list */
+        } finally {
+            setListBusy(false)
+        }
+    }, [])
 
     const filteredSubjects = useMemo(() => {
         const keyword = search.trim().toLowerCase()
@@ -87,13 +103,12 @@ export default function SubjectsClient({ subjects, classes }: Props) {
     const activeSubjects = subjects.filter((item) => item.is_active).length
 
     const openEdit = (item: CurriculumSubject) => { setSelectedSubject(item); setEditOpen(true) }
-    const openDelete = (item: CurriculumSubject) => { console.log('Opening delete modal for:', item.id); setSelectedSubject(item); setDeleteOpen(true) }
+    const openDelete = (item: CurriculumSubject) => { setSelectedSubject(item); setDeleteOpen(true) }
 
     return (
         <main className="min-h-screen bg-[#030711] px-3 py-5 text-slate-100 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl space-y-5">
 
-                {/* Header */}
                 <header className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-center gap-3">
                         <div className="grid size-12 place-items-center rounded-xl border border-blue-400/55 bg-blue-400/10 shadow-[0_0_26px_rgba(96,165,250,.18)]">
@@ -103,7 +118,10 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                             <h1 className="text-[clamp(1.65rem,3vw,2.55rem)] font-extrabold tracking-tight">
                                 Subject <span className="bg-linear-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">Management</span>
                             </h1>
-                            <p className="mt-0.5 text-sm text-slate-400">Manage curriculum subjects for each class.</p>
+                            <p className="mt-0.5 text-sm text-slate-400">
+                                Manage curriculum subjects for each class.
+                                {listBusy ? ' · updating…' : ''}
+                            </p>
                         </div>
                     </div>
                     <button onClick={() => setOpenModal(true)}
@@ -112,14 +130,12 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                     </button>
                 </header>
 
-                {/* Stats */}
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <StatCard label="Total Subjects" value={subjects.length} text="All curriculum subjects" color="blue" icon={<BookOpen className="size-6" />} />
                     <StatCard label="Active Subjects" value={activeSubjects} text="Visible to learners" color="green" icon={<Eye className="size-6" />} />
                     <StatCard label="Search Results" value={filteredSubjects.length} text={search ? `Matching "${search}"` : 'All subjects shown'} color="purple" icon={<Filter className="size-6" />} />
                 </section>
 
-                {/* Table */}
                 <section className="overflow-hidden rounded-xl border border-slate-700/80 bg-linear-to-br from-[#0b1223] to-[#070b15] shadow-[0_15px_50px_rgba(0,0,0,.25)]">
                     <div className="flex flex-col gap-4 border-b border-slate-700/70 p-5 lg:flex-row lg:items-center lg:justify-between">
                         <div>
@@ -129,7 +145,6 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                             <p className="mt-1 text-xs text-slate-400">Browse, edit and manage all subjects.</p>
                         </div>
                         <div className="flex gap-3 flex-wrap">
-                            {/* Class Filter */}
                             <select
                                 value={filterClass}
                                 onChange={(e) => setFilterClass(e.target.value)}
@@ -140,7 +155,6 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
-                            {/* Search */}
                             <label className="relative">
                                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                                 <input value={search} onChange={(e) => setSearch(e.target.value)}
@@ -150,7 +164,6 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                         </div>
                     </div>
 
-                    {/* Table Header */}
                     <div className="hidden grid-cols-[60px_minmax(180px,1fr)_150px_150px_100px_120px_120px] gap-4 border-b border-slate-700/80 bg-slate-800/60 px-5 py-3 text-xs font-semibold text-slate-300 md:grid">
                         <span>Icon</span>
                         <span>Name</span>
@@ -161,7 +174,6 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                         <span>Actions</span>
                     </div>
 
-                    {/* Rows */}
                     <div className="divide-y divide-slate-800/90">
                         {filteredSubjects.length === 0 ? (
                             <div className="py-16 text-center">
@@ -172,32 +184,25 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                         ) : filteredSubjects.map((item) => (
                             <article key={item.id}
                                 className="grid items-center gap-4 px-5 py-3 transition hover:bg-white/[.025] md:grid-cols-[60px_minmax(180px,1fr)_150px_150px_100px_120px_120px]">
-                                {/* Icon */}
                                 <div className={`grid size-11 place-items-center rounded-xl border border-blue-400/45 bg-gradient-to-br ${item.color || 'from-blue-400 to-cyan-500'} text-xl shadow-lg`}>
                                     {item.icon || '📚'}
                                 </div>
-                                {/* Name */}
                                 <div>
                                     <p className="font-bold text-white">{item.name_bn}</p>
                                     <p className="text-xs text-slate-400">{item.name}</p>
                                 </div>
-                                {/* Slug */}
                                 <code className="w-fit rounded-md bg-slate-800/80 px-2 py-1 text-xs text-sky-300">
                                     {item.slug}
                                 </code>
-                                {/* Class */}
                                 <p className="text-sm text-slate-400">
                                     {item.curriculum_classes?.name ?? '—'}
                                 </p>
-                                {/* Mandatory */}
                                 <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${item.is_mandatory
                                     ? 'bg-amber-400/10 text-amber-300'
                                     : 'bg-slate-500/15 text-slate-400'}`}>
                                     {item.is_mandatory ? 'বাধ্যতামূলক' : 'Optional'}
                                 </span>
-                                {/* Status */}
                                 <Status active={item.is_active} />
-                                {/* Actions */}
                                 <div className="flex gap-2">
                                     <ActionButton label="Edit subject" onClick={() => openEdit(item)}>
                                         <Pencil className="size-3.5" />
@@ -212,12 +217,11 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                 </section>
             </div>
 
-            {/* Modals */}
             <AddSubjectModal
                 open={openModal}
                 classes={classes}
                 onClose={() => setOpenModal(false)}
-                onSuccess={() => window.location.reload()}
+                onSuccess={() => { void softRefresh() }}
             />
             <EditSubjectModal
                 key={selectedSubject?.id ?? 'edit'}
@@ -225,13 +229,18 @@ export default function SubjectsClient({ subjects, classes }: Props) {
                 subject={selectedSubject}
                 classes={classes}
                 onClose={() => setEditOpen(false)}
-                onSuccess={() => window.location.reload()}
+                onSuccess={() => { void softRefresh() }}
             />
             <DeleteSubjectModal
                 open={deleteOpen}
                 subject={selectedSubject}
                 onClose={() => setDeleteOpen(false)}
-                onSuccess={() => window.location.reload()}
+                onSuccess={() => {
+                    if (selectedSubject) {
+                        setSubjects((prev) => prev.filter((s) => s.id !== selectedSubject.id))
+                    }
+                    void softRefresh()
+                }}
             />
         </main>
     )
