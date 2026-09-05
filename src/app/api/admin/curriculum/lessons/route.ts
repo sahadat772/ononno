@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const subjectId = searchParams.get("subject_id");
     const classId = searchParams.get("class_id");
 
+    // Admin list includes archived so restore is possible
     let query = auth.supabase
       .from("curriculum_lessons")
       .select(
@@ -24,7 +25,6 @@ export async function GET(req: NextRequest) {
                 curriculum_classes(id, name)
             `,
       )
-      .eq("is_active", true)
       .order("order_index", { ascending: true });
 
     if (chapterId) query = query.eq("chapter_id", chapterId);
@@ -81,7 +81,6 @@ export async function POST(req: NextRequest) {
       orderIndex,
     } = body;
 
-    // Duplicate check
     const { data: existing } = await auth.supabase
       .from("curriculum_lessons")
       .select("id")
