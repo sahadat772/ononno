@@ -368,14 +368,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .eq("id", source.id);
     } catch (uploadErr) {
       console.error("generate: gemini upload failed", uploadErr);
+      const det =
+        uploadErr instanceof Error
+          ? uploadErr.message.slice(0, 400)
+          : String(uploadErr);
       return NextResponse.json(
         {
           error: "PDF_PROCESSING_FAILED",
-          message: "PDF Gemini-তে upload করা যায়নি।",
-          details:
-            uploadErr instanceof Error
-              ? uploadErr.message.slice(0, 300)
-              : String(uploadErr),
+          message:
+            "PDF storage থেকে পড়ে Gemini-তে পাঠানো যায়নি। Drive path/share বা Supabase file চেক করো।",
+          details: det,
         },
         { status: 500 },
       );
@@ -489,7 +491,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (contentError) throw contentError;
 
-    // Slice B — cover image (soft-fail: study still saves if image fails)
     let coverPath: string | null = null;
     let coverUrl: string | null = null;
     let coverModel: string | null = null;
@@ -572,16 +573,44 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .from("curriculum_lessons")
       .update({ workflow_status: "reviewed" })
       .eq("id", id);
-    const code =
-      error instanceof Error && error.message === "INVALID_AI_JSON"
-        ? "INVALID_AI_JSON"
-        : "GEMINI_REQUEST_FAILED";
+
+    const rawMsg =
+      error instanceof Error ? error.message : String(error ?? "unknown");
+    const lower = rawMsg.toLowerCase();
+
+    let code = "GEMINI_REQUEST_FAILED";
+    let message = "Lesson draft generate করা যায়নি।";
+
+    if (rawMsg === "INVALID_AI_JSON") {
+      code = "INVALID_AI_JSON";
+      message =
+        "AI JSON parse হয়নি — আবার Generate চাপো। (model response invalid)";
+    } else if (
+      lower.includes("not found") &&
+      (lower.includes("model") || lower.includes("models/"))
+    ) {
+      code = "GEMINI_MODEL_NOT_FOUND";
+      message =
+        "Gemini model পাওয়া যায়নি। Model name / GEMINI_API_KEY চেক করো।";
+    } else if (lower.includes("quota") || lower.includes("resource_exhausted")) {
+      code = "GEMINI_QUOTA";
+      message = "Gemini quota শেষ বা rate limit — একটু পরে আবার চেষ্টা করো।";
+    } else if (lower.includes("api key") || lower.includes("permission")) {
+      code = "GEMINI_AUTH";
+      message = "GEMINI_API_KEY অবৈধ বা permission নেই।";
+    } else if (lower.includes("storage") || lower.includes("download")) {
+      code = "PDF_STORAGE_FAILED";
+      message =
+        "PDF storage থেকে পড়া যায়নি (Drive/Supabase path বা permission)।";
+    } else if (rawMsg.length > 0 && rawMsg.length < 200) {
+      message = `Generate fail: ${rawMsg}`;
+    }
+
     return NextResponse.json(
       {
         error: code,
-        message: "Lesson draft generate করা যায়নি।",
-        details:
-          error instanceof Error ? error.message.slice(0, 400) : undefined,
+        message,
+        details: rawMsg.slice(0, 500),
       },
       { status: code === "INVALID_AI_JSON" ? 422 : 500 },
     );
