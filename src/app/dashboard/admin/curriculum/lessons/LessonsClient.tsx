@@ -92,7 +92,8 @@ function StatCard({ label, value, text, color, icon }: {
     )
 }
 
-export default function LessonsClient({ lessons, chapters, subjects, classes }: Props) {
+export default function LessonsClient({ lessons: initialLessons, chapters, subjects, classes }: Props) {
+    const [lessons, setLessons] = useState(initialLessons)
     const [openModal, setOpenModal] = useState(false)
     const [editOpen, setEditOpen] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
@@ -105,6 +106,17 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
     const [workflowBusy, setWorkflowBusy] = useState<string | null>(null)
     const [lastGeneratedId, setLastGeneratedId] = useState<string | null>(null)
     const [hint, setHint] = useState<string | null>(null)
+
+    const softRefresh = async () => {
+        try {
+            const res = await fetch('/api/admin/curriculum/lessons')
+            if (!res.ok) return
+            const data = await res.json()
+            if (Array.isArray(data)) setLessons(data)
+        } catch {
+            /* keep list */
+        }
+    }
 
     const filteredSubjects = useMemo(() =>
         !filterClass ? subjects : subjects.filter(s => s.class_id === filterClass),
@@ -188,7 +200,25 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                     setHint('ছাত্র-পাঠ্য study draft save হয়েছে। Approve → Publish করুন।')
                 }
             }
-            window.location.reload()
+
+            const nextStatus =
+                action === 'review' ? 'reviewed' :
+                action === 'generate' ? 'generated' :
+                action === 'approve' ? 'approved' :
+                action === 'publish' ? 'published' : item.workflow_status
+
+            setLessons((prev) =>
+                prev.map((l) =>
+                    l.id === item.id
+                        ? {
+                            ...l,
+                            workflow_status: (data.lesson?.workflow_status || nextStatus) as CurriculumLesson['workflow_status'],
+                            is_published: action === 'publish' ? true : l.is_published,
+                        }
+                        : l,
+                ),
+            )
+            void softRefresh()
         } catch (error) {
             window.alert(error instanceof Error ? error.message : "Workflow update করা যায়নি।")
         } finally {
@@ -234,9 +264,9 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                 <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 px-4 py-3 text-sm text-violet-100">
                     <p className="font-semibold">Architecture workflow</p>
                     <p className="mt-1 text-xs text-violet-200/80">
-                        PDF (TG) → Extract TOC → Review → <strong>Generate ছাত্র study</strong> (মূল পাঠ + ব্যাখ্যা + উদাহরণ + অনুশীলন) → Approve → Publish → Student
+                        PDF (TG) → Extract TOC → Review → <strong>Generate ছাত্র study</strong> → Approve → Publish → Student
                     </p>
-                    <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate} · পুরনো teacher-summary হলে Force Re-generate ব্যবহার করুন</p>
+                    <p className="mt-2 text-xs text-amber-200/90">Ready to generate: {readyToGenerate}</p>
                 </div>
 
                 {hint && (
@@ -262,7 +292,7 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                             <h2 className="flex items-center gap-2 text-lg font-bold">
                                 <FolderOpen className="size-5 text-amber-300" /> Curriculum Lessons
                             </h2>
-                            <p className="mt-1 text-xs text-slate-400">Review → Generate → Approve → Publish</p>
+                            <p className="mt-1 text-xs text-slate-400">Review → Generate → Approve → Publish (no full page reload)</p>
                         </div>
                         <div className="flex gap-3 flex-wrap">
                             <select value={filterClass}
@@ -327,54 +357,38 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                                 <div>
                                     <p className="font-bold text-white">{item.title_bn}</p>
                                     <p className="text-xs text-slate-400">{item.title}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        {item.is_free_preview && (
-                                            <span className="text-[10px] bg-blue-400/10 text-blue-300 px-2 py-0.5 rounded-full">Free Preview</span>
-                                        )}
-                                        <span className="text-[10px] text-slate-500">{item.duration_minutes} min</span>
-                                        {item.is_published && (
-                                            <span className="text-[10px] bg-emerald-400/10 text-emerald-300 px-2 py-0.5 rounded-full">Student live</span>
-                                        )}
-                                    </div>
                                 </div>
                                 <p className="text-sm text-slate-400 truncate">{item.curriculum_chapters?.title_bn ?? '—'}</p>
                                 <p className="text-sm text-slate-400 truncate">{item.curriculum_subjects?.name_bn ?? '—'}</p>
-                                <div className="flex items-center gap-1">
-                                    <Zap className="size-3 text-amber-400" />
-                                    <span className="text-sm text-amber-300 font-bold">{item.xp_reward}</span>
-                                </div>
+                                <p className="text-sm font-semibold text-amber-200">{item.xp_reward}</p>
                                 <WorkflowBadge status={item.workflow_status} />
-                                <div className="flex flex-wrap gap-2">
-                                    {(item.workflow_status === "extracted" || item.workflow_status === "draft") && (
-                                        <ActionButton label="Mark reviewed" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, "review")}>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {(item.workflow_status === 'draft' || item.workflow_status === 'extracted') && (
+                                        <ActionButton label="Mark reviewed" disabled={workflowBusy === `${item.id}:review`} onClick={() => runWorkflow(item, 'review')}>
                                             <CheckCircle2 className="size-3.5" />
                                         </ActionButton>
                                     )}
-                                    {item.workflow_status === "reviewed" && (
-                                        <ActionButton label="Generate student study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, "generate")}>
-                                            <WandSparkles className="size-3.5" />
-                                        </ActionButton>
-                                    )}
-                                    {item.workflow_status === "generated" && (
+                                    {item.workflow_status === 'reviewed' && (
                                         <>
-                                            <ActionButton label="Approve" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, "approve")}>
-                                                <CheckCircle2 className="size-3.5" />
-                                            </ActionButton>
-                                            <ActionButton
-                                                label="Force re-generate student study"
-                                                disabled={workflowBusy === `${item.id}:generate`}
-                                                onClick={() => {
-                                                    if (window.confirm('নতুন ছাত্র-পাঠ্য study আবার generate করবে? পুরনো draft overwrite হবে।')) {
-                                                        void runWorkflow(item, "generate", { force: true })
-                                                    }
-                                                }}
-                                            >
+                                            <ActionButton label="Generate study" disabled={workflowBusy === `${item.id}:generate`} onClick={() => runWorkflow(item, 'generate')}>
                                                 <WandSparkles className="size-3.5" />
                                             </ActionButton>
                                         </>
                                     )}
-                                    {item.workflow_status === "approved" && (
-                                        <ActionButton label="Publish to students" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, "publish")}>
+                                    {item.workflow_status === 'generated' && (
+                                        <>
+                                            <ActionButton label="Approve" disabled={workflowBusy === `${item.id}:approve`} onClick={() => runWorkflow(item, 'approve')}>
+                                                <CheckCircle2 className="size-3.5" />
+                                            </ActionButton>
+                                            <ActionButton label="Force re-generate" disabled={workflowBusy === `${item.id}:generate`} onClick={() => {
+                                                if (window.confirm('নতুন study আবার generate?')) void runWorkflow(item, 'generate', { force: true })
+                                            }}>
+                                                <WandSparkles className="size-3.5" />
+                                            </ActionButton>
+                                        </>
+                                    )}
+                                    {item.workflow_status === 'approved' && (
+                                        <ActionButton label="Publish" disabled={workflowBusy === `${item.id}:publish`} onClick={() => runWorkflow(item, 'publish')}>
                                             <Send className="size-3.5" />
                                         </ActionButton>
                                     )}
@@ -387,9 +401,9 @@ export default function LessonsClient({ lessons, chapters, subjects, classes }: 
                 </section>
             </div>
 
-            <AddLessonModal open={openModal} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setOpenModal(false)} onSuccess={() => window.location.reload()} />
-            <EditLessonModal key={selectedLesson?.id ?? 'edit'} open={editOpen} lesson={selectedLesson} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setEditOpen(false)} onSuccess={() => window.location.reload()} />
-            <DeleteLessonModal open={deleteOpen} lesson={selectedLesson} onClose={() => setDeleteOpen(false)} onSuccess={() => window.location.reload()} />
+            <AddLessonModal open={openModal} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setOpenModal(false)} onSuccess={() => { void softRefresh() }} />
+            <EditLessonModal key={selectedLesson?.id ?? 'edit'} open={editOpen} lesson={selectedLesson} chapters={chapters} subjects={subjects} classes={classes} onClose={() => setEditOpen(false)} onSuccess={() => { void softRefresh() }} />
+            <DeleteLessonModal open={deleteOpen} lesson={selectedLesson} onClose={() => setDeleteOpen(false)} onSuccess={() => { void softRefresh() }} />
         </main>
     )
 }
