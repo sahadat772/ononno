@@ -24,10 +24,11 @@ interface Subject {
 }
 
 interface LessonProgress {
-    chapter_id: string
-    lesson_id?: string
+    chapter_id?: string | null
+    lesson_id?: string | null
     status: string
-    score: number
+    score?: number
+    xp_earned?: number
 }
 
 export default function ChapterListPage() {
@@ -38,7 +39,8 @@ export default function ChapterListPage() {
     const [subject, setSubject] = useState<Subject | null>(null)
     const [chapters, setChapters] = useState<Chapter[]>([])
     const [progress, setProgress] = useState<LessonProgress[]>([])
-    const [lessonTotals, setLessonTotals] = useState<Record<string, number>>({})
+    /** chapter_id → published lesson ids */
+    const [lessonsByChapter, setLessonsByChapter] = useState<Record<string, string[]>>({})
     const [loading, setLoading] = useState(true)
     const [totalXP, setTotalXP] = useState(0)
     const [streak, setStreak] = useState(0)
@@ -46,7 +48,9 @@ export default function ChapterListPage() {
     useEffect(() => {
         const fetchData = async () => {
             const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
+            const {
+                data: { user },
+            } = await supabase.auth.getUser()
 
             const { data: sub } = await supabase
                 .from('curriculum_subjects')
@@ -62,16 +66,16 @@ export default function ChapterListPage() {
                 .eq('is_active', true)
                 .eq('is_published', true)
 
-            const totals: Record<string, number> = {}
+            const byChap: Record<string, string[]> = {}
             for (const l of publishedLessons ?? []) {
                 if (!l.chapter_id) continue
-                totals[l.chapter_id] = (totals[l.chapter_id] || 0) + 1
+                const id = String(l.id)
+                if (!byChap[l.chapter_id]) byChap[l.chapter_id] = []
+                byChap[l.chapter_id].push(id)
             }
-            setLessonTotals(totals)
+            setLessonsByChapter(byChap)
 
-            const chapterIds = [
-                ...new Set((publishedLessons ?? []).map((l) => l.chapter_id).filter(Boolean)),
-            ]
+            const chapterIds = Object.keys(byChap)
 
             if (chapterIds.length > 0) {
                 const { data: chaps } = await supabase
@@ -85,22 +89,29 @@ export default function ChapterListPage() {
                 setChapters([])
             }
 
+            // Load ALL user progress (do not filter subject_id — often null on older rows)
             if (user) {
                 const { data: prog } = await supabase
                     .from('learning_progress')
-                    .select('chapter_id, lesson_id, status, score')
+                    .select('chapter_id, lesson_id, status, score, xp_earned')
                     .eq('user_id', user.id)
-                    .eq('subject_id', subjectId)
-                if (prog) setProgress(prog)
+
+                setProgress(
+                    (prog ?? []).map((p) => ({
+                        ...p,
+                        lesson_id: p.lesson_id != null ? String(p.lesson_id) : null,
+                        chapter_id: p.chapter_id != null ? String(p.chapter_id) : null,
+                    })),
+                )
 
                 const { data: stats } = await supabase
                     .from('student_stats')
                     .select('total_xp, current_streak')
                     .eq('user_id', user.id)
-                    .single()
+                    .maybeSingle()
                 if (stats) {
-                    setTotalXP(stats.total_xp)
-                    setStreak(stats.current_streak)
+                    setTotalXP(stats.total_xp ?? 0)
+                    setStreak(stats.current_streak ?? 0)
                 }
             }
 
@@ -109,19 +120,17 @@ export default function ChapterListPage() {
         void fetchData()
     }, [subjectId])
 
+    const completedLessonIds = new Set(
+        progress
+            .filter((p) => p.status === 'completed' && p.lesson_id)
+            .map((p) => String(p.lesson_id)),
+    )
+
     const getChapterProgress = (chapterId: string) => {
-        const total = lessonTotals[chapterId] || 0
-        if (total === 0) return 0
-        const completedIds = new Set(
-            progress
-                .filter((p) => p.chapter_id === chapterId && p.status === 'completed' && p.lesson_id)
-                .map((p) => p.lesson_id as string),
-        )
-        const legacy = progress.filter(
-            (p) => p.chapter_id === chapterId && p.status === 'completed' && !p.lesson_id,
-        ).length
-        const completed = Math.min(total, completedIds.size + legacy)
-        return Math.round((completed / total) * 100)
+        const lessonIds = lessonsByChapter[chapterId] || []
+        if (lessonIds.length === 0) return 0
+        const done = lessonIds.filter((id) => completedLessonIds.has(String(id))).length
+        return Math.round((done / lessonIds.length) * 100)
     }
 
     const isChapterUnlocked = (index: number) => {
@@ -131,7 +140,13 @@ export default function ChapterListPage() {
         return getChapterProgress(prevChapter.id) >= 60
     }
 
-    const overallCompleted = progress.filter((p) => p.status === 'completed').length
+    const allLessonIds = Object.values(lessonsByChapter).flat()
+    const overallCompleted = allLessonIds.filter((id) => completedLessonIds.has(String(id))).length
+
+    // XP from progress rows for this subject's lessons
+    const subjectXp = progress
+        .filter((p) => p.lesson_id && allLessonIds.includes(String(p.lesson_id)))
+        .reduce((s, p) => s + (Number(p.xp_earned) || 0), 0)
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white">
@@ -151,7 +166,9 @@ export default function ChapterListPage() {
                         </div>
                         <div className="flex items-center gap-1.5 bg-violet-500/20 border border-violet-500/30 rounded-full px-3 py-1">
                             <span>⚡</span>
-                            <span className="text-violet-400 font-bold text-sm">{totalXP} XP</span>
+                            <span className="text-violet-400 font-bold text-sm">
+                                {Math.max(totalXP, subjectXp)} XP
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -171,11 +188,15 @@ export default function ChapterListPage() {
                         >
                             {subject.icon || '📚'}
                         </motion.div>
-                        <h1 className="text-3xl font-bold text-white mb-2">{subject.name_bn || subject.name}</h1>
+                        <h1 className="text-3xl font-bold text-white mb-2">
+                            {subject.name_bn || subject.name}
+                        </h1>
                         <div className="flex items-center justify-center gap-3">
                             <span className="text-gray-400 text-sm">{chapters.length}টি অধ্যায়</span>
                             <span className="text-gray-600">•</span>
-                            <span className="text-gray-400 text-sm">{overallCompleted} সম্পন্ন</span>
+                            <span className="text-gray-400 text-sm">
+                                {overallCompleted}/{allLessonIds.length} সম্পন্ন
+                            </span>
                         </div>
                     </motion.div>
                 )}
@@ -190,7 +211,6 @@ export default function ChapterListPage() {
                     <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
                         <p className="text-4xl mb-3">📖</p>
                         <p className="font-bold text-white">এখনো published chapter নেই</p>
-                        <p className="text-gray-400 text-sm mt-2">Admin lesson publish করলে এখানে অধ্যায় দেখা যাবে।</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -199,7 +219,7 @@ export default function ChapterListPage() {
                             const chapterProg = getChapterProgress(chapter.id)
                             const completed = chapterProg >= 100
                             const inProgress = chapterProg > 0 && chapterProg < 100
-                            const totalLessons = lessonTotals[chapter.id] || 0
+                            const totalLessons = (lessonsByChapter[chapter.id] || []).length
 
                             return (
                                 <motion.div
@@ -209,7 +229,9 @@ export default function ChapterListPage() {
                                     transition={{ delay: index * 0.06 }}
                                 >
                                     {unlocked ? (
-                                        <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapter.id}`}>
+                                        <Link
+                                            href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapter.id}`}
+                                        >
                                             <div className="rounded-3xl border border-white/10 bg-white/5 hover:bg-white/10 p-5 transition-all cursor-pointer">
                                                 <div className="flex gap-4">
                                                     <div
@@ -228,18 +250,25 @@ export default function ChapterListPage() {
                                                             {chapter.title_bn || chapter.title}
                                                         </h3>
                                                         {chapter.description && (
-                                                            <p className="text-gray-400 text-sm truncate">{chapter.description}</p>
+                                                            <p className="text-gray-400 text-sm truncate">
+                                                                {chapter.description}
+                                                            </p>
                                                         )}
                                                         <div className="mt-2">
                                                             <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                                <span>অগ্রগতি · {totalLessons} পাঠ</span>
+                                                                <span>
+                                                                    অগ্রগতি · {totalLessons} পাঠ
+                                                                </span>
                                                                 <span>{chapterProg}%</span>
                                                             </div>
                                                             <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
                                                                 <motion.div
                                                                     initial={{ width: 0 }}
                                                                     animate={{ width: `${chapterProg}%` }}
-                                                                    transition={{ duration: 0.8, delay: index * 0.1 }}
+                                                                    transition={{
+                                                                        duration: 0.8,
+                                                                        delay: index * 0.1,
+                                                                    }}
                                                                     className={`h-2 rounded-full ${
                                                                         completed
                                                                             ? 'bg-linear-to-r from-emerald-500 to-teal-500'
@@ -255,10 +284,16 @@ export default function ChapterListPage() {
                                     ) : (
                                         <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-5 opacity-60">
                                             <div className="flex gap-4 items-center">
-                                                <div className="grid size-14 place-items-center rounded-2xl bg-white/5 text-2xl">🔒</div>
+                                                <div className="grid size-14 place-items-center rounded-2xl bg-white/5 text-2xl">
+                                                    🔒
+                                                </div>
                                                 <div>
-                                                    <h3 className="font-bold text-lg text-gray-600">{chapter.title_bn || chapter.title}</h3>
-                                                    <p className="text-gray-600 text-sm">আগের অধ্যায় ৬০% সম্পন্ন করলে আনলক হবে</p>
+                                                    <h3 className="font-bold text-lg text-gray-600">
+                                                        {chapter.title_bn || chapter.title}
+                                                    </h3>
+                                                    <p className="text-gray-600 text-sm">
+                                                        আগের অধ্যায় ৬০% সম্পন্ন করলে আনলক হবে
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
