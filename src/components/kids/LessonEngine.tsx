@@ -52,6 +52,12 @@ function shuffleArray<T>(arr: T[]): T[] {
     return result
 }
 
+function resolveVoiceLang(lesson: LessonConfig): 'bn-BD' | 'en-US' | 'ar-SA' {
+    if (lesson.backHref.includes('/english') || lesson.lang === 'en-US') return 'en-US'
+    if (lesson.backHref.includes('/arabic') || lesson.lang === 'ar-SA') return 'ar-SA'
+    return lesson.lang || 'bn-BD'
+}
+
 function MatchingExercise({
     currentEx, lesson, speak, onComplete,
 }: {
@@ -64,6 +70,7 @@ function MatchingExercise({
     const [matched, setMatched] = useState<Record<string, string>>({})
     const [wrongPair, setWrongPair] = useState<string | null>(null)
     const [completed, setCompleted] = useState(false)
+    const voiceLang = resolveVoiceLang(lesson)
     const pairs = useMemo(() => currentEx.options?.map(opt => {
         const [letter, word] = opt.split('-')
         return { letter, word }
@@ -73,7 +80,7 @@ function MatchingExercise({
 
     function handleLeftClick(letter: string) {
         if (matched[letter]) return
-        speak(letter, lesson.lang)
+        speak(letter, voiceLang)
         setLeftSelected(letter)
     }
     function handleRightClick(word: string) {
@@ -83,7 +90,7 @@ function MatchingExercise({
             const newMatched = { ...matched, [leftSelected]: word }
             setMatched(newMatched)
             setLeftSelected(null)
-            speak(word, lesson.lang)
+            speak(word, voiceLang)
             if (Object.keys(newMatched).length === pairs.length) {
                 setCompleted(true)
                 setTimeout(() => onComplete(true), 1000)
@@ -125,6 +132,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const router = useRouter()
     const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
     const { speak } = useSpeech()
+    const voiceLang = resolveVoiceLang(lesson)
     const { isListening, transcript, resetTranscript } = useSpeechRecognition()
     const [exIdx, setExIdx] = useState(0)
     const [hearts, setHearts] = useState(3)
@@ -148,9 +156,9 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
 
     useEffect(() => {
         if (!currentEx || isResult) return
-        const timer = setTimeout(() => speak(currentEx.voiceText, lesson.lang), 500)
+        const timer = setTimeout(() => speak(currentEx.voiceText, voiceLang), 500)
         return () => clearTimeout(timer)
-    }, [exIdx, currentEx, speak, lesson.lang, isResult, repeatMode])
+    }, [exIdx, currentEx, speak, voiceLang, isResult, repeatMode])
 
     useEffect(() => {
         if (!transcript || isListening) return
@@ -170,7 +178,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
 
     function celebrate() {
         setShowCelebration(true)
-        speak('শাবাশ!', 'bn-BD')
+        speak(voiceLang === 'en-US' ? 'Well done!' : 'শাবাশ!', voiceLang === 'en-US' ? 'en-US' : 'bn-BD')
         setTimeout(() => setShowCelebration(false), 1800)
     }
 
@@ -310,7 +318,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                 <AnimatePresence mode="wait">
                     {currentEx?.type === 'intro' && (
                         <motion.div key={`i-${exIdx}`} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <div onClick={() => speak(currentEx.voiceText, lesson.lang)} className={`mx-auto mb-5 flex h-40 w-40 cursor-pointer items-center justify-center rounded-3xl bg-gradient-to-br text-7xl font-bold text-white shadow-2xl ${lesson.color}`}>{lesson.letter}</div>
+                            <div onClick={() => speak(currentEx.voiceText, voiceLang)} className={`mx-auto mb-5 flex h-40 w-40 cursor-pointer items-center justify-center rounded-3xl bg-gradient-to-br text-7xl font-bold text-white shadow-2xl ${lesson.color}`}>{lesson.letter}</div>
                             <p className="mb-2 text-2xl font-bold">{lesson.emoji} {lesson.word}</p>
                             <p className="mb-6 text-sm text-gray-400">{currentEx.voiceText}</p>
                             <button type="button" onClick={() => nextEx()} className="min-h-12 w-full rounded-2xl bg-sky-500 font-bold text-white">পরের ধাপ →</button>
@@ -320,7 +328,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                     {currentEx?.type === 'listen-repeat' && (
                         <motion.div key={`lr-${exIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
                             <p className="mb-4 text-5xl font-bold">{currentEx.content}</p>
-                            <button type="button" onClick={() => speak(currentEx.voiceText, lesson.lang)} className="mb-4 rounded-full bg-white/10 px-6 py-3 text-white">🔊 আবার শোনো</button>
+                            <button type="button" onClick={() => speak(currentEx.voiceText, voiceLang)} className="mb-4 rounded-full bg-white/10 px-6 py-3 text-white">🔊 আবার শোনো</button>
                             <button type="button" onClick={() => { setXp(x => x + 5); nextEx() }} className="min-h-12 w-full rounded-2xl bg-emerald-500 font-bold text-white">বলেছি →</button>
                         </motion.div>
                     )}
