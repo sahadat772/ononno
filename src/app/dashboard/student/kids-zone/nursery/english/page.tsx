@@ -83,15 +83,15 @@ export default function NurseryEnglishPage() {
   const progressPercent = Math.round((completedLessons / totalLessons) * 100)
 
   return (
-    <KidsZoneShell title="English" subtitle="ABC letters" emoji="🔡" stars={totalXp}>
+    <KidsZoneShell title="English" subtitle="ABC Adventure" emoji="🔡" stars={totalXp}>
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-6 rounded-3xl border border-violet-500/30 bg-gradient-to-r from-violet-600/20 to-purple-600/20 p-5">
         <div className="flex items-center gap-4">
           <div className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 text-3xl font-bold text-white">A</div>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-white">English ABC</h1>
-            <p className="text-sm text-gray-400">A থেকে Z</p>
+            <p className="text-sm text-gray-400">Listen → Say → Write → Play</p>
             <div className="mt-2">
-              <div className="mb-1 flex justify-between text-xs text-gray-400"><span>{completedLessons}/{totalLessons}</span><span>{progressPercent}%</span></div>
+              <div className="mb-1 flex justify-between text-xs text-gray-400"><span>{completedLessons}/{totalLessons} lessons</span><span>{progressPercent}%</span></div>
               <div className="h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 to-purple-500" style={{ width: `${progressPercent}%` }} /></div>
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function NurseryEnglishPage() {
             const unitCompleted = unit.lessons.filter(l => progress[l.id]?.completed).length
             return (
               <div key={unit.id}>
-                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''}`}>
+                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''`}>
                   <div className="flex items-center gap-3">
                     <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${unit.color}`}>{isUnitUnlocked ? unit.icon : '🔒'}</div>
                     <div className="min-w-0 flex-1">
@@ -146,8 +146,9 @@ export default function NurseryEnglishPage() {
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-        <p className="text-sm text-slate-400">একটা lesson শেষ করলে পরেরটা unlock হবে।</p>
+      <div className="mt-6 rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4 text-center">
+        <p className="mb-1 font-semibold text-violet-300">💡 Remember!</p>
+        <p className="text-sm text-slate-400">একটা lesson শেষ করলে পরেরটা unlock হবে। Listen → Say → Write → Play!</p>
       </div>
     </KidsZoneShell>
   )
