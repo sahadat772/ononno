@@ -2,102 +2,97 @@
 
 **Goal:** Public students can safely learn from published NCTB curriculum only.
 
-Core rule remains:
+Core rule:
 
 ```text
 AI generates → Admin reviews → Publish → Student learns
 ```
 
----
-
-## Phase P0 — Must before public launch
-
-### 1. Build green
-- [ ] Latest `main` deploys on Vercel without TypeScript/build errors
-- [ ] Open `https://YOUR_DOMAIN/api/health` → `"status":"ok"`
-
-### 2. Environment variables (Vercel Production)
-- [ ] `NEXT_PUBLIC_SUPABASE_URL`
-- [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` **and/or** `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` (server only — never expose to client)
-- [ ] `GEMINI_API_KEY`
-- [ ] `GROQ_API_KEY` (chat/kids if used)
-- [ ] `CURRICULUM_STORAGE_PROVIDER` = `supabase` or `google_drive`
-- [ ] If Drive: `GOOGLE_DRIVE_CLIENT_EMAIL`, `GOOGLE_DRIVE_PRIVATE_KEY`, `GOOGLE_DRIVE_FOLDER_ID`
-- [ ] `COVER_IMAGE_PROVIDER=branded` (recommended for dignity)
-- [ ] `NEXT_PUBLIC_APP_URL` = production domain
-
-### 3. Supabase Auth URLs
-Dashboard → Authentication → URL Configuration:
-- [ ] Site URL = production domain
-- [ ] Redirect allowlist includes:
-  - `https://YOUR_DOMAIN/**`
-  - `https://*.vercel.app/**` (preview)
-  - `/auth/callback` paths used by app
-
-### 4. Database readiness
-Run in Supabase SQL Editor:
-
-```sql
--- Cover columns (lesson media)
-alter table public.lesson_contents
-  add column if not exists cover_image_path text;
-alter table public.lesson_contents
-  add column if not exists cover_image_url text;
-```
-
-- [ ] Cover columns exist
-- [ ] RLS enabled on curriculum + lesson tables
-- [ ] Students can only read `workflow_status = 'published'` / `is_published = true` content
-- [ ] Admin role checked via `profiles.role = 'admin'`
-
-### 5. Storage
-- [ ] Bucket `curriculum-pdfs` exists
-- [ ] Admin can upload; students cannot list private PDFs
-- [ ] Google Drive root folder shared with **service account email** as Editor (if using Drive)
-
-### 6. Security smoke test
-- [ ] Logged-out user cannot open `/dashboard/*`
-- [ ] Student cannot call `/api/admin/*` successfully
-- [ ] Service role key not present in browser Network responses
-- [ ] Payment keys are sandbox until go-live decision
-
-### 7. Curriculum content QA
-- [ ] At least 1 Class + Subject fully: Extract → Review → Generate → Approve → Publish
-- [ ] Student Learning dashboard shows published lessons only
-- [ ] Quiz + XP work on one lesson end-to-end
-- [ ] Lock/unlock next lesson works
-
-### 8. Payments (when charging)
-- [ ] Switch bKash/SSLCommerz to **live** credentials
-- [ ] `SSLCOMMERZ_IS_LIVE=true`
-- [ ] Test one real small payment + admin approval path
+**Status (2026-09-06):** Soft-launch **READY** for limited public beta on  
+`https://ononno-two.vercel.app` — after latest `main` deploy.
 
 ---
 
-## Phase P1 — Soft launch polish
+## Completed (P0)
 
-- [ ] Custom domain + SSL on Vercel
-- [ ] robots.txt / sitemap (SEO)
-- [ ] Error monitoring (Sentry or Vercel logs watch)
-- [ ] Backup policy for Supabase (Point-in-time recovery if paid plan)
-- [ ] Rate limits verified under load for Gemini routes
+| Area | Status |
+|------|--------|
+| Health `/api/health` | ✅ |
+| Env (Supabase + Gemini + Drive) | ✅ |
+| Auth Site URL + Redirects | ✅ |
+| Content QA (publish + student path + progress) | ✅ |
+| Security smoke (admin API role, student isolation) | ✅ |
+| Cover images (branded default) | ✅ |
+| robots.txt + sitemap | ✅ |
+| Non-admin blocked from `/dashboard/admin` (proxy) | ✅ |
 
 ---
 
-## Phase P2 — Post-launch product
+## Soft launch — do this once after deploy
+
+1. Deploy latest `main` on Vercel (Production).
+2. Open `https://ononno-two.vercel.app/api/health`  
+   → `"status":"ok"` and `"phase":"soft_launch"`.
+3. Student login → Class 1 বাংলা → one lesson → quiz → progress %.
+4. Student tries `/dashboard/admin` → redirect away (not admin UI).
+5. Admin login → curriculum import/publish still works.
+
+Optional public checks:
+
+- `https://ononno-two.vercel.app/robots.txt`
+- `https://ononno-two.vercel.app/sitemap.xml`
+
+---
+
+## Phase P0 reference (keep green)
+
+### Environment (Vercel Production)
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and/or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server only)
+- `GEMINI_API_KEY`
+- `CURRICULUM_STORAGE_PROVIDER=google_drive` (or `supabase`)
+- Drive: `GOOGLE_DRIVE_CLIENT_EMAIL`, `GOOGLE_DRIVE_PRIVATE_KEY`, `GOOGLE_DRIVE_FOLDER_ID`
+- `COVER_IMAGE_PROVIDER=branded`
+- `NEXT_PUBLIC_APP_URL=https://ononno-two.vercel.app`
+
+### Auth URLs
+
+- Site URL = production domain
+- Redirects: `/auth/callback`, `/**`, preview `*.vercel.app`
+
+### Content rule
+
+Students only see **published + active** lessons. Never raw AI drafts.
+
+### Payments
+
+Keep **sandbox** until you intentionally switch live keys.
+
+---
+
+## Phase P1 — After soft launch (not blockers)
+
+- [ ] Custom domain (e.g. `ononno.app`) + SSL
+- [ ] Error monitoring (Vercel logs / Sentry)
+- [ ] Supabase backup / PITR if plan allows
+- [ ] Live bKash / SSLCommerz when charging
+- [ ] More Class 1–5 subjects published
+
+## Phase P2 — Product roadmap
 
 - Adventure missions / real-world tasks
-- Parent dashboard insights
-- Paid high-quality lesson images
-- Deeper analytics
+- Parent insights
+- Higher-quality lesson images (paid API)
+- Deeper learning analytics
 
 ---
 
-## Current recommended order of work
+## Launch decision
 
-1. **This week:** P0 items 1–7 (stable public beta)
-2. **Next:** Custom domain + payments live
-3. **Later:** Adventure / parent features from Master Blueprint
+**Soft launch (beta):** ✅ Allowed now — limited users, Class 1 বাংলা path proven.
 
-Do **not** block launch on perfect AI cover art — use branded covers.
+**Wide public marketing:** After custom domain + 2–3 more subjects published + payment decision.
+
+Do **not** block launch on perfect AI cover art — branded covers are intentional.
