@@ -6,6 +6,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import KidsZoneShell from '@/components/kids/KidsZoneShell'
 
+function mathLessonHref(id: string) {
+  if (id === 'math-30' || id === 'math-40' || id === 'math-50') {
+    return `/dashboard/student/kids-zone/nursery/math/tens/${id.replace('math-', '')}`
+  }
+  return `/dashboard/student/kids-zone/nursery/math/${id}`
+}
+
 const units = [
   { id: 1, title: '১ থেকে ১০', subtitle: '১ ২ ৩ ৪ ৫ ৬ ৭ ৮ ৯ ১০', icon: '🌱', color: 'from-amber-400 to-orange-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
     lessons: [
@@ -30,9 +37,9 @@ const units = [
     ], bossQuiz: { id: 'boss-math-3', title: '২১–৫০ Boss Quiz', xp: 50 } },
   { id: 4, title: 'যোগ শিখি', subtitle: '১+১ থেকে ৫+৫', icon: '➕', color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
     lessons: [
-      { id: 'math-add-1', title: '১+১ = ২', icon: '➕', xp: 15 }, { id: 'math-add-2', title: '২+২ = ৪', icon: '➕', xp: 15 },
-      { id: 'math-add-3', title: '৩+৩ = ৬', icon: '➕', xp: 15 }, { id: 'math-add-4', title: '৪+৪ = ৮', icon: '➕', xp: 15 },
-      { id: 'math-add-5', title: '৫+৫ = ১০', icon: '➕', xp: 15 },
+      { id: 'add-1', title: '১+১ = ২', icon: '➕', xp: 15 }, { id: 'add-2', title: '২+২ = ৪', icon: '➕', xp: 15 },
+      { id: 'add-3', title: '৩+৩ = ৬', icon: '➕', xp: 15 }, { id: 'add-4', title: '৪+৪ = ৮', icon: '➕', xp: 15 },
+      { id: 'add-5', title: '৫+৫ = ১০', icon: '➕', xp: 15 },
     ], bossQuiz: { id: 'boss-math-4', title: 'যোগ Boss Quiz', xp: 50 } },
   { id: 5, title: 'বিয়োগ শিখি', subtitle: '৫-১ থেকে ১০-৫', icon: '➖', color: 'from-rose-400 to-pink-500', bg: 'bg-rose-500/10', border: 'border-rose-500/30',
     lessons: [
@@ -127,7 +134,7 @@ export default function NurseryMathPage() {
                       const stars = progress[lesson.id]?.stars || 0
                       return (
                         <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'}`}>
-                          <Link href={isUnlocked ? `/dashboard/student/kids-zone/nursery/math/${lesson.id}` : '#'} className={`flex size-14 items-center justify-center rounded-full text-lg font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'}`}>
+                          <Link href={isUnlocked ? mathLessonHref(lesson.id) : '#'} className={`flex size-14 items-center justify-center rounded-full text-lg font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'}`}>
                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}
                           </Link>
                           <div className="min-w-0 flex-1">
