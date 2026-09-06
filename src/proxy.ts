@@ -7,7 +7,6 @@ export async function proxy(request: NextRequest) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    // process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
@@ -26,15 +25,33 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
   // Login না থাকলে dashboard এ যেতে দেবে না
-  if (
-    pathname.startsWith('/dashboard') &&
-    !user
-  ) {
+  if (pathname.startsWith('/dashboard') && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Non-admin cannot open admin UI (APIs still use requireRole)
+  if (user && pathname.startsWith('/dashboard/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profile?.role !== 'admin') {
+      const dest =
+        profile?.role === 'teacher'
+          ? '/dashboard/teacher'
+          : profile?.role === 'parent'
+            ? '/dashboard/parent'
+            : '/dashboard/student'
+      return NextResponse.redirect(new URL(dest, request.url))
+    }
   }
 
   // Login/Register এ থাকলে role-redirect page এ পাঠাও
@@ -52,7 +69,7 @@ export async function proxy(request: NextRequest) {
         user_id: user.id,
         device_info: request.headers.get('user-agent') || 'unknown',
       }),
-    }).catch(() => { })  // fire-and-forget, error হলেও block করবে না
+    }).catch(() => {})
   }
 
   return supabaseResponse
