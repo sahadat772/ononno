@@ -39,11 +39,11 @@ const units = [
         bg: 'bg-violet-500/10',
         border: 'border-violet-500/30',
         lessons: [
-            { id: 'banjanbarna-ka', title: 'ক — কলা', icon: 'ক', xp: 10 },
-            { id: 'banjanbarna-kha', title: 'খ — খরগোশ', icon: 'খ', xp: 10 },
-            { id: 'banjanbarna-ga', title: 'গ — গরু', icon: 'গ', xp: 10 },
-            { id: 'banjanbarna-gha', title: 'ঘ — ঘড়ি', icon: 'ঘ', xp: 10 },
-            { id: 'banjanbarna-nga', title: 'ঙ — বাংলা', icon: 'ঙ', xp: 10 },
+            { id: 'banjonborno-ka', title: 'ক — কাক', icon: 'ক', xp: 10 },
+            { id: 'banjonborno-kha', title: 'খ — খরগোশ', icon: 'খ', xp: 10 },
+            { id: 'banjonborno-ga', title: 'গ — গরু', icon: 'গ', xp: 10 },
+            { id: 'banjonborno-gha', title: 'ঘ — ঘড়ি', icon: 'ঘ', xp: 10 },
+            { id: 'banjonborno-nga', title: 'ঙ — বাংলা', icon: 'ঙ', xp: 10 },
             { id: 'banjanbarna-cha', title: 'চ — চাঁদ', icon: 'চ', xp: 10 },
             { id: 'banjanbarna-chha', title: 'ছ — ছাগল', icon: 'ছ', xp: 10 },
             { id: 'banjanbarna-ja', title: 'জ — জাম', icon: 'জ', xp: 10 },
@@ -60,7 +60,7 @@ const units = [
     {
         id: 3,
         title: 'ব্যঞ্জনবর্ণ — Part 2',
-        subtitle: 'ত থ দ ধ ন প ফ ব ভ ম ',
+        subtitle: 'ত থ দ ধ ন প ফ ব ভ ম',
         icon: '🌳',
         color: 'from-amber-400 to-orange-500',
         bg: 'bg-amber-500/10',
@@ -105,7 +105,7 @@ const units = [
     {
         id: 5,
         title: 'যুক্তবর্ণ',
-        subtitle: 'ক্ষ জ্ঞ ত্র শ্র ং ঃ  ঁ',
+        subtitle: 'ক্ষ জ্ঞ ত্র শ্র ং ঃ ঁ',
         icon: '🌟',
         color: 'from-emerald-400 to-teal-500',
         bg: 'bg-emerald-500/10',
@@ -190,7 +190,7 @@ export default function NurseryBanglaPage() {
                         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-3xl font-bold text-white shadow-lg shrink-0">অ</div>
                         <div className="flex-1 min-w-0">
                             <h1 className="text-xl font-bold text-white">বাংলা বর্ণমালা</h1>
-                            <p className="text-gray-400 text-sm">স্বরবর্ণ থেকে যুক্তবর্ণ</p>
+                            <p className="text-gray-400 text-sm">স্বরবর্ণ থেকে যুক্তবর্ণ — শোনো, বলো, লেখো</p>
                             <div className="mt-2">
                                 <div className="flex justify-between text-xs text-gray-400 mb-1">
                                     <span>{completedLessons}/{totalLessons} lesson</span>
@@ -275,7 +275,7 @@ export default function NurseryBanglaPage() {
 
                 <div className="mt-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
                     <p className="text-emerald-300 font-semibold mb-1">💡 মনে রেখো!</p>
-                    <p className="text-gray-400 text-sm">একটা lesson শেষ করলে পরেরটা unlock হবে।</p>
+                    <p className="text-gray-400 text-sm">একটা lesson শেষ করলে পরেরটা unlock হবে। শোনো → বলো → লেখো → খেলো!</p>
                 </div>
         </KidsZoneShell>
     )
