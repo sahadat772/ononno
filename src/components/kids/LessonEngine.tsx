@@ -133,6 +133,8 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
     const { speak } = useSpeech()
     const voiceLang = resolveVoiceLang(lesson)
+    // Math addition lessons historically pointed at /math/addition (missing page)
+    const safeBackHref = lesson.backHref.replace(/\/addition\/?$/, '')
     const { isListening, transcript, resetTranscript } = useSpeechRecognition()
     const [exIdx, setExIdx] = useState(0)
     const [hearts, setHearts] = useState(3)
@@ -256,7 +258,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
         } catch (e) {
             console.error('Progress save failed:', e)
         }
-        router.push(lesson.backHref)
+        router.push(safeBackHref)
     }
 
     if (isResult) return (
@@ -295,7 +297,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
             </AnimatePresence>
 
             <div className="shrink-0 px-4 pt-4 pb-2 flex items-center gap-3">
-                <button type="button" onClick={() => router.push(lesson.backHref)} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-lg font-bold text-white">←</button>
+                <button type="button" onClick={() => router.push(safeBackHref)} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-lg font-bold text-white">←</button>
                 <div className="flex-1 bg-white/10 rounded-full h-5 overflow-hidden border border-white/10">
                     <motion.div className={`h-5 rounded-full bg-gradient-to-r ${lesson.color}`} animate={{ width: `${progressPct}%` }} />
                 </div>
