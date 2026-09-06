@@ -16,12 +16,12 @@ const kgZones = [
     bg: 'bg-sky-500/10',
     border: 'border-sky-500/30',
     href: '/dashboard/student/kids-zone/learn',
-    subjects: ['বাংলা বর্ণমালা', 'English ABC', 'সংখ্যা শিখি'],
+    subjects: ['বাংলা', 'English', 'সংখ্যা'],
     available: true,
   },
   {
     id: 'islamic',
-    name: 'ইসলামিক জগৎ',
+    name: 'ইসলামিক',
     icon: '🕌',
     color: 'from-emerald-400 to-teal-500',
     bg: 'bg-emerald-500/10',
@@ -38,18 +38,18 @@ const kgZones = [
     bg: 'bg-violet-500/10',
     border: 'border-violet-500/30',
     href: '/dashboard/student/kids-zone/games',
-    subjects: ['Word Puzzle', 'Quiz Battle', 'Memory'],
+    subjects: ['Puzzle', 'Quiz'],
     available: false,
   },
   {
     id: 'music',
-    name: 'গানের জগৎ',
+    name: 'গান',
     icon: '🎵',
     color: 'from-rose-400 to-pink-500',
     bg: 'bg-rose-500/10',
     border: 'border-rose-500/30',
     href: '/dashboard/student/kids-zone/music',
-    subjects: ['ছড়া', 'Nasheed', 'Rhymes'],
+    subjects: ['ছড়া', 'Rhymes'],
     available: false,
   },
 ]
@@ -57,47 +57,39 @@ const kgZones = [
 const nurserySubjects = [
   {
     id: 'bangla',
-    name: 'বাংলা বর্ণ',
+    name: 'বাংলা',
     icon: 'অ',
     color: 'from-sky-400 to-cyan-500',
     bg: 'bg-sky-500/10',
     border: 'border-sky-500/30',
     href: '/dashboard/student/kids-zone/nursery/bangla',
-    units: 5,
-    lessons: 54,
   },
   {
     id: 'english',
-    name: 'English ABC',
+    name: 'English',
     icon: 'A',
     color: 'from-violet-400 to-purple-500',
     bg: 'bg-violet-500/10',
     border: 'border-violet-500/30',
     href: '/dashboard/student/kids-zone/nursery/english',
-    units: 5,
-    lessons: 31,
   },
   {
     id: 'arabic',
-    name: 'Arabic হরফ',
+    name: 'আরবি',
     icon: 'ا',
     color: 'from-emerald-400 to-teal-500',
     bg: 'bg-emerald-500/10',
     border: 'border-emerald-500/30',
     href: '/dashboard/student/kids-zone/nursery/arabic',
-    units: 5,
-    lessons: 35,
   },
   {
     id: 'math',
     name: 'গণিত',
-    icon: '১২৩',
+    icon: '১',
     color: 'from-amber-400 to-orange-500',
     bg: 'bg-amber-500/10',
     border: 'border-amber-500/30',
     href: '/dashboard/student/kids-zone/nursery/math',
-    units: 6,
-    lessons: 50,
   },
 ]
 
@@ -151,41 +143,35 @@ export default function KidsZonePage() {
     <div className="min-h-screen overflow-x-hidden bg-[#0a0a1a] text-white">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.12),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(16,185,129,0.08),transparent_45%)]" />
 
-      <div className="relative z-10 mx-auto max-w-4xl p-4 md:p-6">
-        <Link
-          href="/dashboard/student"
-          className="mb-4 inline-flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300"
-        >
-          ← Dashboard
-        </Link>
+      {/* K1 sticky child bar */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a1a]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
+          <Link
+            href="/dashboard/student"
+            className="flex min-h-11 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 text-sm font-bold text-white active:scale-95"
+          >
+            ← Dashboard
+          </Link>
+          <p className="text-center text-base font-black">🧒 Kids Zone</p>
+          <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1.5 text-sm font-bold text-amber-300">
+            ⭐
+          </span>
+        </div>
+      </header>
 
-        {/* Hero */}
+      <div className="relative z-10 mx-auto max-w-4xl p-4 md:p-6">
         <motion.div
-          initial={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-5 md:p-6"
+          className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-5"
         >
-          <div className="relative flex items-center justify-between gap-4">
-            <div className="min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <div>
               <p className="text-sm font-semibold text-amber-200">🌟 {greeting}!</p>
-              <h1 className="mt-1 text-2xl font-black text-white md:text-3xl">Kids Zone</h1>
-              <p className="mt-1 text-sm text-purple-100">খেলার ছলে শেখা — Nursery ও KG</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-                  Voice + Trace + Quiz
-                </span>
-                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-                  Islamic basics
-                </span>
-              </div>
+              <h1 className="mt-1 text-2xl font-black text-white">খেলো ও শেখো</h1>
+              <p className="mt-1 text-sm text-purple-100">বড় বোতাম চাপো — সহজে শেখা</p>
             </div>
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ repeat: Infinity, duration: 2.5 }}
-              className="shrink-0 text-6xl md:text-7xl"
-            >
-              🧒
-            </motion.div>
+            <div className="text-6xl">🧒</div>
           </div>
         </motion.div>
 
@@ -194,168 +180,92 @@ export default function KidsZonePage() {
             <LockOverlay type="daily_limit" />
           </div>
         )}
-
         {!accessLoading && !isPaid && <AdBanner position="top" className="mb-6" />}
 
-        {/* Level tabs */}
         <div className="mb-6 grid grid-cols-2 gap-3">
           {(
             [
-              { key: 'nursery' as const, label: '🌱 Nursery', desc: 'শেখার শুরু' },
-              { key: 'kg' as const, label: '⭐ KG', desc: 'আরো এগিয়ে' },
+              { key: 'nursery' as const, label: '🌱 Nursery', desc: 'অ আ ই · ABC' },
+              { key: 'kg' as const, label: '⭐ KG', desc: 'আরো খেলা' },
             ] as const
           ).map((level) => (
             <button
               key={level.key}
               type="button"
               onClick={() => setActiveLevel(level.key)}
-              className={`rounded-2xl border px-4 py-3 text-left transition ${
+              className={`min-h-[72px] rounded-3xl border px-4 py-3 text-left transition active:scale-[0.98] ${
                 activeLevel === level.key
-                  ? 'border-violet-400/50 bg-violet-600/25 text-white shadow-lg shadow-violet-500/10'
-                  : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                  ? 'border-violet-400/50 bg-violet-600/30 text-white'
+                  : 'border-white/10 bg-white/5 text-slate-400'
               }`}
             >
-              <div className="font-bold">{level.label}</div>
-              <div className="mt-0.5 text-xs opacity-70">{level.desc}</div>
+              <div className="text-lg font-black">{level.label}</div>
+              <div className="text-xs opacity-80">{level.desc}</div>
             </button>
           ))}
         </div>
 
         {activeLevel === 'nursery' && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <h2 className="mb-1 text-lg font-black text-white">কী শিখবে?</h2>
-            <p className="mb-4 text-sm text-slate-400">Unit · Lesson · Quiz — ধাপে ধাপে</p>
-
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <p className="mb-3 text-center text-sm font-bold text-slate-300">কী শিখবে?</p>
             <div className="mb-6 grid grid-cols-2 gap-3">
-              {nurserySubjects.map((subject, i) => (
-                <motion.div
-                  key={subject.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  whileHover={{ y: -3 }}
-                >
-                  <Link href={subject.href}>
-                    <div
-                      className={`relative h-full overflow-hidden rounded-2xl border p-4 ${subject.border} ${subject.bg}`}
-                    >
-                      <div
-                        className={`mb-3 grid size-12 place-items-center rounded-xl bg-gradient-to-br text-lg font-black text-white shadow-md ${subject.color}`}
-                      >
-                        {subject.icon}
-                      </div>
-                      <h3 className="font-bold text-white">{subject.name}</h3>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {subject.units} Unit · {subject.lessons} Lesson
-                      </p>
-                      <p
-                        className={`mt-3 bg-gradient-to-r bg-clip-text text-xs font-bold text-transparent ${subject.color}`}
-                      >
-                        শুরু করো →
-                      </p>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🕌</span>
-                <h3 className="font-bold text-white">ইসলামিক</h3>
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                  বাধ্যতামূলক
-                </span>
-              </div>
-              <Link
-                href="/dashboard/student/kids-zone/islamic"
-                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
-              >
-                সব →
-              </Link>
-            </div>
-
-            <div className="mb-6 grid grid-cols-4 gap-2">
-              {islamicLinks.map((item) => (
-                <Link key={item.href} href={item.href}>
+              {nurserySubjects.map((subject) => (
+                <Link key={subject.id} href={subject.href}>
                   <div
-                    className={`rounded-2xl border p-3 text-center transition hover:bg-white/5 ${item.bg} ${item.border}`}
+                    className={`flex min-h-[130px] flex-col items-center justify-center rounded-3xl border p-4 text-center transition active:scale-[0.98] ${subject.border} ${subject.bg}`}
                   >
                     <div
-                      className={`mx-auto mb-2 grid size-10 place-items-center rounded-xl bg-gradient-to-br text-lg shadow ${item.color}`}
+                      className={`mb-2 grid size-14 place-items-center rounded-2xl bg-gradient-to-br text-xl font-black text-white shadow-md ${subject.color}`}
                     >
-                      {item.icon}
+                      {subject.icon}
                     </div>
-                    <p className="text-xs font-semibold text-white">{item.label}</p>
+                    <p className="text-base font-black text-white">{subject.name}</p>
+                    <p className="mt-1 text-xs text-slate-400">শুরু →</p>
                   </div>
                 </Link>
               ))}
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
-              <p className="text-lg text-emerald-200">بِسْمِ اللَّهِ</p>
-              <p className="mt-1 text-sm text-slate-400">পড়ো তোমার রবের নামে</p>
+            <p className="mb-2 text-center text-sm font-bold text-slate-300">🕌 ইসলামিক</p>
+            <div className="mb-4 grid grid-cols-4 gap-2">
+              {islamicLinks.map((item) => (
+                <Link key={item.href} href={item.href}>
+                  <div
+                    className={`flex min-h-[88px] flex-col items-center justify-center rounded-2xl border p-2 ${item.bg} ${item.border}`}
+                  >
+                    <div
+                      className={`mb-1 grid size-11 place-items-center rounded-xl bg-gradient-to-br text-lg ${item.color}`}
+                    >
+                      {item.icon}
+                    </div>
+                    <p className="text-[11px] font-bold text-white">{item.label}</p>
+                  </div>
+                </Link>
+              ))}
             </div>
           </motion.div>
         )}
 
         {activeLevel === 'kg' && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <h2 className="mb-1 text-lg font-black text-white">কোন জগতে যাবে?</h2>
-            <p className="mb-4 text-sm text-slate-400">Grid · Flashcard · Game style</p>
-
-            <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-              {kgZones.map((zone, i) => (
-                <motion.div
-                  key={zone.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className={!zone.available ? 'opacity-55' : ''}
-                >
-                  {zone.available ? (
-                    <Link href={zone.href}>
-                      <KGZoneCard zone={zone} />
-                    </Link>
-                  ) : (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <p className="mb-3 text-center text-sm font-bold text-slate-300">কোন জগৎ?</p>
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              {kgZones.map((zone) =>
+                zone.available ? (
+                  <Link key={zone.id} href={zone.href}>
+                    <KGZoneCard zone={zone} />
+                  </Link>
+                ) : (
+                  <div key={zone.id} className="opacity-50">
                     <KGZoneCard zone={zone} locked />
-                  )}
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🕌</span>
-                <h3 className="font-bold text-white">ইসলামিক</h3>
-              </div>
-              <Link
-                href="/dashboard/student/kids-zone/islamic"
-                className="text-xs font-semibold text-emerald-400"
-              >
-                সব →
-              </Link>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {islamicLinks.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <div
-                    className={`rounded-2xl border p-3 text-center ${item.bg} ${item.border}`}
-                  >
-                    <div
-                      className={`mx-auto mb-2 grid size-10 place-items-center rounded-xl bg-gradient-to-br text-lg ${item.color}`}
-                    >
-                      {item.icon}
-                    </div>
-                    <p className="text-xs font-semibold text-white">{item.label}</p>
                   </div>
-                </Link>
-              ))}
+                ),
+              )}
             </div>
           </motion.div>
         )}
 
-        <p className="mt-10 text-center text-xs text-slate-600">অনন্য · Kids Zone · খেলো ও শেখো</p>
+        <p className="mt-8 text-center text-xs text-slate-600">অনন্য · Kids Zone</p>
       </div>
     </div>
   )
@@ -370,35 +280,15 @@ function KGZoneCard({
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border p-5 transition ${zone.border} ${zone.bg} ${
-        locked ? '' : 'hover:bg-white/5'
-      }`}
+      className={`flex min-h-[130px] flex-col items-center justify-center rounded-3xl border p-4 text-center ${zone.border} ${zone.bg}`}
     >
-      {locked && (
-        <span className="absolute right-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-slate-300">
-          🔒 শীঘ্রই
-        </span>
-      )}
+      {locked && <span className="mb-1 text-[10px] text-slate-400">🔒 শীঘ্রই</span>}
       <div
-        className={`mb-3 grid size-12 place-items-center rounded-xl bg-gradient-to-br text-2xl shadow-md ${zone.color}`}
+        className={`mb-2 grid size-14 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${zone.color}`}
       >
         {zone.icon}
       </div>
-      <h3 className="text-lg font-bold text-white">{zone.name}</h3>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {zone.subjects.map((s) => (
-          <span key={s} className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-300">
-            {s}
-          </span>
-        ))}
-      </div>
-      {!locked && (
-        <p
-          className={`mt-3 bg-gradient-to-r bg-clip-text text-sm font-bold text-transparent ${zone.color}`}
-        >
-          প্রবেশ করো →
-        </p>
-      )}
+      <p className="font-black text-white">{zone.name}</p>
     </div>
   )
 }
