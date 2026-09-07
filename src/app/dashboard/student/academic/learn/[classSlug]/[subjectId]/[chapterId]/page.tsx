@@ -7,321 +7,328 @@ import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 
 interface Lesson {
-    id: string
-    title: string
-    title_bn?: string
-    lesson_type?: string
-    duration_minutes: number
-    xp_reward: number
-    order_index: number
-    lesson_number?: number
+  id: string
+  title: string
+  title_bn?: string
+  lesson_type?: string
+  duration_minutes: number
+  xp_reward: number
+  order_index: number
+  lesson_number?: number
 }
 
 interface Chapter {
-    id: string
-    title: string
-    title_bn?: string
-    chapter_number: number
+  id: string
+  title: string
+  title_bn?: string
+  chapter_number: number
 }
 
 interface LessonProgress {
-    lesson_id: string
-    status: string
-    score: number
-    xp_earned: number
+  lesson_id: string
+  status: string
+  score: number
+  xp_earned: number
 }
 
 const lessonTypeIcons: Record<string, string> = {
-    text: '📖',
-    video: '🎥',
-    quiz: '🧪',
-    exercise: '✏️',
-    revision: '🔄',
-    game: '🎮',
+  text: '📖',
+  video: '🎥',
+  quiz: '🧪',
+  exercise: '✏️',
+  revision: '🔄',
+  game: '🎮',
 }
 
 const lessonTypeLabels: Record<string, string> = {
-    text: 'পাঠ',
-    video: 'ভিডিও',
-    quiz: 'কুইজ',
-    exercise: 'অনুশীলন',
-    revision: 'রিভিশন',
-    game: 'গেম',
+  text: 'পাঠ',
+  video: 'ভিডিও',
+  quiz: 'কুইজ',
+  exercise: 'অনুশীলন',
+  revision: 'রিভিশন',
+  game: 'গেম',
 }
 
 export default function LessonListPage() {
-    const params = useParams()
-    const classSlug = params.classSlug as string
-    const subjectId = params.subjectId as string
-    const chapterId = params.chapterId as string
+  const params = useParams()
+  const classSlug = params.classSlug as string
+  const subjectId = params.subjectId as string
+  const chapterId = params.chapterId as string
 
-    const [chapter, setChapter] = useState<Chapter | null>(null)
-    const [lessons, setLessons] = useState<Lesson[]>([])
-    const [progress, setProgress] = useState<LessonProgress[]>([])
-    const [loading, setLoading] = useState(true)
+  const [chapter, setChapter] = useState<Chapter | null>(null)
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [progress, setProgress] = useState<LessonProgress[]>([])
+  const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const supabase = createClient()
-            const {
-                data: { user },
-            } = await supabase.auth.getUser()
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-            const { data: chap } = await supabase
-                .from('curriculum_chapters')
-                .select('*')
-                .eq('id', chapterId)
-                .single()
-            if (chap) setChapter(chap)
+        const { data: chap } = await supabase
+          .from('curriculum_chapters')
+          .select('*')
+          .eq('id', chapterId)
+          .maybeSingle()
+        if (chap) setChapter(chap)
 
-            const { data: lsns } = await supabase
-                .from('curriculum_lessons')
-                .select('*')
-                .eq('chapter_id', chapterId)
-                .eq('is_active', true)
-                .eq('is_published', true)
-                .order('order_index', { ascending: true })
+        const { data: lsns } = await supabase
+          .from('curriculum_lessons')
+          .select('*')
+          .eq('chapter_id', chapterId)
+          .eq('is_active', true)
+          .eq('is_published', true)
+          .order('order_index', { ascending: true })
 
-            if (lsns) {
-                // Stable order: order_index then lesson_number
-                const sorted = [...lsns].sort(
-                    (a, b) =>
-                        (a.order_index ?? 0) - (b.order_index ?? 0) ||
-                        (a.lesson_number ?? 0) - (b.lesson_number ?? 0),
-                )
-                setLessons(sorted)
-            }
-
-            if (user) {
-                const { data: prog } = await supabase
-                    .from('learning_progress')
-                    .select('*')
-                    .eq('user_id', user.id)
-
-                // Match by lesson_id as string (column may be text or uuid)
-                if (prog) {
-                    setProgress(
-                        prog.map((p) => ({
-                            ...p,
-                            lesson_id: String(p.lesson_id),
-                        })),
-                    )
-                }
-            }
-
-            setLoading(false)
+        if (lsns) {
+          const sorted = [...lsns].sort(
+            (a, b) =>
+              (a.order_index ?? 0) - (b.order_index ?? 0) ||
+              (a.lesson_number ?? 0) - (b.lesson_number ?? 0),
+          )
+          setLessons(sorted)
         }
-        void fetchData()
-    }, [chapterId])
 
-    const getLessonProgress = (lessonId: string) => {
-        const id = String(lessonId)
-        return progress.find((p) => String(p.lesson_id) === id)
+        if (user) {
+          const { data: prog } = await supabase
+            .from('learning_progress')
+            .select('*')
+            .eq('user_id', user.id)
+
+          if (prog) {
+            setProgress(
+              prog.map((p) => ({
+                ...p,
+                lesson_id: String(p.lesson_id),
+              })),
+            )
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
     }
+    void fetchData()
+  }, [chapterId])
 
-    /** First published lesson unlocked; next unlocks only after previous completed */
-    const isLessonUnlocked = (index: number) => {
-        if (index === 0) return true
-        const prevLesson = lessons[index - 1]
-        if (!prevLesson) return false
-        const prevProgress = getLessonProgress(prevLesson.id)
-        return prevProgress?.status === 'completed'
-    }
+  const getLessonProgress = (lessonId: string) => {
+    const id = String(lessonId)
+    return progress.find((p) => String(p.lesson_id) === id)
+  }
 
-    const completedCount = lessons.filter(
-        (l) => getLessonProgress(l.id)?.status === 'completed',
-    ).length
-    const totalXPEarned = progress
-        .filter((p) => lessons.some((l) => String(l.id) === String(p.lesson_id)))
-        .reduce((sum, p) => sum + (p.xp_earned || 0), 0)
+  const isLessonUnlocked = (index: number) => {
+    if (index === 0) return true
+    const prevLesson = lessons[index - 1]
+    if (!prevLesson) return false
+    const prevProgress = getLessonProgress(prevLesson.id)
+    return prevProgress?.status === 'completed'
+  }
 
-    return (
-        <div className="min-h-screen bg-[#0a0a1a] text-white">
-            <div className="sticky top-0 z-40 bg-[#0a0a1a]/90 backdrop-blur-xl border-b border-white/10 px-4 py-3">
-                <div className="max-w-2xl mx-auto flex items-center justify-between">
-                    <Link
-                        href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}`}
-                        className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
-                    >
-                        ← ফিরে যাও
-                    </Link>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs bg-violet-500/20 text-violet-400 border border-violet-500/30 px-3 py-1 rounded-full">
-                            ⚡ {totalXPEarned} XP অর্জিত
-                        </span>
-                    </div>
-                </div>
-            </div>
+  const completedCount = lessons.filter(
+    (l) => getLessonProgress(l.id)?.status === 'completed',
+  ).length
+  const totalXPEarned = progress
+    .filter((p) => lessons.some((l) => String(l.id) === String(p.lesson_id)))
+    .reduce((sum, p) => sum + (p.xp_earned || 0), 0)
+  const overallPct =
+    lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0
 
-            <div className="max-w-2xl mx-auto px-4 py-8">
-                {chapter && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-8"
-                    >
-                        <div className="rounded-3xl bg-linear-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 p-6">
-                            <p className="text-gray-400 text-sm mb-1">অধ্যায় {chapter.chapter_number}</p>
-                            <h1 className="text-2xl font-bold text-white mb-2">
-                                {chapter.title_bn || chapter.title}
-                            </h1>
-                            <p className="text-xs text-violet-300/80 mb-4">
-                                🔒 প্রথম পাঠ খোলা · একটা complete করলে পরেরটা unlock হবে
-                            </p>
+  return (
+    <div className="min-h-screen bg-[#070b14] text-white">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.12),transparent_55%)]" />
 
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { label: 'মোট lesson', value: lessons.length, icon: '📚' },
-                                    { label: 'সম্পন্ন', value: completedCount, icon: '✅' },
-                                    { label: 'XP অর্জিত', value: totalXPEarned, icon: '⚡' },
-                                ].map((stat, i) => (
-                                    <div key={i} className="bg-white/5 rounded-2xl p-3 text-center">
-                                        <div className="text-xl mb-1">{stat.icon}</div>
-                                        <div className="text-white font-bold">{stat.value}</div>
-                                        <div className="text-gray-500 text-xs">{stat.label}</div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="mt-4">
-                                <div className="flex justify-between text-xs text-gray-400 mb-1">
-                                    <span>অগ্রগতি</span>
-                                    <span>
-                                        {lessons.length > 0
-                                            ? Math.round((completedCount / lessons.length) * 100)
-                                            : 0}
-                                        %
-                                    </span>
-                                </div>
-                                <div className="w-full bg-white/10 rounded-full h-3">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{
-                                            width: `${lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0}%`,
-                                        }}
-                                        transition={{ duration: 0.8 }}
-                                        className="bg-linear-to-r from-violet-500 to-purple-500 h-3 rounded-full"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {loading ? (
-                    <div className="space-y-4">
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="rounded-2xl bg-white/5 p-5 animate-pulse h-24" />
-                        ))}
-                    </div>
-                ) : lessons.length === 0 ? (
-                    <div className="text-center py-16">
-                        <div className="text-6xl mb-4">📝</div>
-                        <h3 className="text-white font-bold text-xl mb-2">Lesson শীঘ্রই আসছে</h3>
-                        <p className="text-gray-400 text-sm">Admin এখনো এই অধ্যায়ে published lesson নেই</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {lessons.map((lesson, index) => {
-                            const lessonProg = getLessonProgress(lesson.id)
-                            const unlocked = isLessonUnlocked(index)
-                            const completed = lessonProg?.status === 'completed'
-                            const inProgress = lessonProg?.status === 'in_progress'
-                            const typeKey = lesson.lesson_type || 'text'
-
-                            return (
-                                <motion.div
-                                    key={lesson.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                >
-                                    {unlocked ? (
-                                        <Link
-                                            href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/${lesson.id}`}
-                                        >
-                                            <motion.div
-                                                whileHover={{ x: 4 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                className={`rounded-2xl border p-4 transition-all flex items-center gap-4 ${
-                                                    completed
-                                                        ? 'border-emerald-500/30 bg-emerald-500/10 cursor-pointer hover:bg-emerald-500/20'
-                                                        : inProgress
-                                                          ? 'border-blue-500/30 bg-blue-500/10 cursor-pointer hover:bg-blue-500/20'
-                                                          : 'border-white/10 bg-white/5 cursor-pointer hover:bg-white/10'
-                                                }`}
-                                            >
-                                                <div
-                                                    className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${
-                                                        completed
-                                                            ? 'bg-emerald-500/20'
-                                                            : inProgress
-                                                              ? 'bg-blue-500/20'
-                                                              : 'bg-white/10'
-                                                    }`}
-                                                >
-                                                    {completed ? '⭐' : lessonTypeIcons[typeKey] || '📖'}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                                        <span className="text-xs text-gray-500">
-                                                            পাঠ {lesson.lesson_number ?? index + 1}
-                                                        </span>
-                                                        <span
-                                                            className={`text-xs px-2 py-0.5 rounded-full ${
-                                                                completed
-                                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                                    : 'bg-white/10 text-gray-400'
-                                                            }`}
-                                                        >
-                                                            {lessonTypeLabels[typeKey] || 'পাঠ'}
-                                                        </span>
-                                                    </div>
-                                                    <h3 className="font-bold text-white">
-                                                        {lesson.title_bn || lesson.title}
-                                                    </h3>
-                                                    <div className="flex items-center gap-3 mt-1">
-                                                        <span className="text-xs text-gray-500">
-                                                            ⏱️ {lesson.duration_minutes} মিনিট
-                                                        </span>
-                                                        <span className="text-xs text-violet-400">
-                                                            ⚡ +{lesson.xp_reward} XP
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-shrink-0">
-                                                    {completed ? (
-                                                        <span className="text-2xl">✅</span>
-                                                    ) : (
-                                                        <span className="text-gray-400 text-xl">→</span>
-                                                    )}
-                                                </div>
-                                            </motion.div>
-                                        </Link>
-                                    ) : (
-                                        <div className="rounded-2xl border border-white/5 bg-white/[0.02] opacity-60 p-4 flex items-center gap-4 cursor-not-allowed">
-                                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 bg-white/5">
-                                                🔒
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs text-amber-400/80 mb-0.5">
-                                                    আগের পাঠ complete করলে unlock হবে
-                                                </p>
-                                                <h3 className="font-bold text-gray-500">
-                                                    {lesson.title_bn || lesson.title}
-                                                </h3>
-                                                <span className="text-xs text-gray-600">
-                                                    পাঠ {lesson.lesson_number ?? index + 1} · ⚡ +{lesson.xp_reward} XP
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )
-                        })}
-                    </div>
-                )}
-            </div>
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#070b14]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
+          <Link
+            href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}`}
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg text-slate-300 hover:text-white"
+          >
+            ←
+          </Link>
+          <div className="min-w-0 text-center">
+            <p className="truncate text-sm font-bold">
+              {chapter?.title_bn || chapter?.title || 'অধ্যায়'}
+            </p>
+            <p className="text-[10px] text-violet-300">পাঠ বেছে নাও</p>
+          </div>
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/15 px-2.5 py-1 text-xs font-bold text-violet-300">
+            ⚡ {totalXPEarned}
+          </span>
         </div>
-    )
+      </header>
+
+      <div className="relative z-10 mx-auto max-w-2xl px-4 py-5 pb-12">
+        {chapter && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 overflow-hidden rounded-3xl border border-violet-500/25 bg-gradient-to-br from-violet-500/15 to-purple-500/5 p-5"
+          >
+            <p className="text-xs font-semibold text-violet-300">
+              অধ্যায় {chapter.chapter_number || ''}
+            </p>
+            <h1 className="mt-1 text-2xl font-black text-white">
+              {chapter.title_bn || chapter.title}
+            </h1>
+            <p className="mt-2 text-xs text-slate-400">
+              প্রথম পাঠ খোলা · একটা শেষ করলে পরেরটা আনলক হবে
+            </p>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {[
+                { label: 'মোট পাঠ', value: lessons.length, icon: '📚' },
+                { label: 'সম্পন্ন', value: completedCount, icon: '✅' },
+                { label: 'XP', value: totalXPEarned, icon: '⚡' },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl bg-white/5 py-2.5 text-center">
+                  <div className="text-lg">{stat.icon}</div>
+                  <div className="font-bold text-white">{stat.value}</div>
+                  <div className="text-[10px] text-slate-500">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4">
+              <div className="mb-1 flex justify-between text-xs text-slate-400">
+                <span>অগ্রগতি</span>
+                <span className="font-bold text-violet-300">{overallPct}%</span>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${overallPct}%` }}
+                  transition={{ duration: 0.8 }}
+                  className="h-2.5 rounded-full bg-gradient-to-r from-violet-500 to-purple-500"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        <h2 className="mb-3 text-lg font-black text-white">পাঠসমূহ</h2>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+            ))}
+          </div>
+        ) : lessons.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+            <p className="text-5xl">📝</p>
+            <h3 className="mt-3 text-lg font-bold text-white">পাঠ শীঘ্রই আসছে</h3>
+            <p className="mt-1 text-sm text-slate-400">
+              এই অধ্যায়ে এখনো কোনো পাবলিশ করা পাঠ নেই
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {lessons.map((lesson, index) => {
+              const lessonProg = getLessonProgress(lesson.id)
+              const unlocked = isLessonUnlocked(index)
+              const completed = lessonProg?.status === 'completed'
+              const inProgress = lessonProg?.status === 'in_progress'
+              const typeKey = lesson.lesson_type || 'text'
+
+              return (
+                <motion.div
+                  key={lesson.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.04 }}
+                >
+                  {unlocked ? (
+                    <Link
+                      href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/${lesson.id}`}
+                    >
+                      <div
+                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition active:scale-[0.99] ${
+                          completed
+                            ? 'border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15'
+                            : inProgress
+                              ? 'border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15'
+                              : 'border-white/10 bg-white/5 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        <div
+                          className={`grid size-14 shrink-0 place-items-center rounded-2xl text-2xl ${
+                            completed
+                              ? 'bg-emerald-500/20'
+                              : inProgress
+                                ? 'bg-sky-500/20'
+                                : 'bg-white/10'
+                          }`}
+                        >
+                          {completed ? '⭐' : lessonTypeIcons[typeKey] || '📖'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-0.5 flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] text-slate-500">
+                              পাঠ {lesson.lesson_number ?? index + 1}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                completed
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : 'bg-white/10 text-slate-400'
+                              }`}
+                            >
+                              {lessonTypeLabels[typeKey] || 'পাঠ'}
+                            </span>
+                            {inProgress && (
+                              <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
+                                চলছে
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-bold text-white">
+                            {lesson.title_bn || lesson.title}
+                          </h3>
+                          <div className="mt-1 flex items-center gap-3">
+                            <span className="text-xs text-slate-500">
+                              ⏱️ {lesson.duration_minutes || 5} মিনিট
+                            </span>
+                            <span className="text-xs text-violet-300">
+                              ⚡ +{lesson.xp_reward || 10} XP
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-xl">
+                          {completed ? '✅' : '→'}
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="flex cursor-not-allowed items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-4 opacity-55">
+                      <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/5 text-2xl">
+                        🔒
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] text-amber-400/80">
+                          আগের পাঠ শেষ করলে আনলক হবে
+                        </p>
+                        <h3 className="font-bold text-slate-500">
+                          {lesson.title_bn || lesson.title}
+                        </h3>
+                        <span className="text-xs text-slate-600">
+                          পাঠ {lesson.lesson_number ?? index + 1} · ⚡ +{lesson.xp_reward || 10} XP
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
+
+        <p className="mt-10 text-center text-xs text-slate-600">অনন্য · পাঠ লিস্ট</p>
+      </div>
+    </div>
+  )
 }
