@@ -41,7 +41,6 @@ export async function GET(req: NextRequest) {
       try {
         const res = await fetch(url, {
           headers: { 'User-Agent': 'ONONNO-QuranPlayer/1.0' },
-          // @ts-expect-error undici
           signal: AbortSignal.timeout(12000),
         })
         lastStatus = res.status
