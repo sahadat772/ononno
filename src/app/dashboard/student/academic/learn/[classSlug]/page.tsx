@@ -40,18 +40,18 @@ function parseClassNumber(raw: string): number | null {
 
 const ICON_FALLBACK: Record<string, string> = {
   bangla: '📗',
-  বাংলা: '📗',
+  'বাংলা': '📗',
   english: '📘',
-  ইংরেজি: '📘',
+  'ইংরেজি': '📘',
   math: '🔢',
   mathematics: '🔢',
-  গণিত: '🔢',
+  'গণিত': '🔢',
   science: '🔬',
-  বিজ্ঞান: '🔬',
+  'বিজ্ঞান': '🔬',
   islam: '🕌',
   islamic: '🕌',
-  ইসলাম: '🕌',
-  ইসলাম শিক্ষা: '🕌',
+  'ইসলাম': '🕌',
+  'ইসলাম শিক্ষা': '🕌',
 }
 
 function subjectIcon(subject: Subject): string {
@@ -301,7 +301,6 @@ export default function ClassSubjectsPage() {
           )}
         </motion.div>
 
-        {/* Quick tips */}
         {!loading && !error && subjects.length > 0 && (
           <div className="mb-5 grid grid-cols-3 gap-2">
             {[
