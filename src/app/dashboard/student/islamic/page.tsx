@@ -42,25 +42,25 @@ const islamicModules: Module[] = [
   },
   {
     id: 'tajweed',
-    title: 'Tajweed AI',
-    description: 'তাজবিদ নিয়ম · AI practice',
+    title: 'তাজবিদ AI',
+    description: 'তাজবিদের নিয়ম · AI দিয়ে অনুশীলন',
     icon: '🎵',
     color: 'from-blue-500 to-indigo-500',
     href: '/dashboard/student/islamic/tajweed',
     available: true,
-    badge: 'AI',
+    badge: 'স্মার্ট',
     isNew: true,
     category: 'ai',
   },
   {
     id: 'hifz',
-    title: 'হিফজ Tracker',
-    description: 'মুখস্থ + revision plan',
+    title: 'হিফজ ট্র্যাকার',
+    description: 'মুখস্থ + পুনরাবৃত্তির পরিকল্পনা',
     icon: '📚',
     color: 'from-violet-500 to-purple-500',
     href: '/dashboard/student/islamic/memorization',
     available: true,
-    badge: 'AI',
+    badge: 'স্মার্ট',
     isNew: true,
     category: 'ai',
   },
@@ -72,7 +72,7 @@ const islamicModules: Module[] = [
     color: 'from-teal-500 to-emerald-500',
     href: '/dashboard/student/islamic/chat',
     available: true,
-    badge: 'AI',
+    badge: 'স্মার্ট',
     isNew: true,
     category: 'ai',
   },
@@ -138,13 +138,13 @@ const islamicModules: Module[] = [
   },
   {
     id: 'progress',
-    title: 'Weekly Report',
+    title: 'সাপ্তাহিক রিপোর্ট',
     description: 'সাপ্তাহিক অগ্রগতি দেখো',
     icon: '📊',
     color: 'from-slate-500 to-gray-600',
     href: '/dashboard/student/islamic/progress',
     available: true,
-    badge: 'ML',
+    badge: 'রিপোর্ট',
     isNew: true,
     category: 'ai',
   },
@@ -176,7 +176,7 @@ const islamicModules: Module[] = [
 
 const QUICK = [
   { href: '/dashboard/student/islamic/quran', icon: '📖', label: 'কুরআন', color: 'from-emerald-500 to-teal-600' },
-  { href: '/dashboard/student/islamic/tajweed', icon: '🎵', label: 'Tajweed', color: 'from-blue-500 to-indigo-600' },
+  { href: '/dashboard/student/islamic/tajweed', icon: '🎵', label: 'তাজবিদ', color: 'from-blue-500 to-indigo-600' },
   { href: '/dashboard/student/islamic/memorization', icon: '📚', label: 'হিফজ', color: 'from-violet-500 to-purple-600' },
   { href: '/dashboard/student/islamic/chat', icon: '🤖', label: 'উস্তাদ', color: 'from-teal-500 to-emerald-600' },
 ]
@@ -185,7 +185,7 @@ const STATS = [
   { label: 'সূরা', value: '১১৪', icon: '📖' },
   { label: 'হাদিস', value: '৬+', icon: '📜' },
   { label: 'দোয়া', value: '৫০+', icon: '🤲' },
-  { label: 'AI টুল', value: '৬টি', icon: '🤖' },
+  { label: 'স্মার্ট টুল', value: '৬টি', icon: '🤖' },
 ]
 
 export default function IslamicPage() {
@@ -256,7 +256,7 @@ export default function IslamicPage() {
           </Link>
           <div className="text-center">
             <p className="text-sm font-bold">🕌 ইসলামিক হাব</p>
-            <p className="text-[10px] text-emerald-400">কুরআন · হাদিস · AI শিক্ষা</p>
+            <p className="text-[10px] text-emerald-400">কুরআন · হাদিস · স্মার্ট শিক্ষা</p>
           </div>
           <Link
             href="/dashboard/student/islamic/progress"
@@ -268,7 +268,6 @@ export default function IslamicPage() {
       </header>
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-5 pb-12 md:px-6">
-        {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -279,9 +278,9 @@ export default function IslamicPage() {
               🕌
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-black text-white md:text-3xl">ইসলামিক স্টাডি</h1>
+              <h1 className="text-2xl font-black text-white md:text-3xl">ইসলামিক শিক্ষা</h1>
               <p className="mt-1 text-sm text-emerald-100/80">
-                বسم الله দিয়ে শুরু করো — আজকের পড়া বেছে নাও
+                বিসমিল্লাহ দিয়ে শুরু করো — আজকের পড়া বেছে নাও
               </p>
             </div>
           </div>
@@ -306,9 +305,8 @@ export default function IslamicPage() {
           </div>
         </motion.div>
 
-        {/* Quick actions */}
         <div className="mb-5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">দ্রুত শুরু</p>
+          <p className="mb-2 text-xs font-semibold tracking-wider text-gray-500">দ্রুত শুরু</p>
           <div className="grid grid-cols-4 gap-2">
             {QUICK.map((q) => (
               <Link key={q.href} href={q.href}>
@@ -325,7 +323,6 @@ export default function IslamicPage() {
           </div>
         </div>
 
-        {/* Daily tracker */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -337,7 +334,7 @@ export default function IslamicPage() {
               {dueCount > 0 && (
                 <Link href="/dashboard/student/islamic/memorization">
                   <span className="animate-pulse rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
-                    📚 {dueCount} revision
+                    📚 {dueCount}টি পুনরাবৃত্তি
                   </span>
                 </Link>
               )}
@@ -345,35 +342,37 @@ export default function IslamicPage() {
                 href="/dashboard/student/islamic/progress"
                 className="text-[11px] text-gray-400 hover:text-emerald-300"
               >
-                Weekly →
+                সাপ্তাহিক →
               </Link>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-2">
-            {[{
-              icon: '📖',
-              label: 'আয়াত',
-              value: tracker?.quran_ayahs_read || 0,
-              done: (tracker?.quran_ayahs_read || 0) > 0,
-            },
-            {
-              icon: '🤲',
-              label: 'দোয়া',
-              value: tracker?.duas_recited || 0,
-              done: (tracker?.duas_recited || 0) > 0,
-            },
-            {
-              icon: '📜',
-              label: 'হাদিস',
-              value: tracker?.hadith_read || 0,
-              done: (tracker?.hadith_read || 0) > 0,
-            },
-            {
-              icon: '🎵',
-              label: 'Tajweed',
-              value: tracker?.tajweed_practiced ? '✅' : '—',
-              done: !!tracker?.tajweed_practiced,
-            }].map((item) => (
+            {[
+              {
+                icon: '📖',
+                label: 'আয়াত',
+                value: tracker?.quran_ayahs_read || 0,
+                done: (tracker?.quran_ayahs_read || 0) > 0,
+              },
+              {
+                icon: '🤲',
+                label: 'দোয়া',
+                value: tracker?.duas_recited || 0,
+                done: (tracker?.duas_recited || 0) > 0,
+              },
+              {
+                icon: '📜',
+                label: 'হাদিস',
+                value: tracker?.hadith_read || 0,
+                done: (tracker?.hadith_read || 0) > 0,
+              },
+              {
+                icon: '🎵',
+                label: 'তাজবিদ',
+                value: tracker?.tajweed_practiced ? '✅' : '—',
+                done: !!tracker?.tajweed_practiced,
+              },
+            ].map((item) => (
               <div
                 key={item.label}
                 className={`rounded-xl p-2 text-center ${
@@ -392,12 +391,11 @@ export default function IslamicPage() {
           </div>
           {(tracker?.daily_streak || 0) > 0 && (
             <p className="mt-2 text-center text-xs text-orange-300">
-              🔥 {tracker?.daily_streak} দিনের streak!
+              🔥 {tracker?.daily_streak} দিনের ধারাবাহিকতা!
             </p>
           )}
         </motion.div>
 
-        {/* Ustaz banner */}
         <Link href="/dashboard/student/islamic/chat" className="mb-6 block">
           <div className="flex items-center gap-3 rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-500/15 to-purple-500/10 p-4 transition hover:border-violet-400/50">
             <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-2xl">
@@ -407,7 +405,7 @@ export default function IslamicPage() {
               <div className="flex items-center gap-2">
                 <p className="font-bold text-white">উস্তাদ AI</p>
                 <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
-                <span className="text-[10px] text-emerald-400">Online</span>
+                <span className="text-[10px] text-emerald-400">অনলাইন</span>
               </div>
               <p className="text-xs text-gray-400">কুরআন ও হাদিসের আলোকে প্রশ্ন করো</p>
             </div>
@@ -415,7 +413,6 @@ export default function IslamicPage() {
           </div>
         </Link>
 
-        {/* Filters + modules */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-white">📚 সব বিভাগ</h2>
           <div className="flex gap-1 rounded-xl bg-white/5 p-1">
@@ -423,7 +420,7 @@ export default function IslamicPage() {
               [
                 { key: 'all' as const, label: 'সব' },
                 { key: 'core' as const, label: 'মূল' },
-                { key: 'ai' as const, label: 'AI' },
+                { key: 'ai' as const, label: 'স্মার্ট' },
                 { key: 'study' as const, label: 'পড়া' },
               ] as const
             ).map((f) => (
@@ -474,7 +471,6 @@ export default function IslamicPage() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Inspiration */}
         <div className="mt-8 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-orange-500/5 p-5 text-center">
           <p className="mb-1 text-sm text-amber-300">💡 আজকের অনুপ্রেরণা</p>
           <p className="text-lg leading-loose text-white md:text-xl" dir="rtl">
@@ -509,7 +505,7 @@ function ModuleCard({ module }: { module: Module }) {
               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 module.badge === 'শীঘ্রই'
                   ? 'bg-gray-500/20 text-gray-400'
-                  : module.badge === 'AI'
+                  : module.badge === 'স্মার্ট'
                     ? 'border border-violet-500/30 bg-violet-500/15 text-violet-300'
                     : 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
               }`}
