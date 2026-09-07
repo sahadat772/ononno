@@ -7,13 +7,14 @@ import { createClient } from '@/lib/supabase'
 import KidsZoneShell from '@/components/kids/KidsZoneShell'
 
 const units = [
-  { id: 1, title: 'আলিফ থেকে যাল', subtitle: 'ا ب ت ث ج ح خ ذ', icon: '🌱', color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
+  { id: 1, title: 'আলিফ থেকে যাল', subtitle: 'ا ب ت ث ج ح خ د ذ', icon: '🌱', color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
     lessons: [
       { id: 'arabic-alif', title: 'ا — আলিফ', icon: 'ا', xp: 10 }, { id: 'arabic-ba', title: 'ب — বা', icon: 'ب', xp: 10 },
       { id: 'arabic-ta', title: 'ت — তা', icon: 'ت', xp: 10 }, { id: 'arabic-tha', title: 'ث — ছা', icon: 'ث', xp: 10 },
       { id: 'arabic-jeem', title: 'ج — জিম', icon: 'ج', xp: 10 }, { id: 'arabic-ha', title: 'ح — হা', icon: 'ح', xp: 10 },
       { id: 'arabic-kha', title: 'خ — খা', icon: 'خ', xp: 10 }, { id: 'arabic-dal', title: 'د — দাল', icon: 'د', xp: 10 },
-    ], bossQuiz: { id: 'boss-arabic-1', title: 'ا–د Boss Quiz', xp: 50 } },
+      { id: 'arabic-dhal', title: 'ذ — যাল', icon: 'ذ', xp: 10 },
+    ], bossQuiz: { id: 'boss-arabic-1', title: 'ا–ذ Boss Quiz', xp: 50 } },
   { id: 2, title: 'রা থেকে দোয়াদ', subtitle: 'ر ز س ش ص ض', icon: '🌿', color: 'from-blue-400 to-cyan-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30',
     lessons: [
       { id: 'arabic-ra', title: 'ر — রা', icon: 'ر', xp: 10 }, { id: 'arabic-za', title: 'ز — যা', icon: 'ز', xp: 10 },
@@ -81,15 +82,15 @@ export default function NurseryArabicPage() {
   const progressPercent = Math.round((completedLessons / totalLessons) * 100)
 
   return (
-    <KidsZoneShell title="আরবি" subtitle="হরফ শিখি" emoji="ا" stars={totalXp}>
+    <KidsZoneShell title="আরবি" subtitle="হরফ · হরকত" emoji="ا" stars={totalXp}>
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-6 rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 p-5">
         <div className="flex items-center gap-4">
           <div className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-3xl font-bold text-white" style={{ fontFamily: 'Arial' }}>ا</div>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-white">আরবি হরফ</h1>
-            <p className="text-sm text-gray-400">আলিফ থেকে ইয়া</p>
+            <p className="text-sm text-gray-400">শোনো → বলো → লেখো</p>
             <div className="mt-2">
-              <div className="mb-1 flex justify-between text-xs text-gray-400"><span>{completedLessons}/{totalLessons}</span><span>{progressPercent}%</span></div>
+              <div className="mb-1 flex justify-between text-xs text-gray-400"><span>{completedLessons}/{totalLessons} lessons</span><span>{progressPercent}%</span></div>
               <div className="h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500" style={{ width: `${progressPercent}%` }} /></div>
             </div>
           </div>
@@ -104,7 +105,7 @@ export default function NurseryArabicPage() {
             const unitCompleted = unit.lessons.filter(l => progress[l.id]?.completed).length
             return (
               <div key={unit.id}>
-                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''}`}>
+                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''`}>
                   <div className="flex items-center gap-3">
                     <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${unit.color}`}>{isUnitUnlocked ? unit.icon : '🔒'}</div>
                     <div className="min-w-0 flex-1">
@@ -146,7 +147,7 @@ export default function NurseryArabicPage() {
 
       <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
         <p className="text-emerald-200">بِسْمِ اللَّهِ</p>
-        <p className="mt-1 text-sm text-slate-400">একটা হরফ শিখলে পরেরটা unlock হবে।</p>
+        <p className="mt-1 text-sm text-slate-400">একটা হরফ শিখলে পরেরটা unlock হবে। শোনো → বলো → লেখো!</p>
       </div>
     </KidsZoneShell>
   )
