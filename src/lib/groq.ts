@@ -13,12 +13,13 @@ export type Message = {
   content: string
 }
 
+// Prefer models commonly available on free/dev Groq keys
 const CHAT_MODELS = [
-  'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
+  'openai/gpt-oss-20b',
+  'llama-3.3-70b-versatile',
 ] as const
 
-// Main AI function
 export async function chat(
   messages: Message[],
   systemPrompt?: string
@@ -30,7 +31,6 @@ export async function chat(
     content: systemPrompt || getDefaultSystemPrompt(),
   }
 
-  // Groq expects alternating user/assistant after system; strip empty
   const cleaned = messages
     .filter(
       (m) =>
@@ -61,32 +61,27 @@ export async function chat(
     }
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error('All Groq models failed')
+  const detail =
+    lastError instanceof Error
+      ? lastError.message
+      : typeof lastError === 'object' && lastError && 'message' in lastError
+        ? String((lastError as { message: unknown }).message)
+        : 'All Groq models failed'
+
+  throw new Error(detail)
 }
 
-// Default system prompt — Bangla AI tutor
 function getDefaultSystemPrompt(): string {
-  return `তুমি Ononno প্ল্যাটফর্মের AI শিক্ষক। তোমার নাম "অনন্য AI"। শিক্ষকতাতে তোমার ১২ বছরের অভিজ্ঞতা আছে। তুমি শিক্ষার্থীদের বিভিন্ন বিষয়ে সাহায্য করবে, যেমন গণিত, বিজ্ঞান, ইসলামিক পড়া, এবং আরও অনেক কিছু।
+  return `তুমি Ononno প্ল্যাটফর্মের AI শিক্ষক। তোমার নাম "অনন্য AI"।
 
 নিয়মাবলী:
 - সবসময় বাংলায় উত্তর দাও
 - শুধুমাত্র কথোপকথনের শুরুতে একবার সালাম দাও
-- অপ্রয়োজনীয় কথা বলো না — সংক্ষিপ্ত ও কার্যকর রাখো
-- উত্তর সুন্দরভাবে format করো — heading, bullet point, bold ব্যবহার করো
-- গণিত ও বিজ্ঞানের সমস্যায় step-by-step সমাধান দাও
-- ইসলামিক প্রশ্নে কুরআন ও সহীহ হাদিসের আলোকে উত্তর দাও
-- কখনো ভুল তথ্য দেবে না
-- শিক্ষার্থীকে উৎসাহিত করো
-- ধৈর্যশীল ও সহানুভূতিশীল থাকো
-- কখনোই শিক্ষার্থীকে অপমান করো না
-- শিক্ষার্থীর প্রশ্নের সাথে সম্পর্কিত থাকো, topic থেকে না ভাসো
-- শিক্ষার্থীর আগ্রহ ও স্তর অনুযায়ী উত্তর দাও
-- প্রয়োজনে উদাহরণ ব্যবহার করো`
+- সংক্ষিপ্ত ও কার্যকর রাখো
+- ধাপে ধাপে বোঝাও
+- শিক্ষার্থীকে উৎসাহিত করো`
 }
 
-// Student অনুযায়ী custom system prompt
 export function getStudentSystemPrompt(
   classLevel: string,
   name: string,
@@ -103,10 +98,9 @@ ${subjects ? `- বিষয়: ${subjects.join(', ')}` : ''}
 - সবসময় বাংলায় উত্তর দাও
 - প্রতিটি উত্তরে সালাম দেবে না — শুধু প্রথমবার
 - ${classLevel} স্তরের উপযোগী সহজ ভাষায় বোঝাও
-- উত্তর structured রাখো — প্রয়োজনে ধাপে ধাপে বোঝাও
+- ধাপে ধাপে বোঝাও
 - সংক্ষিপ্ত কিন্তু সম্পূর্ণ উত্তর দাও
-- ইসলামিক মূল্যবোধ মেনে চলো
-- শিক্ষার্থীকে উৎসাহিত করো, কখনোই হতাশ করো না`
+- শিক্ষার্থীকে উৎসাহিত করো`
 }
 
 export function getCareerGuidancePrompt(
@@ -115,11 +109,7 @@ export function getCareerGuidancePrompt(
   interests: string[],
   strengths: string[]
 ): string {
-  return `তুমি Ononno প্ল্যাটফর্মের AI ক্যারিয়ার গাইড।
-শিক্ষার্থী: ${name}, শ্রেণী: ${classLevel}
-আগ্রহ: ${interests.join(', ')}
-শক্তি: ${strengths.join(', ')}
-বাংলাদেশের চাকরির বাজার ও হালাল ক্যারিয়ার মাথায় রেখে পরামর্শ দাও। সবসময় বাংলায় উত্তর দাও।`
+  return `তুমি AI ক্যারিয়ার গাইড। শিক্ষার্থী: ${name}, শ্রেণী: ${classLevel}. আগ্রহ: ${interests.join(', ')}. শক্তি: ${strengths.join(', ')}. বাংলায় পরামর্শ দাও।`
 }
 
 export function getIslamicStudyPrompt(
@@ -127,9 +117,7 @@ export function getIslamicStudyPrompt(
   classLevel: string,
   topic: string
 ): string {
-  return `তুমি Ononno প্ল্যাটফর্মের ইসলামিক শিক্ষক।
-শিক্ষার্থী: ${name}, শ্রেণী: ${classLevel}, বিষয়: ${topic}
-কুরআন ও সহীহ হাদিসের আলোকে সহজ বাংলায় বোঝাও।`
+  return `তুমি ইসলামিক শিক্ষক। শিক্ষার্থী: ${name}, শ্রেণী: ${classLevel}, বিষয়: ${topic}. কুরআন ও সহীহ হাদিসের আলোকে সহজ বাংলায় বোঝাও।`
 }
 
 export interface AnalysisResult {
@@ -150,9 +138,7 @@ export function getQuranAnalysisPrompt(
   ayahTexts: string[],
   translations: string[]
 ): string {
-  return `তুমি Quran Analysis AI। সূরা ${surahName} (${surahNumber}), আয়াত ${ayahStart}-${ayahEnd} বিশ্লেষণ করে শুধু valid JSON দাও।
-আয়াত: ${ayahTexts.join(' | ')}
-অর্থ: ${translations.join(' | ')}`
+  return `Quran Analysis AI। সূরা ${surahName} (${surahNumber}), আয়াত ${ayahStart}-${ayahEnd}. শুধু valid JSON দাও।\nআয়াত: ${ayahTexts.join(' | ')}\nঅর্থ: ${translations.join(' | ')}`
 }
 
 export function getContentAnalysisPrompt(
@@ -162,9 +148,7 @@ export function getContentAnalysisPrompt(
   sector: string,
   level: string
 ): string {
-  return `Universal Analysis AI। বিষয়: ${subject}, টপিক: ${topic}, স্তর: ${level}, sector: ${sector}.
-Content: ${content}
-শুধু valid JSON দাও।`
+  return `Analysis AI। বিষয়: ${subject}, টপিক: ${topic}, স্তর: ${level}, sector: ${sector}. Content: ${content}. শুধু valid JSON দাও।`
 }
 
 export async function analyzeContent(
