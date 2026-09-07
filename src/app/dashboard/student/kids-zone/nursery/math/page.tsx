@@ -98,32 +98,46 @@ export default function NurseryMathPage() {
             <p className="text-sm text-gray-400">গণনা → যোগ → বিয়োগ</p>
             <div className="mt-2">
               <div className="mb-1 flex justify-between text-xs text-gray-400"><span>{completedLessons}/{totalLessons} lessons</span><span>{progressPercent}%</span></div>
-              <div className="h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${progressPercent}%` }} /></div>
+              <div className="h-2.5 rounded-full bg-white/10">
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: progressPercent + '%' }} />
+              </div>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {loading ? <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/5" />)}</div> : (
+      {loading ? (
+        <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/5" />)}</div>
+      ) : (
         <div className="space-y-3">
           {units.map((unit, unitIdx) => {
             const isExpanded = expandedUnit === unit.id
             const isUnitUnlocked = isLessonUnlocked(unitIdx, 0)
-            const unitCompleted = unit.lessons.filter(l => progress[l.id]?.completed).length
+            const unitCompleted = unit.lessons.filter((l) => progress[l.id]?.completed).length
+            const unitPct = (unitCompleted / unit.lessons.length) * 100
             return (
               <div key={unit.id}>
                 <button
                   type="button"
                   onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)}
-                  className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''}`}
+                  className={[
+                    'w-full rounded-2xl border p-4 text-left',
+                    unit.border,
+                    unit.bg,
+                    !isUnitUnlocked ? 'opacity-50' : '',
+                  ].filter(Boolean).join(' ')}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${unit.color}`}>{isUnitUnlocked ? unit.icon : '🔒'}</div>
+                    <div className={['grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl', unit.color].join(' ')}>
+                      {isUnitUnlocked ? unit.icon : '🔒'}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-white">{unit.title}</h3>
                       <p className="truncate text-xs text-gray-400">{unit.subtitle}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 rounded-full bg-white/10"><div className={`h-1.5 rounded-full bg-gradient-to-r ${unit.color}`} style={{ width: `${(unitCompleted / unit.lessons.length) * 100}%` }} /></div>
+                        <div className="h-1.5 flex-1 rounded-full bg-white/10">
+                          <div className={['h-1.5 rounded-full bg-gradient-to-r', unit.color].join(' ')} style={{ width: unitPct + '%' }} />
+                        </div>
                         <span className="text-xs text-gray-400">{unitCompleted}/{unit.lessons.length}</span>
                       </div>
                     </div>
@@ -136,14 +150,22 @@ export default function NurseryMathPage() {
                       const isCompleted = progress[lesson.id]?.completed === true
                       const isUnlocked = isLessonUnlocked(unitIdx, lessonIdx)
                       const stars = progress[lesson.id]?.stars || 0
+                      const rowClass = ['flex items-center gap-3', lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'].join(' ')
+                      const linkClass = [
+                        'flex size-14 items-center justify-center rounded-full text-lg font-bold',
+                        isCompleted || isUnlocked ? 'bg-gradient-to-br text-white ' + unit.color : 'bg-gray-700/50 text-gray-500',
+                        isUnlocked && !isCompleted ? 'ring-4 ring-white/20' : '',
+                      ].filter(Boolean).join(' ')
                       return (
-                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'`}>
-                          <Link href={isUnlocked ? mathLessonHref(lesson.id) : '#'} className={`flex size-14 items-center justify-center rounded-full text-lg font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'}`}>
+                        <div key={lesson.id} className={rowClass}>
+                          <Link href={isUnlocked ? mathLessonHref(lesson.id) : '#'} className={linkClass}>
                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}
                           </Link>
                           <div className="min-w-0 flex-1">
-                            <p className={`truncate text-sm font-medium ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{lesson.title}</p>
-                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ` · ${'⭐'.repeat(stars)}` : ''}</p>
+                            <p className={['truncate text-sm font-medium', isUnlocked ? 'text-white' : 'text-gray-500'].join(' ')}>{lesson.title}</p>
+                            <p className="text-xs text-amber-400">
+                              ⚡ {lesson.xp} XP{stars > 0 ? ' · ' + '⭐'.repeat(stars) : ''}
+                            </p>
                           </div>
                         </div>
                       )
