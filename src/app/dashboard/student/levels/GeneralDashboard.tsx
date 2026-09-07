@@ -112,7 +112,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6"
             >
-                <div className="rounded-3xl bg-linear-to-r from-blue-500/10 via-violet-500/10 to-purple-500/10 border border-blue-500/20 p-4 md:p-6">
+                <div className="rounded-3xl bg-gradient-to-r from-blue-500/10 via-violet-500/10 to-purple-500/10 border border-blue-500/20 p-4 md:p-6">
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                             <h1 className="text-xl md:text-3xl font-bold text-white leading-tight">
@@ -151,7 +151,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                                 className="bg-white/5 rounded-2xl p-3 text-center"
                             >
                                 <div className="text-xl mb-1">{stat.icon}</div>
-                                <div className={`text-base md:text-lg font-bold bg-linear-to-r ${stat.color} bg-clip-text text-transparent`}>
+                                <div className={`text-base md:text-lg font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
                                     {stat.value}
                                 </div>
                                 <div className="text-xs text-gray-500 leading-tight">{stat.label}</div>
@@ -161,12 +161,10 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                 </div>
             </motion.div>
 
-            {/* Phase 2.6 — Learning insights */}
             <div className="mb-4">
                 <LearningInsightsCard />
             </div>
 
-            {/* Phase 2.5 — Weak areas */}
             <div className="mb-4">
                 <WeakAreaCard />
             </div>
@@ -183,7 +181,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                         <Link href={module.href}>
                             <div className={`rounded-2xl border ${module.border} bg-white/5 hover:bg-white/10 p-4 md:p-5 transition-all h-full cursor-pointer`}>
                                 <div className="flex items-start justify-between mb-3">
-                                    <div className={`w-11 h-11 md:w-12 md:h-12 rounded-xl bg-linear-to-br ${module.color} flex items-center justify-center text-2xl shadow-md`}>
+                                    <div className={`w-11 h-11 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${module.color} flex items-center justify-center text-2xl shadow-md`}>
                                         {module.icon}
                                     </div>
                                     <span className={`text-xs px-2 py-1 rounded-full border ${module.badgeColor}`}>
@@ -195,12 +193,12 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                                 <div className="space-y-1">
                                     {module.items.map((item, j) => (
                                         <div key={j} className="flex items-center gap-2 text-gray-400 text-sm">
-                                            <span className={`w-1.5 h-1.5 rounded-full bg-linear-to-r ${module.color} shrink-0`} />
+                                            <span className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${module.color} shrink-0`} />
                                             {item}
                                         </div>
                                     ))}
                                 </div>
-                                <div className={`mt-3 text-sm font-semibold bg-linear-to-r ${module.color} bg-clip-text text-transparent`}>
+                                <div className={`mt-3 text-sm font-semibold bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}>
                                     শুরু করো →
                                 </div>
                             </div>
@@ -231,7 +229,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                                 whileTap={{ scale: 0.98 }}
                                 className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-3 flex items-center gap-3 transition-all"
                             >
-                                <div className={`w-9 h-9 rounded-lg bg-linear-to-br ${item.color} flex items-center justify-center text-lg flex-shrink-0`}>
+                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-lg flex-shrink-0`}>
                                     {item.icon}
                                 </div>
                                 <p className="text-white text-sm font-semibold">{item.label}</p>
@@ -244,9 +242,9 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
             {isCareerAvailable && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-3">
                     <Link href="/dashboard/student/career">
-                        <div className="rounded-2xl border border-amber-500/20 bg-linear-to-r from-amber-500/10 to-orange-500/10 p-4 md:p-5 hover:bg-amber-500/20 transition-all cursor-pointer">
+                        <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 md:p-5 hover:bg-amber-500/20 transition-all cursor-pointer">
                             <div className="flex items-center gap-3 md:gap-4">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">🧭</div>
+                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">🧭</div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-white text-base md:text-lg">ক্যারিয়ার পাথ AI</h3>
                                     <p className="text-gray-400 text-sm truncate">তোমার আগ্রহ অনুযায়ী সেরা ক্যারিয়ার খুঁজে নাও</p>
@@ -261,12 +259,12 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
             {isTrainingAvailable && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
                     <Link href="/dashboard/student/training">
-                        <div className="rounded-2xl border border-cyan-500/20 bg-linear-to-r from-cyan-500/10 to-blue-500/10 p-4 md:p-5 hover:bg-cyan-500/20 transition-all cursor-pointer">
+                        <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 p-4 md:p-5 hover:bg-cyan-500/20 transition-all cursor-pointer">
                             <div className="flex items-center gap-3 md:gap-4">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-linear-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">💡</div>
+                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">💡</div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-white text-base md:text-lg">Skill Training</h3>
-                                    <p className="text-gray-400 text-sm truncate">Stock market, Tech, Business — সব training এক জায়গায়</p>
+                                    <p className="text-gray-400 text-sm truncate">Tech, Business, Finance — হালাল স্কিল ট্র্যাক</p>
                                 </div>
                                 <span className="bg-cyan-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">শুরু →</span>
                             </div>
