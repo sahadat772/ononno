@@ -40,13 +40,13 @@ const subjects = [
   {
     id: 'world',
     name: 'বিশ্ব',
-    subtitle: 'শীঘ্রই',
+    subtitle: 'মহাদেশ · দেশ · প্রাণী',
     icon: '🌍',
     color: 'from-amber-400 to-yellow-500',
     border: 'border-amber-500/30',
     bg: 'bg-amber-500/10',
     href: '/dashboard/student/kids-zone/learn/world',
-    available: false,
+    available: true,
   },
 ]
 
