@@ -14,9 +14,6 @@ export default async function AdminDashboard() {
         .eq('id', user.id)
         .single()
 
-    // Debug — temporary
-    console.log('Profile role:', profile?.role)
-
     if (!profile || profile.role !== 'admin') {
         redirect('/dashboard/student')
     }
@@ -36,14 +33,19 @@ export default async function AdminDashboard() {
         .eq('status', 'pending')
 
     const { count: totalSubjects } = await supabase
-        .from('subjects')
+        .from('curriculum_subjects')
         .select('*', { count: 'exact', head: true })
+
+    const { count: pendingPayments } = await supabase
+        .from('payment_transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
 
     const { data: recentUsers } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(8)
 
     return (
         <AdminClient
@@ -53,6 +55,7 @@ export default async function AdminDashboard() {
                 totalStudents: totalStudents || 0,
                 freeRequests: freeRequests || 0,
                 totalSubjects: totalSubjects || 0,
+                pendingPayments: pendingPayments || 0,
             }}
             recentUsers={recentUsers || []}
         />
