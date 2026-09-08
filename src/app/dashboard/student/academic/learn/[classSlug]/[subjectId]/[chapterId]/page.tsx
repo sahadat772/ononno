@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
+import { fallbackChapters, fallbackLessons, isFallbackId } from '@/lib/academic-fallback'
 
 interface Lesson {
   id: string
@@ -72,13 +73,33 @@ export default function LessonListPage() {
           data: { user },
         } = await supabase.auth.getUser()
 
+        if (isFallbackId(chapterId) || isFallbackId(subjectId)) {
+          const chaps = fallbackChapters(subjectId)
+          const chap = chaps.find((c) => c.id === chapterId) || {
+            id: chapterId,
+            title: 'Chapter',
+            title_bn: 'অধ্যায়',
+            chapter_number: 1,
+            description: 'ডেমো অধ্যায়',
+          }
+          setChapter(chap)
+          setLessons(fallbackLessons(chapterId))
+          setLoading(false)
+          return
+        }
+
         const { data: chap } = await supabase
           .from('curriculum_chapters')
           .select('*')
           .eq('id', chapterId)
           .maybeSingle()
         if (chap) setChapter(chap)
-        else setError('অধ্যায় পাওয়া যায়নি।')
+        else {
+          const fbChaps = fallbackChapters(subjectId)
+          const fb = fbChaps.find((c) => c.id === chapterId)
+          if (fb) setChapter(fb)
+          else setError('অধ্যায় পাওয়া যায়নি।')
+        }
 
         const { data: lsns } = await supabase
           .from('curriculum_lessons')
@@ -88,7 +109,7 @@ export default function LessonListPage() {
           .eq('is_published', true)
           .order('order_index', { ascending: true })
 
-        if (lsns) {
+        if (lsns && lsns.length > 0) {
           const sorted = [...lsns].sort(
             (a, b) =>
               (a.order_index ?? 0) - (b.order_index ?? 0) ||
@@ -96,7 +117,7 @@ export default function LessonListPage() {
           )
           setLessons(sorted)
         } else {
-          setLessons([])
+          setLessons(fallbackLessons(chapterId))
         }
 
         if (user) {
@@ -124,7 +145,7 @@ export default function LessonListPage() {
       }
     }
     void fetchData()
-  }, [chapterId])
+  }, [chapterId, subjectId])
 
   const getLessonProgress = (lessonId: string) => {
     const id = String(lessonId)
@@ -160,7 +181,6 @@ export default function LessonListPage() {
     .filter((l) => getLessonProgress(l.id)?.status !== 'completed')
     .reduce((s, l) => s + (Number(l.duration_minutes) || 5), 0)
 
-  /** Next lesson to continue */
   const continueLesson = useMemo(() => {
     for (let i = 0; i < lessons.length; i++) {
       if (!isLessonUnlocked(i)) break
@@ -339,7 +359,6 @@ export default function LessonListPage() {
                   transition={{ delay: index * 0.04 }}
                   className="relative flex gap-3 pb-3"
                 >
-                  {/* Path line */}
                   <div className="flex w-10 shrink-0 flex-col items-center">
                     <div
                       className={`z-10 grid size-10 place-items-center rounded-full border-2 text-sm font-black ${
@@ -467,7 +486,6 @@ export default function LessonListPage() {
         <p className="mt-8 text-center text-xs text-slate-600">অনন্য · অধ্যায়ের পাঠ</p>
       </div>
 
-      {/* Sticky continue bar */}
       {continueLesson && !allDone && !loading && (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#070b14]/95 p-3 backdrop-blur-xl">
           <div className="mx-auto max-w-2xl">
