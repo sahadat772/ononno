@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type QuizMode = 'numbers' | 'letters' | 'animals' | 'colors' | 'count' | 'shapes'
+type QuizMode = 'numbers' | 'letters' | 'animals' | 'colors' | 'count' | 'shapes' | 'islamic'
 type Mode = 'menu' | QuizMode | 'memory' | 'result'
 
 const TOTAL_ROUNDS = 8
@@ -48,6 +48,17 @@ const SHAPES = [
 ]
 
 const MEMORY_EMOJIS = ['🍎', '🍌', '🍇', '🍊', '🍉', '🍓']
+
+const ISLAMIC_QUIZ = [
+  { prompt: '🤲', answer: 'বিসমিল্লাহ', choices: ['বিসমিল্লাহ', 'আলহামদুলিল্লাহ', 'সুবহানাল্লাহ', 'আস্তাগফিরুল্লাহ'] },
+  { prompt: '⭐', answer: 'আল্লাহ এক', choices: ['আল্লাহ এক', 'চাঁদ দুই', 'সূর্য তিন', 'তারা চার'] },
+  { prompt: '📖', answer: 'কুরআন', choices: ['কুরআন', 'খাতা', 'বই', 'কলম'] },
+  { prompt: '🕌', answer: 'মসজিদ', choices: ['মসজিদ', 'স্কুল', 'বাজার', 'পার্ক'] },
+  { prompt: '🤝', answer: 'সালাম', choices: ['সালাম', 'বাই', 'হ্যালো', 'না'] },
+  { prompt: '🌙', answer: 'রমজান', choices: ['রমজান', 'শীত', 'বসন্ত', 'গ্রীষ্ম'] },
+  { prompt: '💧', answer: 'ওযু', choices: ['ওযু', 'খেলা', 'ঘুম', 'দৌড়'] },
+  { prompt: '📿', answer: 'নামাজ', choices: ['নামাজ', 'গান', 'নাচ', 'টিভি'] },
+]
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -93,6 +104,14 @@ function buildQuiz(mode: QuizMode, round: number): QuizItem {
       .slice(0, 3)
       .map((s) => s.name)
     return { prompt: item.emoji, answer: item.name, choices: shuffle([item.name, ...wrong]) }
+  }
+  if (mode === 'islamic') {
+    const item = ISLAMIC_QUIZ[round % ISLAMIC_QUIZ.length]
+    return {
+      prompt: item.prompt,
+      answer: item.answer,
+      choices: shuffle([...item.choices]),
+    }
   }
   // count
   const n = (round % 6) + 1
@@ -178,6 +197,15 @@ const GAME_LIST: {
     border: 'border-fuchsia-400/40',
     bg: 'bg-fuchsia-500/10',
   },
+  {
+    id: 'islamic',
+    title: 'ইসলামিক কুইজ',
+    desc: 'বিসমিল্লাহ · সালাম · নামাজ',
+    icon: '🕌',
+    gradient: 'from-emerald-400 to-teal-500',
+    border: 'border-emerald-400/40',
+    bg: 'bg-emerald-500/10',
+  },
 ]
 
 type MemoryCard = { id: number; emoji: string; flipped: boolean; matched: boolean }
@@ -190,7 +218,6 @@ export default function KidsGamesPage() {
   const [quiz, setQuiz] = useState<QuizItem | null>(null)
   const [lastScore, setLastScore] = useState(0)
 
-  // memory state
   const [memCards, setMemCards] = useState<MemoryCard[]>([])
   const [memFlipped, setMemFlipped] = useState<number[]>([])
   const [memLock, setMemLock] = useState(false)
@@ -254,17 +281,7 @@ export default function KidsGamesPage() {
       setMemLock(true)
       setMemMoves((m) => m + 1)
       const [a, b] = nextFlipped
-      const ca = memCards.find((c) => c.id === a)!
-      const cb = memCards.find((c) => c.id === b)!
-      // use updated emoji from current card + flipped one
-      const emojiA = ca.id === id ? card.emoji : ca.emoji
-      const emojiB = cb.id === id ? card.emoji : cb.emoji
-      const matchEmoji =
-        memCards.find((c) => c.id === a)?.emoji === memCards.find((c) => c.id === b)?.emoji
-          ? memCards.find((c) => c.id === a)?.emoji
-          : null
 
-      // After state updates, compare properly
       setTimeout(() => {
         setMemCards((prev) => {
           const x = prev.find((c) => c.id === a)
@@ -289,9 +306,6 @@ export default function KidsGamesPage() {
         setMemFlipped([])
         setMemLock(false)
       }, 700)
-      void emojiA
-      void emojiB
-      void matchEmoji
     }
   }
 
@@ -309,7 +323,7 @@ export default function KidsGamesPage() {
           </Link>
           <div className="text-center">
             <p className="text-base font-black">🎮 খেলার জগৎ</p>
-            <p className="text-[10px] text-fuchsia-300">৭টা মজার গেম</p>
+            <p className="text-[10px] text-fuchsia-300">৮টা মজার গেম</p>
           </div>
           <span className="rounded-2xl border border-amber-500/30 bg-amber-500/15 px-3 py-2 text-sm font-bold text-amber-200">
             ⭐ {score}
@@ -415,7 +429,8 @@ export default function KidsGamesPage() {
           mode === 'animals' ||
           mode === 'colors' ||
           mode === 'count' ||
-          mode === 'shapes') &&
+          mode === 'shapes' ||
+          mode === 'islamic') &&
           quiz && (
             <div>
               <div className="mb-4 flex items-center justify-between text-sm">
@@ -435,7 +450,7 @@ export default function KidsGamesPage() {
                 <p className="text-sm font-bold text-slate-400">
                   {mode === 'count'
                     ? 'কয়টা আছে?'
-                    : mode === 'animals' || mode === 'colors' || mode === 'shapes'
+                    : mode === 'animals' || mode === 'colors' || mode === 'shapes' || mode === 'islamic'
                       ? 'এটা কী?'
                       : 'এটার মিল কোনটি?'}
                 </p>
