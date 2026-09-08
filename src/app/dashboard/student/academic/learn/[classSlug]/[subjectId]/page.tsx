@@ -5,6 +5,12 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
+import {
+  fallbackChapters,
+  fallbackSubjects,
+  isFallbackId,
+  parseClassNum,
+} from '@/lib/academic-fallback'
 
 interface Chapter {
   id: string
@@ -57,12 +63,40 @@ export default function ChapterListPage() {
           data: { user },
         } = await supabase.auth.getUser()
 
+        if (isFallbackId(subjectId)) {
+          const n = parseClassNum(classSlug) ?? 1
+          const all = fallbackSubjects(n)
+          const sub = all.find((s) => s.id === subjectId) || {
+            id: subjectId,
+            name: 'Subject',
+            name_bn: 'বিষয়',
+            icon: '📚',
+            color: 'from-violet-500 to-purple-600',
+          }
+          setSubject(sub)
+          const chaps = fallbackChapters(subjectId)
+          setChapters(chaps)
+          const byChapFb: Record<string, string[]> = {}
+          for (const c of chaps) {
+            byChapFb[c.id] = [`${c.id}-l1`, `${c.id}-l2`, `${c.id}-l3`, `${c.id}-l4`]
+          }
+          setLessonsByChapter(byChapFb)
+          setLoading(false)
+          return
+        }
+
         const { data: sub } = await supabase
           .from('curriculum_subjects')
           .select('*')
           .eq('id', subjectId)
           .maybeSingle()
         if (sub) setSubject(sub)
+        else {
+          const n = parseClassNum(classSlug) ?? 1
+          const all = fallbackSubjects(n)
+          const fb = all.find((s) => s.id === subjectId)
+          if (fb) setSubject(fb)
+        }
 
         const { data: publishedLessons } = await supabase
           .from('curriculum_lessons')
@@ -91,15 +125,23 @@ export default function ChapterListPage() {
             .order('order_index')
           if (chaps) setChapters(chaps)
         } else {
-          // fallback: chapters linked by subject even if no published lessons yet
           const { data: allChaps } = await supabase
             .from('curriculum_chapters')
             .select('*')
             .eq('subject_id', subjectId)
             .eq('is_active', true)
             .order('order_index')
-          if (allChaps) setChapters(allChaps)
-          else setChapters([])
+          if (allChaps && allChaps.length > 0) {
+            setChapters(allChaps)
+          } else {
+            const fb = fallbackChapters(subjectId)
+            setChapters(fb)
+            const fbMap: Record<string, string[]> = {}
+            for (const c of fb) {
+              fbMap[c.id] = [`${c.id}-l1`, `${c.id}-l2`, `${c.id}-l3`, `${c.id}-l4`]
+            }
+            setLessonsByChapter(fbMap)
+          }
         }
 
         if (user) {
@@ -133,7 +175,7 @@ export default function ChapterListPage() {
       }
     }
     void fetchData()
-  }, [subjectId])
+  }, [subjectId, classSlug])
 
   const completedLessonIds = new Set(
     progress
@@ -233,6 +275,31 @@ export default function ChapterListPage() {
             </div>
           </motion.div>
         )}
+
+        {(() => {
+          const idx = chapters.findIndex(
+            (_, i) => isChapterUnlocked(i) && getChapterProgress(chapters[i].id) < 100,
+          )
+          if (idx < 0 || loading) return null
+          const ch = chapters[idx]
+          return (
+            <Link
+              href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${ch.id}`}
+              className="mb-5 block"
+            >
+              <div className="flex items-center gap-3 rounded-2xl border border-violet-500/35 bg-gradient-to-r from-violet-500/20 to-purple-500/15 p-4 shadow-lg shadow-violet-500/10 transition active:scale-[0.99]">
+                <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-xl">
+                  ▶️
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-violet-300">চালিয়ে যাও</p>
+                  <p className="truncate font-bold text-white">{ch.title_bn || ch.title}</p>
+                </div>
+                <span className="text-violet-300">→</span>
+              </div>
+            </Link>
+          )
+        })()}
 
         <h2 className="mb-3 text-lg font-black text-white">অধ্যায়সমূহ</h2>
 
