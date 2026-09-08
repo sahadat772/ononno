@@ -44,18 +44,33 @@ export default function NurseryEnglishPage() {
   const [expandedUnit, setExpandedUnit] = useState(1)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { setLoading(false); return }
-      supabase.from('learning_progress').select('lesson_id, completed, stars, score').eq('student_id', user.id).then(({ data }) => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          if (!cancelled) setLoading(false)
+          return
+        }
+        const { data } = await supabase
+          .from('learning_progress')
+          .select('lesson_id, completed, stars, score')
+          .eq('student_id', user.id)
+        if (cancelled) return
         const progressMap: Progress = {}
         data?.forEach((row: { lesson_id: string; completed: boolean; stars: number }) => {
           progressMap[row.lesson_id] = { completed: row.completed, stars: row.stars || 0 }
         })
         setProgress(progressMap)
-        setLoading(false)
-      }).catch(() => setLoading(false))
-    }).catch(() => setLoading(false))
+      } catch {
+        /* ignore */
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
   }, [])
 
   const isLessonUnlocked = (unitIdx: number, lessonIdx: number) => {
@@ -127,7 +142,7 @@ export default function NurseryEnglishPage() {
             const unitCompleted = unit.lessons.filter(l => progress[l.id]?.completed).length
             return (
               <div key={unit.id}>
-                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''}`}>
+                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''`}>
                   <div className="flex items-center gap-3">
                     <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${unit.color}`}>{isUnitUnlocked ? unit.icon : '🔒'}</div>
                     <div className="min-w-0 flex-1">
@@ -148,8 +163,8 @@ export default function NurseryEnglishPage() {
                       const isUnlocked = isLessonUnlocked(unitIdx, lessonIdx)
                       const stars = progress[lesson.id]?.stars || 0
                       return (
-                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'}`}>
-                          <Link href={isUnlocked ? `/dashboard/student/kids-zone/nursery/english/${lesson.id}` : '#'} className={`flex size-14 items-center justify-center rounded-full text-xl font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'}`}>
+                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'`}>
+                          <Link href={isUnlocked ? `/dashboard/student/kids-zone/nursery/english/${lesson.id}` : '#'} className={`flex size-14 items-center justify-center rounded-full text-xl font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'`}>
                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}
                           </Link>
                           <div className="min-w-0 flex-1">
