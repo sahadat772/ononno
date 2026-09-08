@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { buildAyahAudioUrls } from '@/lib/quran-audio'
+import { playSurahAudio, type AudioStatus, type PlayController } from '@/lib/quran-player'
 import type { KidsIslamicLesson } from '@/types/database'
 
 type Tab = 'arabic' | 'pronunciation' | 'meaning'
@@ -26,7 +26,6 @@ const QARIS = [
   { id: 'ar.muhammadayyoub', name: 'মুহাম্মদ আইয়ুব', arabic: 'محمد أيوب' },
 ]
 
-/** Common short surahs for kids — used as fallback + number map */
 const SHORT_SURAHS: SurahMeta[] = [
   {
     surah: 1,
@@ -100,23 +99,19 @@ const SHORT_SURAHS: SurahMeta[] = [
 function resolveSurahNumber(lesson: KidsIslamicLesson): { surah: number; ayahs: number } | null {
   const blob = `${lesson.title} ${lesson.title_bn} ${lesson.arabic_text || ''}`.toLowerCase()
   for (const s of SHORT_SURAHS) {
-    const keys = [s.title.toLowerCase(), s.title_bn, String(s.surah)]
-    if (keys.some((k) => blob.includes(k.toLowerCase()))) {
+    if ([s.title.toLowerCase(), s.title_bn].some((k) => blob.includes(k.toLowerCase()))) {
       return { surah: s.surah, ayahs: s.ayahs }
     }
   }
-  // common bn keywords
   if (blob.includes('ফাতিহা') || blob.includes('fatih')) return { surah: 1, ayahs: 7 }
   if (blob.includes('ইখলাস') || blob.includes('ikhlas')) return { surah: 112, ayahs: 4 }
   if (blob.includes('ফালাক') || blob.includes('falaq')) return { surah: 113, ayahs: 5 }
   if (blob.includes('নাস') || blob.includes('nas')) return { surah: 114, ayahs: 6 }
-  if (blob.includes('কাওসার') || blob.includes('kawthar') || blob.includes('kauthar'))
-    return { surah: 108, ayahs: 3 }
+  if (blob.includes('কাওসার') || blob.includes('kawthar')) return { surah: 108, ayahs: 3 }
   if (blob.includes('আসর') || blob.includes('asr')) return { surah: 103, ayahs: 3 }
   if (blob.includes('কাফিরুন') || blob.includes('kafirun')) return { surah: 109, ayahs: 6 }
   if (blob.includes('নাসর') || blob.includes('nasr')) return { surah: 110, ayahs: 3 }
-  if (blob.includes('লাহাব') || blob.includes('masad') || blob.includes('tabbat'))
-    return { surah: 111, ayahs: 5 }
+  if (blob.includes('লাহাব') || blob.includes('masad')) return { surah: 111, ayahs: 5 }
   return null
 }
 
@@ -141,16 +136,12 @@ export default function SurahPage() {
   const [lessons, setLessons] = useState<KidsIslamicLesson[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<KidsIslamicLesson | null>(null)
-  const [learned, setLearned] = useState<string[]>([])
   const [memorized, setMemorized] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('arabic')
   const [qariId, setQariId] = useState(QARIS[0].id)
   const [showQari, setShowQari] = useState(false)
-  const [playing, setPlaying] = useState(false)
-  const [audioError, setAudioError] = useState<string | null>(null)
-  const [ayahIndex, setAyahIndex] = useState(0)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const stopFlag = useRef(false)
+  const [status, setStatus] = useState<AudioStatus>({ phase: 'idle' })
+  const controllerRef = useRef<PlayController | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -159,9 +150,7 @@ export default function SurahPage() {
       .then((d) => {
         if (cancelled) return
         const list: KidsIslamicLesson[] =
-          d.lessons && d.lessons.length > 0
-            ? d.lessons
-            : SHORT_SURAHS.map(toLessonFromMeta)
+          d.lessons && d.lessons.length > 0 ? d.lessons : SHORT_SURAHS.map(toLessonFromMeta)
         setLessons(list)
         setSelected(list[0] || null)
       })
@@ -176,114 +165,48 @@ export default function SurahPage() {
       })
     return () => {
       cancelled = true
-      stopAudio()
+      controllerRef.current?.stop()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const stopAudio = useCallback(() => {
-    stopFlag.current = true
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.src = ''
-      audioRef.current = null
-    }
-    setPlaying(false)
-  }, [])
-
-  const playUrl = (url: string): Promise<void> =>
-    new Promise((resolve, reject) => {
-      stopFlag.current = false
-      const audio = new Audio(url)
-      audioRef.current = audio
-      audio.preload = 'auto'
-      audio.onended = () => resolve()
-      audio.onerror = () => reject(new Error('load failed'))
-      void audio.play().catch(reject)
-    })
-
-  const tryUrls = async (urls: string[]) => {
-    let lastErr: unknown
-    for (const url of urls) {
-      if (stopFlag.current) return
-      try {
-        await playUrl(url)
-        return
-      } catch (e) {
-        lastErr = e
-      }
-    }
-    throw lastErr || new Error('all failed')
+  const stopAudio = () => {
+    controllerRef.current?.stop()
+    controllerRef.current = null
+    setStatus({ phase: 'idle' })
   }
 
-  const playSurahTilawat = async (lesson: KidsIslamicLesson) => {
+  const playSurahTilawat = (lesson: KidsIslamicLesson) => {
     stopAudio()
-    setAudioError(null)
-    setPlaying(true)
-    setAyahIndex(0)
-
-    // Custom audio_url from DB takes priority (single file)
-    if (lesson.audio_url) {
-      try {
-        await tryUrls([lesson.audio_url])
-        setPlaying(false)
-        return
-      } catch {
-        // fall through to qari
-      }
-    }
-
     const meta = resolveSurahNumber(lesson)
     if (!meta) {
-      setPlaying(false)
-      setAudioError('এই সূরার ক্বারী অডিও ম্যাপ করা নেই।')
+      setStatus({ phase: 'error', message: 'এই সূরার ক্বারী অডিও ম্যাপ করা নেই।' })
       return
     }
-
-    try {
-      for (let a = 1; a <= meta.ayahs; a++) {
-        if (stopFlag.current) break
-        setAyahIndex(a)
-        const urls = buildAyahAudioUrls(qariId, meta.surah, a)
-        await tryUrls(urls)
-      }
-    } catch {
-      if (!stopFlag.current) {
-        setAudioError('অডিও লোড হয়নি। অন্য ক্বারী চেষ্টা করো।')
-      }
-    } finally {
-      if (!stopFlag.current) setPlaying(false)
-      setAyahIndex(0)
-    }
+    setStatus({
+      phase: 'loading',
+      ayah: 1,
+      total: meta.ayahs,
+      message: 'অডিও লোড হচ্ছে… সার্ভার থেকে স্ট্রিম শুরু হচ্ছে',
+    })
+    controllerRef.current = playSurahAudio(qariId, meta.surah, meta.ayahs, setStatus)
   }
 
   const handleSelect = (lesson: KidsIslamicLesson) => {
     stopAudio()
     setSelected(lesson)
     setActiveTab('arabic')
-    setAudioError(null)
-    if (!learned.includes(lesson.id)) {
-      setLearned((prev) => [...prev, lesson.id])
-    }
-  }
-
-  const handleMemorized = (id: string) => {
-    if (!memorized.includes(id)) setMemorized((prev) => [...prev, id])
   }
 
   const progress =
     lessons.length > 0 ? Math.round((memorized.length / lessons.length) * 100) : 0
-
   const selectedMeta = selected ? resolveSurahNumber(selected) : null
   const currentQari = QARIS.find((q) => q.id === qariId) || QARIS[0]
+  const isBusy = status.phase === 'loading' || status.phase === 'playing'
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0d0a2e] to-[#070b14]">
-        <div className="text-center">
-          <div className="mb-3 text-4xl">📖</div>
-          <p className="text-amber-400">লোড হচ্ছে...</p>
-        </div>
+        <p className="text-amber-400">লোড হচ্ছে...</p>
       </div>
     )
   }
@@ -294,7 +217,7 @@ export default function SurahPage() {
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
           <Link
             href="/dashboard/student/kids-zone/islamic"
-            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg text-slate-300"
+            className="flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg"
           >
             ←
           </Link>
@@ -308,15 +231,13 @@ export default function SurahPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-5 pb-10">
+      <div className="mx-auto max-w-2xl px-4 py-5 pb-28">
         <div className="mb-5 text-center">
           <div className="mb-2 text-5xl">📖</div>
           <h1 className="text-2xl font-black">সূরা শিখি</h1>
-          <p className="text-amber-300">السورة</p>
-          <p className="mt-1 text-sm text-slate-400">ছোট সূরা · আসল ক্বারীর আওয়াজ</p>
+          <p className="text-sm text-slate-400">ক্বারী বেছে নাও · শুনো · মুখস্থ করো</p>
         </div>
 
-        {/* Qari selector */}
         <div className="mb-4">
           <button
             type="button"
@@ -325,10 +246,7 @@ export default function SurahPage() {
           >
             <div>
               <p className="text-[11px] text-amber-300/80">ক্বারী</p>
-              <p className="font-bold text-white">{currentQari.name}</p>
-              <p className="text-xs text-slate-400" dir="rtl">
-                {currentQari.arabic}
-              </p>
+              <p className="font-bold">{currentQari.name}</p>
             </div>
             <span className="text-amber-300">{showQari ? '▲' : '▼'}</span>
           </button>
@@ -347,12 +265,7 @@ export default function SurahPage() {
                     qariId === q.id ? 'bg-amber-500/20 text-amber-200' : 'hover:bg-white/5'
                   }`}
                 >
-                  <span>
-                    <span className="font-semibold">{q.name}</span>
-                    <span className="ml-2 text-xs text-slate-500" dir="rtl">
-                      {q.arabic}
-                    </span>
-                  </span>
+                  <span className="font-semibold">{q.name}</span>
                   {qariId === q.id && <span>✓</span>}
                 </button>
               ))}
@@ -360,10 +273,9 @@ export default function SurahPage() {
           )}
         </div>
 
-        {/* Progress */}
         <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="mb-2 flex justify-between text-sm text-slate-400">
-            <span>মুখস্থ অগ্রগতি</span>
+            <span>মুখস্থ</span>
             <span>
               {memorized.length}/{lessons.length} · {progress}%
             </span>
@@ -376,177 +288,163 @@ export default function SurahPage() {
           </div>
         </div>
 
-        {/* Surah chips */}
         <div className="mb-5 flex gap-2 overflow-x-auto pb-2">
-          {lessons.map((lesson, i) => (
+          {lessons.map((lesson) => (
             <button
               key={lesson.id}
               type="button"
               onClick={() => handleSelect(lesson)}
-              className={`min-w-[92px] shrink-0 rounded-2xl border px-3 py-3 text-center transition ${
+              className={`min-w-[92px] shrink-0 rounded-2xl border px-3 py-3 text-center ${
                 selected?.id === lesson.id
                   ? 'border-amber-500/50 bg-amber-500/20'
-                  : memorized.includes(lesson.id)
-                    ? 'border-emerald-500/30 bg-emerald-500/10'
-                    : 'border-white/10 bg-white/5'
+                  : 'border-white/10 bg-white/5'
               }`}
             >
               <p className="text-lg">{memorized.includes(lesson.id) ? '✅' : '📖'}</p>
-              <p className="truncate text-xs font-semibold text-white">{lesson.title_bn}</p>
-              <p className="text-[10px] text-slate-500">{i + 1}</p>
+              <p className="truncate text-xs font-semibold">{lesson.title_bn}</p>
             </button>
           ))}
         </div>
 
-        <AnimatePresence mode="wait">
-          {selected && (
-            <motion.div
-              key={selected.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mb-6"
-            >
-              <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 to-orange-500/10 p-5">
-                <div className="mb-4 text-center">
-                  <span className="mb-1 inline-block rounded-full border border-amber-500/30 bg-amber-500/20 px-4 py-1.5 text-sm font-semibold text-amber-300">
-                    {selected.title_bn}
+        {selected && (
+          <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 to-orange-500/10 p-5">
+            <div className="mb-4 text-center">
+              <span className="inline-block rounded-full border border-amber-500/30 bg-amber-500/20 px-4 py-1.5 text-sm font-semibold text-amber-300">
+                {selected.title_bn}
+              </span>
+              {selectedMeta && (
+                <p className="mt-1 text-[11px] text-amber-400/70">
+                  সূরা {selectedMeta.surah} · {selectedMeta.ayahs} আয়াত
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4 flex gap-1.5 rounded-xl bg-white/5 p-1">
+              {(
+                [
+                  { key: 'arabic' as const, label: '🕌 আরবি' },
+                  { key: 'pronunciation' as const, label: '🔤 উচ্চারণ' },
+                  { key: 'meaning' as const, label: '📖 অর্থ' },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 rounded-lg py-2 text-xs font-bold ${
+                    activeTab === tab.key
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === 'arabic' && (
+              <p
+                className="mb-4 text-center text-xl leading-loose md:text-2xl"
+                style={{ fontFamily: 'serif', direction: 'rtl', lineHeight: '2.5' }}
+              >
+                {selected.arabic_text}
+              </p>
+            )}
+            {activeTab === 'pronunciation' && (
+              <p className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm italic text-amber-100">
+                {selected.pronunciation || '—'}
+              </p>
+            )}
+            {activeTab === 'meaning' && (
+              <p className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-slate-200">
+                {selected.bangla_translation}
+              </p>
+            )}
+
+            {status.phase !== 'idle' && (
+              <div
+                className={`mb-4 rounded-2xl border px-4 py-3 text-center text-sm font-semibold ${
+                  status.phase === 'loading'
+                    ? 'border-sky-500/40 bg-sky-500/15 text-sky-200'
+                    : status.phase === 'playing'
+                      ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                      : 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                }`}
+              >
+                {status.phase === 'loading' && (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block size-3 animate-spin rounded-full border-2 border-sky-300 border-t-transparent" />
+                    {status.message}
                   </span>
-                  <p className="text-xs text-slate-400">{selected.title}</p>
-                  {selectedMeta && (
-                    <p className="mt-1 text-[11px] text-amber-400/70">
-                      সূরা {selectedMeta.surah} · {selectedMeta.ayahs} আয়াত
-                    </p>
-                  )}
-                </div>
-
-                <div className="mb-4 flex gap-1.5 rounded-xl bg-white/5 p-1">
-                  {(
-                    [
-                      { key: 'arabic' as const, label: '🕌 আরবি' },
-                      { key: 'pronunciation' as const, label: '🔤 উচ্চারণ' },
-                      { key: 'meaning' as const, label: '📖 অর্থ' },
-                    ] as const
-                  ).map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setActiveTab(tab.key)}
-                      className={`flex-1 rounded-lg py-2 text-xs font-bold transition ${
-                        activeTab === tab.key
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow'
-                          : 'text-slate-400'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                <AnimatePresence mode="wait">
-                  {activeTab === 'arabic' && (
-                    <motion.div
-                      key="arabic"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="text-center"
-                    >
-                      <p
-                        className="mb-4 text-xl leading-loose text-white md:text-2xl"
-                        style={{ fontFamily: 'serif', direction: 'rtl', lineHeight: '2.5' }}
-                      >
-                        {selected.arabic_text}
-                      </p>
-                    </motion.div>
-                  )}
-                  {activeTab === 'pronunciation' && (
-                    <motion.div key="pron" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
-                        <p className="text-sm italic leading-loose text-amber-100">
-                          {selected.pronunciation || 'উচ্চারণ শীঘ্রই আসছে'}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                  {activeTab === 'meaning' && (
-                    <motion.div key="mean" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                        <p className="text-sm leading-loose text-slate-200">
-                          {selected.bangla_translation}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {audioError && (
-                  <p className="mt-3 text-center text-sm text-rose-300">{audioError}</p>
                 )}
-                {playing && ayahIndex > 0 && (
-                  <p className="mt-3 text-center text-xs text-amber-300">
-                    চলছে · আয়াত {ayahIndex}
-                    {selectedMeta ? `/${selectedMeta.ayahs}` : ''}
-                  </p>
+                {status.phase === 'playing' && (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="animate-pulse">🔊</span>
+                    {status.message}
+                  </span>
                 )}
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  {!playing ? (
-                    <button
-                      type="button"
-                      onClick={() => void playSurahTilawat(selected)}
-                      className="col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-base font-black text-white shadow-lg shadow-amber-500/25"
-                    >
-                      🔊 ক্বারী দিয়ে শুনো
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={stopAudio}
-                      className="col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-500/40 bg-rose-500/20 text-base font-bold text-rose-200"
-                    >
-                      ⏹ থামাও
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => void playSurahTilawat(selected)}
-                    disabled={playing}
-                    className="rounded-xl border border-white/15 bg-white/10 py-3 text-sm font-semibold disabled:opacity-50"
-                  >
-                    🔁 আবার
-                  </button>
-
-                  {!memorized.includes(selected.id) ? (
-                    <button
-                      type="button"
-                      onClick={() => handleMemorized(selected.id)}
-                      className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3 text-sm font-bold text-white"
-                    >
-                      ✅ মুখস্থ
-                    </button>
-                  ) : (
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/15 py-3 text-center text-sm font-bold text-emerald-300">
-                      ✅ মুখস্থ!
-                    </div>
-                  )}
-                </div>
+                {status.phase === 'error' && <span>⚠️ {status.message}</span>}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
 
-        {memorized.length === lessons.length && lessons.length > 0 && (
-          <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/15 to-orange-500/10 p-5 text-center">
-            <p className="text-3xl">🎉</p>
-            <p className="mt-1 text-lg font-bold text-amber-300">মাশাআল্লাহ! সব সূরা মুখস্থ!</p>
-            <p className="mt-1 text-sm text-slate-400">আল্লাহ তোমার হিফজ কবুল করুন।</p>
+            <div className="grid grid-cols-1 gap-2">
+              {!isBusy ? (
+                <button
+                  type="button"
+                  onClick={() => playSurahTilawat(selected)}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-base font-black text-white shadow-lg"
+                >
+                  🔊 ক্বারী দিয়ে শুনো
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={stopAudio}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-500/40 bg-rose-500/20 text-base font-bold text-rose-200"
+                >
+                  ⏹ থামাও
+                </button>
+              )}
+
+              {!memorized.includes(selected.id) ? (
+                <button
+                  type="button"
+                  onClick={() => setMemorized((p) => [...p, selected.id])}
+                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3 text-sm font-bold"
+                >
+                  ✅ মুখস্থ হয়েছে
+                </button>
+              ) : (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/15 py-3 text-center text-sm font-bold text-emerald-300">
+                  ✅ মুখস্থ!
+                </div>
+              )}
+            </div>
           </div>
         )}
-
-        <p className="mt-8 text-center text-xs text-slate-600">অনন্য · সূরা শিখি · ক্বারী অডিও</p>
       </div>
+
+      {isBusy && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0d0a2e]/95 p-3 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-white">
+                {status.phase === 'loading' ? '⬇️ ডাউনলোড/স্ট্রিম…' : '▶️ তিলাওয়াত চলছে'}
+              </p>
+              <p className="truncate text-xs text-amber-200/80">
+                {'message' in status ? status.message : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={stopAudio}
+              className="shrink-0 rounded-full bg-rose-500/25 px-4 py-2 text-sm font-bold text-rose-200"
+            >
+              থামাও
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
