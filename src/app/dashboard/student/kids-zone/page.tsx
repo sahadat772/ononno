@@ -127,12 +127,12 @@ const kgZones = [
     id: 'music',
     name: 'গান ও ছড়া',
     icon: '🎵',
-    desc: 'শীঘ্রই আসছে',
+    desc: 'বাংলা ছড়া · ইসলামিক',
     color: 'from-rose-400 to-pink-500',
     bg: 'bg-rose-500/10',
     border: 'border-rose-500/30',
     href: '/dashboard/student/kids-zone/music',
-    available: false,
+    available: true,
   },
 ]
 
