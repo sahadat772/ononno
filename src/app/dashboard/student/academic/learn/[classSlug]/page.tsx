@@ -5,6 +5,11 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
+import {
+  fallbackClassInfo,
+  fallbackSubjects,
+  parseClassNum,
+} from '@/lib/academic-fallback'
 
 interface Subject {
   id: string
@@ -85,7 +90,7 @@ export default function ClassSubjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<Record<string, number>>({})
-  const [counts, setCounts] = useState<Record<string, { done: number; total: number }>>({})
+  const [counts, setCounts] = useState<Record<string, { done: number; total: number }>({})
 
   useEffect(() => {
     const fetchData = async () => {
@@ -124,6 +129,14 @@ export default function ClassSubjectsPage() {
         }
 
         if (!cls) {
+          const fb = fallbackClassInfo(classSlug)
+          if (fb) {
+            setClassInfo(fb)
+            setSubjects(fallbackSubjects(fb.class_number))
+            setProgress({})
+            setCounts({})
+            return
+          }
           setClassInfo(null)
           setSubjects([])
           setError(`ক্লাস "${classSlug}" পাওয়া যায়নি।`)
@@ -140,12 +153,12 @@ export default function ClassSubjectsPage() {
           .order('order_index')
 
         if (subErr) {
-          setError('বিষয় লোড করা যায়নি।')
-          setSubjects([])
+          const n = parseClassNum(classSlug) ?? cls.class_number
+          setSubjects(fallbackSubjects(n))
           return
         }
 
-        const subjectList = subs ?? []
+        const subjectList = subs && subs.length > 0 ? subs : fallbackSubjects(cls.class_number)
         setSubjects(subjectList)
 
         let published =
@@ -348,19 +361,47 @@ export default function ClassSubjectsPage() {
             <p className="mt-1 text-sm text-slate-400">অ্যাডমিন পাঠ্যক্রম যোগ করলে এখানে দেখাবে</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {subjects.map((subject, i) => (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                classSlug={classSlug}
-                index={i}
-                progress={progress[subject.id] || 0}
-                done={counts[subject.id]?.done ?? 0}
-                total={counts[subject.id]?.total ?? 0}
-              />
-            ))}
-          </div>
+          <>
+            {(() => {
+              const next = subjects.find((s) => (progress[s.id] || 0) < 100)
+              if (!next) return null
+              const pct = progress[next.id] || 0
+              return (
+                <Link
+                  href={`/dashboard/student/academic/learn/${classSlug}/${next.id}`}
+                  className="mb-5 block"
+                >
+                  <div className="flex items-center gap-3 rounded-2xl border border-sky-500/35 bg-gradient-to-r from-sky-500/20 to-cyan-500/15 p-4 shadow-lg shadow-sky-500/10 transition active:scale-[0.99]">
+                    <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 text-xl">
+                      ▶️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold text-sky-300">
+                        {pct > 0 ? 'চালিয়ে যাও' : 'শুরু করো'}
+                      </p>
+                      <p className="truncate font-bold text-white">
+                        {next.name_bn || next.name}
+                      </p>
+                    </div>
+                    <span className="text-sky-300">→</span>
+                  </div>
+                </Link>
+              )
+            })()}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {subjects.map((subject, i) => (
+                <SubjectCard
+                  key={subject.id}
+                  subject={subject}
+                  classSlug={classSlug}
+                  index={i}
+                  progress={progress[subject.id] || 0}
+                  done={counts[subject.id]?.done ?? 0}
+                  total={counts[subject.id]?.total ?? 0}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         <p className="mt-10 text-center text-xs text-slate-600">অনন্য · একাডেমিক · এনসিটিবি</p>
