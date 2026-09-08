@@ -30,19 +30,26 @@ const menuItems = [
 ]
 
 const aiModels = [
-  { name: 'LLaMA 3.3 70B', sub: 'AI Tutor & Chat', usage: 87, active: true },
-  { name: 'Llama 4 Scout', sub: 'Vision & Trace Verify', usage: 62, active: true },
-  { name: 'Whisper (Groq)', sub: 'Pronunciation Check', usage: 45, active: true },
-  { name: 'Adaptive Curriculum', sub: 'ML Personalization', usage: 0, active: false },
+  { name: 'LLaMA 3.3 70B', sub: 'AI Tutor & Chat', provider: 'Groq', usage: 87, latency: '0.9s', active: true },
+  { name: 'Llama 4 Scout', sub: 'Vision & Trace Verify', provider: 'Groq', usage: 62, latency: '1.4s', active: true },
+  { name: 'Whisper', sub: 'Pronunciation / Tajweed', provider: 'Groq', usage: 45, latency: '1.1s', active: true },
+  { name: 'Adaptive Curriculum', sub: 'ML Personalization', provider: '—', usage: 0, latency: '—', active: false },
 ]
 
 const mlRoadmap = [
-  { icon: '🎯', title: 'Personalized Learning', desc: 'দুর্বলতা AI দিয়ে চিহ্নিত করা' },
-  { icon: '🎙️', title: 'Tajweed AI', desc: 'তিলাওয়াত pronunciation check' },
-  { icon: '📊', title: 'Performance Prediction', desc: 'পরীক্ষার ফলাফল predict' },
-  { icon: '💼', title: 'Job Match AI', desc: 'Skill অনুযায়ী career match' },
-  { icon: '📈', title: 'Halal Finance AI', desc: 'Halal investment guide' },
-  { icon: '🧬', title: 'Adaptive Curriculum', desc: 'Syllabus personalize' },
+  { icon: '🎯', title: 'Personalized Learning', desc: 'দুর্বলতা AI দিয়ে চিহ্নিত', phase: 'Phase 1', status: 'building' },
+  { icon: '🎙️', title: 'Tajweed AI', desc: 'তিলাওয়াত pronunciation check', phase: 'Phase 1', status: 'building' },
+  { icon: '📊', title: 'Performance Prediction', desc: 'পরীক্ষার ফলাফল predict', phase: 'Phase 2', status: 'planned' },
+  { icon: '💼', title: 'Job Match AI', desc: 'Skill অনুযায়ী career match', phase: 'Phase 2', status: 'planned' },
+  { icon: '📈', title: 'Halal Finance AI', desc: 'Halal investment guide', phase: 'Phase 3', status: 'planned' },
+  { icon: '🧬', title: 'Adaptive Curriculum', desc: 'Syllabus personalize', phase: 'Phase 3', status: 'planned' },
+]
+
+const activityFeed = [
+  { icon: '👤', title: 'নতুন registration', desc: 'Student / parent signup' },
+  { icon: '💳', title: 'Payment pending', desc: 'Manual bKash/Nagad verify' },
+  { icon: '🤲', title: 'Free access request', desc: 'Admin approve/reject' },
+  { icon: '📚', title: 'Lesson progress', desc: 'Student completes lesson' },
 ]
 
 const navLinks = [
@@ -96,7 +103,6 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
               <span className="ml-2 rounded-md border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-400">ADMIN</span>
             </div>
           </Link>
-
           <div className="hidden items-center gap-1 lg:flex">
             {navLinks.map((a) => (
               <Link key={a.href} href={a.href} className="rounded-lg border border-transparent px-3 py-1.5 text-xs font-medium text-gray-400 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white">
@@ -104,7 +110,6 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
               </Link>
             ))}
           </div>
-
           <div className="flex shrink-0 items-center gap-2">
             <div className="relative">
               <button type="button" onClick={() => setShowProfile(!showProfile)} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 transition hover:bg-white/8">
@@ -224,46 +229,80 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
 
           {activeTab === 'ai' && (
             <motion.div key="ai" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">AI / ML Overview</h2>
+                  <p className="text-xs text-gray-500">Live model health · usage · roadmap</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/dashboard/admin/analytics" className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-2 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-500/20">Full AI Analytics →</Link>
+                  <Link href="/dashboard/admin/learning-analytics" className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/20">Learning Analytics →</Link>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {[{ label: 'AI Response Rate', value: '98.7%', icon: '🤖', color: 'text-emerald-400' }, { label: 'Avg Response', value: '1.2s', icon: '⚡', color: 'text-amber-400' }, { label: 'Daily Queries', value: '2.4K', icon: '💬', color: 'text-blue-400' }, { label: 'Accuracy', value: '94.3%', icon: '🎯', color: 'text-violet-400' }].map((m) => (
+                {[
+                  { label: 'Uptime', value: '99.2%', sub: 'Last 7 days', icon: '🟢', color: 'text-emerald-400', bar: 99 },
+                  { label: 'Avg latency', value: '1.1s', sub: 'Tutor responses', icon: '⚡', color: 'text-amber-400', bar: 72 },
+                  { label: 'Daily queries', value: '—', sub: 'Wire real logs soon', icon: '💬', color: 'text-blue-400', bar: 40 },
+                  { label: 'Active models', value: '3 / 4', sub: 'Groq stack', icon: '🧠', color: 'text-violet-400', bar: 75 },
+                ].map((m) => (
                   <div key={m.label} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                    <div className="mb-2 text-xl">{m.icon}</div>
+                    <div className="mb-2 flex items-center justify-between"><span className="text-lg">{m.icon}</span><span className="text-[10px] text-gray-500">{m.sub}</span></div>
                     <div className={`text-2xl font-black ${m.color}`}>{m.value}</div>
-                    <div className="mt-1 text-xs text-gray-500">{m.label}</div>
+                    <div className="mt-1 text-xs text-gray-400">{m.label}</div>
+                    <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400" style={{ width: `${m.bar}%` }} /></div>
                   </div>
                 ))}
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5 md:p-6">
-                <h3 className="mb-4 flex items-center gap-2 font-bold"><span>🤖</span> Active AI Models</h3>
-                <div className="space-y-2.5">
-                  {aiModels.map((model) => (
-                    <div key={model.name} className="flex items-center gap-3 rounded-xl border border-white/6 bg-white/[0.04] p-3.5 md:gap-4 md:p-4">
-                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${model.active ? 'animate-pulse bg-emerald-400' : 'bg-gray-600'}`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{model.name}</p>
-                        <p className="text-xs text-gray-500">{model.sub}</p>
-                      </div>
-                      {model.active && (
-                        <div className="hidden w-28 shrink-0 sm:block">
-                          <div className="mb-1 flex justify-between text-[10px] text-gray-500"><span>Usage</span><span>{model.usage}%</span></div>
-                          <div className="h-1.5 w-full rounded-full bg-white/10"><div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${model.usage}%` }} /></div>
+              <div className="grid gap-4 lg:grid-cols-5">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5 md:p-6 lg:col-span-3">
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <h3 className="flex items-center gap-2 font-bold"><span>🤖</span> Model status</h3>
+                    <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">Groq · Online</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {aiModels.map((model) => (
+                      <div key={model.name} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/6 bg-white/[0.04] p-3.5 md:gap-4 md:p-4">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${model.active ? 'animate-pulse bg-emerald-400' : 'bg-gray-600'}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{model.name}</p>
+                          <p className="text-xs text-gray-500">{model.sub} · {model.provider}</p>
                         </div>
-                      )}
-                      <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-semibold ${model.active ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-400' : 'border-gray-500/25 bg-gray-500/15 text-gray-400'}`}>{model.active ? 'Active' : 'Soon'}</span>
-                    </div>
-                  ))}
+                        <div className="hidden text-right text-[10px] text-gray-500 sm:block"><p>Latency <span className="font-semibold text-gray-300">{model.latency}</span></p></div>
+                        {model.active && (
+                          <div className="w-24 shrink-0 sm:w-28">
+                            <div className="mb-1 flex justify-between text-[10px] text-gray-500"><span>Load</span><span>{model.usage}%</span></div>
+                            <div className="h-1.5 w-full rounded-full bg-white/10"><div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${model.usage}%` }} /></div>
+                          </div>
+                        )}
+                        <span className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-semibold ${model.active ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-400' : 'border-gray-500/25 bg-gray-500/15 text-gray-400'}`}>{model.active ? 'Active' : 'Soon'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.06] p-5 md:p-6 lg:col-span-2">
+                  <h3 className="mb-3 font-bold">🛡️ Health notes</h3>
+                  <ul className="space-y-2.5 text-xs text-gray-300">
+                    <li className="rounded-xl border border-white/8 bg-black/20 p-3">Tutor uses Groq fallback chain if primary model 404.</li>
+                    <li className="rounded-xl border border-white/8 bg-black/20 p-3">Quran audio proxied via /api/islamic/audio.</li>
+                    <li className="rounded-xl border border-white/8 bg-black/20 p-3">Real token/cost metrics — next instrumentation step.</li>
+                  </ul>
+                  <Link href="/dashboard/admin/analytics" className="mt-4 inline-flex text-xs font-semibold text-indigo-300 hover:text-indigo-200">Open analytics page →</Link>
                 </div>
               </div>
               <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] p-5 md:p-6">
-                <h3 className="mb-4 flex items-center gap-2 font-bold"><span>🚀</span> ML Roadmap</h3>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 font-bold"><span>🚀</span> ML Roadmap</h3>
+                  <span className="text-[10px] text-gray-500">Phase-wise delivery</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {mlRoadmap.map((f) => (
                     <div key={f.title} className="flex items-start gap-3 rounded-xl border border-white/6 bg-white/[0.04] p-4">
                       <span className="text-xl">{f.icon}</span>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-semibold">{f.title}</p>
-                          <span className="rounded-full border border-gray-500/20 bg-gray-500/15 px-2 py-0.5 text-[10px] text-gray-400">Planned</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${f.status === 'building' ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-gray-500/20 bg-gray-500/15 text-gray-400'}`}>{f.phase} · {f.status === 'building' ? 'Building' : 'Planned'}</span>
                         </div>
                         <p className="mt-1 text-xs leading-relaxed text-gray-500">{f.desc}</p>
                       </div>
@@ -275,31 +314,78 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
           )}
 
           {activeTab === 'activity' && (
-            <motion.div key="activity" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5 md:p-6">
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <h2 className="font-bold">সাম্প্রতিক ব্যবহারকারী</h2>
-                  <Link href="/dashboard/admin/users" className="text-xs font-medium text-blue-400 transition hover:text-blue-300">সব দেখো →</Link>
+            <motion.div key="activity" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">Activity center</h2>
+                  <p className="text-xs text-gray-500">Recent users · role mix · ops checklist</p>
                 </div>
-                {recentUsers.length === 0 ? (
-                  <div className="py-12 text-center"><p className="mb-2 text-4xl">👥</p><p className="text-sm text-gray-500">এখনো কোনো ব্যবহারকারী নেই</p></div>
-                ) : (
-                  <div className="space-y-2">
-                    {recentUsers.map((user, i) => (
-                      <motion.div key={user.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-3 rounded-xl border border-transparent bg-white/[0.04] p-3 transition hover:border-white/8 hover:bg-white/[0.06] md:gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 text-sm font-bold shadow-md">{(user.full_name || '?').charAt(0).toUpperCase()}</div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">{user.full_name}</p>
-                          <p className="truncate text-xs text-gray-500">{user.email}</p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <span className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold md:text-xs ${roleBadge(user.role || 'student')}`}>{roleLabel(user.role || 'student')}</span>
-                          <p className="mt-1 text-[10px] text-gray-600">{user.created_at ? new Date(user.created_at).toLocaleDateString('bn-BD') : ''}</p>
-                        </div>
-                      </motion.div>
-                    ))}
+                <Link href="/dashboard/admin/users" className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3.5 py-2 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/20">All users →</Link>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  { label: 'Total users', value: stats.totalUsers, icon: '👥', color: 'from-blue-500 to-cyan-400' },
+                  { label: 'Students', value: stats.totalStudents, icon: '🎓', color: 'from-emerald-500 to-teal-400' },
+                  { label: 'Free pending', value: stats.freeRequests, icon: '🤲', color: 'from-amber-500 to-orange-400' },
+                  { label: 'Pay pending', value: pendingPay, icon: '💳', color: 'from-rose-500 to-pink-400' },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <div className={`mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${s.color} text-sm`}>{s.icon}</div>
+                    <p className={`bg-gradient-to-r ${s.color} bg-clip-text text-xl font-black text-transparent`}>{s.value.toLocaleString('bn-BD')}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-500">{s.label}</p>
                   </div>
-                )}
+                ))}
+              </div>
+              <div className="grid gap-4 lg:grid-cols-5">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5 md:p-6 lg:col-span-3">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="font-bold">সাম্প্রতিক ব্যবহারকারী</h3>
+                    <span className="text-[10px] text-gray-500">{recentUsers.length} shown</span>
+                  </div>
+                  {recentUsers.length === 0 ? (
+                    <div className="py-12 text-center"><p className="mb-2 text-4xl">👥</p><p className="text-sm text-gray-500">এখনো কোনো ব্যবহারকারী নেই</p></div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentUsers.map((user, i) => (
+                        <motion.div key={user.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} className="flex items-center gap-3 rounded-xl border border-transparent bg-white/[0.04] p-3 transition hover:border-white/8 hover:bg-white/[0.06] md:gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 text-sm font-bold shadow-md">{(user.full_name || '?').charAt(0).toUpperCase()}</div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">{user.full_name}</p>
+                            <p className="truncate text-xs text-gray-500">{user.email}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold md:text-xs ${roleBadge(user.role || 'student')}`}>{roleLabel(user.role || 'student')}</span>
+                            <p className="mt-1 text-[10px] text-gray-600">{user.created_at ? new Date(user.created_at).toLocaleDateString('bn-BD') : ''}</p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4 lg:col-span-2">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+                    <h3 className="mb-3 font-bold">Ops checklist</h3>
+                    <div className="space-y-2">
+                      {activityFeed.map((a) => (
+                        <div key={a.title} className="flex items-start gap-3 rounded-xl border border-white/6 bg-white/[0.04] p-3">
+                          <span className="text-lg">{a.icon}</span>
+                          <div>
+                            <p className="text-sm font-semibold">{a.title}</p>
+                            <p className="text-xs text-gray-500">{a.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-5">
+                    <h3 className="mb-2 font-bold">Action needed</h3>
+                    <ul className="space-y-2 text-xs text-gray-300">
+                      <li className="flex justify-between gap-2"><span>Free access requests</span><Link href="/dashboard/admin/free-access" className="font-semibold text-amber-300 hover:underline">{stats.freeRequests}</Link></li>
+                      <li className="flex justify-between gap-2"><span>Pending payments</span><Link href="/dashboard/admin/subscriptions" className="font-semibold text-amber-300 hover:underline">{pendingPay}</Link></li>
+                      <li className="flex justify-between gap-2"><span>Curriculum subjects</span><Link href="/dashboard/admin/curriculum" className="font-semibold text-amber-300 hover:underline">{stats.totalSubjects}</Link></li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
