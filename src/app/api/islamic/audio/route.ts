@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid surah/ayah' }, { status: 400 })
     }
 
-    // Allowlist qari folders (prevent open proxy abuse)
     const allowed = new Set([
       'Alafasy_128kbps',
       'Abdurrahmaan_As-Sudais_192kbps',
@@ -32,6 +31,7 @@ export async function GET(req: NextRequest) {
     const code = `${String(surah).padStart(3, '0')}${String(ayah).padStart(3, '0')}`
     const sources = [
       `https://everyayah.com/data/${folder}/${code}.mp3`,
+      `https://everyayah.com/data/Alafasy_128kbps/${code}.mp3`,
       `https://verses.quran.com/Alafasy/mp3/${code}.mp3`,
     ]
 
@@ -40,8 +40,12 @@ export async function GET(req: NextRequest) {
     for (const url of sources) {
       try {
         const res = await fetch(url, {
-          headers: { 'User-Agent': 'ONONNO-QuranPlayer/1.0' },
-          signal: AbortSignal.timeout(12000),
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (compatible; ONONNO-QuranPlayer/1.0; +https://ononno-two.vercel.app)',
+            Accept: 'audio/mpeg,audio/*,*/*',
+          },
+          signal: AbortSignal.timeout(15000),
         })
         lastStatus = res.status
         if (res.ok && res.body) {
@@ -56,17 +60,24 @@ export async function GET(req: NextRequest) {
     if (!upstream?.body) {
       return NextResponse.json(
         { error: 'Audio upstream failed', status: lastStatus },
-        { status: 502 }
+        { status: 502 },
       )
     }
 
+    const headers = new Headers()
+    headers.set('Content-Type', 'audio/mpeg')
+    headers.set(
+      'Cache-Control',
+      'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400',
+    )
+    headers.set('Accept-Ranges', 'bytes')
+    headers.set('Access-Control-Allow-Origin', '*')
+    const len = upstream.headers.get('content-length')
+    if (len) headers.set('Content-Length', len)
+
     return new NextResponse(upstream.body, {
       status: 200,
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400',
-        'Accept-Ranges': 'bytes',
-      },
+      headers,
     })
   } catch (e) {
     console.error('audio proxy error', e)
