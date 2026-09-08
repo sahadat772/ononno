@@ -28,75 +28,96 @@ const units = [
       { id: 'english-s', title: 'S — Sun', icon: 'S', xp: 10 }, { id: 'english-t', title: 'T — Tiger', icon: 'T', xp: 10 },
       { id: 'english-u', title: 'U — Umbrella', icon: 'U', xp: 10 },
     ], bossQuiz: { id: 'boss-english-3', title: 'O–U Boss Quiz', xp: 50 } },
-  { id: 4, title: 'V to Z', subtitle: 'V W X Y Z', icon: '🏆', color: 'from-rose-400 to-pink-500', bg: 'bg-rose-500/10', border: 'border-rose-500/30',
+  { id: 4, title: 'V to Z', subtitle: 'V W X Y Z', icon: '🏆', color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
     lessons: [
       { id: 'english-v', title: 'V — Van', icon: 'V', xp: 10 }, { id: 'english-w', title: 'W — Water', icon: 'W', xp: 10 },
-      { id: 'english-x', title: 'X — X-ray', icon: 'X', xp: 10 }, { id: 'english-y', title: 'Y — Yak', icon: 'Y', xp: 10 },
+      { id: 'english-x', title: 'X — Xylophone', icon: 'X', xp: 10 }, { id: 'english-y', title: 'Y — Yak', icon: 'Y', xp: 10 },
       { id: 'english-z', title: 'Z — Zebra', icon: 'Z', xp: 10 },
     ], bossQuiz: { id: 'boss-english-4', title: 'V–Z Boss Quiz', xp: 50 } },
-  { id: 5, title: 'Capital & Small', subtitle: 'Aa Bb Cc…', icon: '🌟', color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
-    lessons: [
-      { id: 'english-caps-1', title: 'Aa Bb Cc Dd', icon: 'Aa', xp: 15 }, { id: 'english-caps-2', title: 'Ee Ff Gg Hh', icon: 'Ee', xp: 15 },
-      { id: 'english-caps-3', title: 'Ii Jj Kk Ll', icon: 'Ii', xp: 15 }, { id: 'english-caps-4', title: 'Mm Nn Oo Pp', icon: 'Mm', xp: 15 },
-      { id: 'english-caps-5', title: 'সব অক্ষর রিভিশন', icon: '🔄', xp: 20 },
-    ], bossQuiz: { id: 'boss-english-5', title: 'চূড়ান্ত Boss Quiz', xp: 100 } },
 ]
 
 type Progress = Record<string, { completed: boolean; stars: number }>
 
 export default function NurseryEnglishPage() {
-  const [expandedUnit, setExpandedUnit] = useState(1)
   const [progress, setProgress] = useState<Progress>({})
-  const [totalXp, setTotalXp] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [expandedUnit, setExpandedUnit] = useState(1)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data } = await supabase.from('learning_progress').select('lesson_id, completed, stars, score').eq('user_id', user.id)
-        if (data) {
-          const map: Progress = {}
-          let xp = 0
-          data.forEach((r) => { map[r.lesson_id] = { completed: r.completed, stars: r.stars || 0 }; xp += r.score || 0 })
-          setProgress(map); setTotalXp(xp)
-        }
-      } catch (e) { console.error(e) } finally { setLoading(false) }
-    }
-    void load()
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { setLoading(false); return }
+      supabase.from('learning_progress').select('lesson_id, completed, stars, score').eq('student_id', user.id).then(({ data }) => {
+        const progressMap: Progress = {}
+        data?.forEach((row: { lesson_id: string; completed: boolean; stars: number }) => {
+          progressMap[row.lesson_id] = { completed: row.completed, stars: row.stars || 0 }
+        })
+        setProgress(progressMap)
+        setLoading(false)
+      }).catch(() => setLoading(false))
+    }).catch(() => setLoading(false))
   }, [])
 
-  function isLessonUnlocked(unitIdx: number, lessonIdx: number) {
+  const isLessonUnlocked = (unitIdx: number, lessonIdx: number) => {
     if (unitIdx === 0 && lessonIdx === 0) return true
-    if (lessonIdx > 0) return progress[units[unitIdx].lessons[lessonIdx - 1].id]?.completed === true
-    if (unitIdx > 0) {
-      const prev = units[unitIdx - 1]
-      return progress[prev.lessons[prev.lessons.length - 1].id]?.completed === true
+    if (lessonIdx > 0) {
+      const prev = units[unitIdx].lessons[lessonIdx - 1]
+      return progress[prev.id]?.completed === true
     }
-    return false
+    const prevUnit = units[unitIdx - 1]
+    const last = prevUnit.lessons[prevUnit.lessons.length - 1]
+    return progress[last.id]?.completed === true
   }
 
   const totalLessons = units.reduce((s, u) => s + u.lessons.length, 0)
-  const completedLessons = Object.values(progress).filter((p) => p.completed).length
-  const progressPercent = Math.round((completedLessons / totalLessons) * 100)
+  const completedLessons = Object.values(progress).filter(p => p.completed).length
+  const totalXp = completedLessons * 10
 
   return (
     <KidsZoneShell title="English" subtitle="ABC Adventure" emoji="🔡" stars={totalXp}>
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-6 rounded-3xl border border-violet-500/30 bg-gradient-to-r from-violet-600/20 to-purple-600/20 p-5">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 rounded-3xl border border-violet-500/30 bg-gradient-to-r from-violet-600/20 to-purple-600/20 p-5">
         <div className="flex items-center gap-4">
-          <div className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 text-3xl font-bold text-white">A</div>
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 text-3xl font-bold text-white shadow-lg">A</div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-white">English ABC</h1>
-            <p className="text-sm text-gray-400">Listen → Say → Write → Play</p>
+            <h1 className="text-xl font-bold text-white">English Alphabet</h1>
+            <p className="text-sm text-gray-400">A to Z — Listen, Say, Write, Play</p>
             <div className="mt-2">
-              <div className="mb-1 flex justify-between text-xs text-gray-400"><span>{completedLessons}/{totalLessons} lessons</span><span>{progressPercent}%</span></div>
-              <div className="h-2.5 rounded-full bg-white/10"><div className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 to-purple-500" style={{ width: `${progressPercent}%` }} /></div>
+              <div className="mb-1 flex justify-between text-xs text-gray-400">
+                <span>{completedLessons}/{totalLessons} lesson</span>
+                <span>{Math.round((completedLessons / totalLessons) * 100)}%</span>
+              </div>
+              <div className="h-2.5 w-full rounded-full bg-white/10">
+                <div className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 to-purple-500" style={{ width: `${Math.round((completedLessons / totalLessons) * 100)}%` }} />
+              </div>
             </div>
           </div>
         </div>
       </motion.div>
+
+      {(() => {
+        let nextHref: string | null = null
+        let nextTitle = ''
+        for (let ui = 0; ui < units.length; ui++) {
+          for (let li = 0; li < units[ui].lessons.length; li++) {
+            const l = units[ui].lessons[li]
+            if (isLessonUnlocked(ui, li) && !progress[l.id]?.completed) {
+              nextHref = `/dashboard/student/kids-zone/nursery/english/${l.id}`
+              nextTitle = l.title
+              break
+            }
+          }
+          if (nextHref) break
+        }
+        if (!nextHref) return null
+        return (
+          <Link href={nextHref} className="mb-5 block">
+            <div className="rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 p-4 text-center shadow-lg shadow-emerald-500/25 active:scale-[0.98] transition">
+              <p className="text-xs font-semibold text-emerald-100">▶️ Continue</p>
+              <p className="text-base font-black text-white">{nextTitle}</p>
+            </div>
+          </Link>
+        )
+      })()}
 
       {loading ? <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/5" />)}</div> : (
         <div className="space-y-3">
