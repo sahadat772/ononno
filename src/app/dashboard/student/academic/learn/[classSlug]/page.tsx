@@ -90,7 +90,7 @@ export default function ClassSubjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<Record<string, number>>({})
-  const [counts, setCounts] = useState<Record<string, { done: number; total: number }>({})
+  const [counts, setCounts] = useState<Record<string, { done: number; total: number }>>({})
 
   useEffect(() => {
     const fetchData = async () => {
