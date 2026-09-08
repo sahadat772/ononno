@@ -1,4 +1,4 @@
-/** Client-side Quran audio player — sequential ayahs + status callbacks */
+/** Client-side Quran audio player — sequential ayahs + clear streaming status */
 
 import { buildAyahAudioUrls } from '@/lib/quran-audio'
 
@@ -12,58 +12,104 @@ export type PlayController = {
   stop: () => void
 }
 
-function playOneUrl(url: string, signal: { stopped: boolean }): Promise<HTMLAudioElement> {
+const LOAD_TIMEOUT_MS = 18000
+
+function playUrl(
+  url: string,
+  signal: { stopped: boolean; current?: HTMLAudioElement },
+  onPlaying?: () => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.stopped) {
       reject(new Error('stopped'))
       return
     }
+
     const audio = new Audio()
     audio.preload = 'auto'
-    audio.crossOrigin = 'anonymous'
 
-    const onError = () => {
-      cleanup()
-      reject(new Error('load failed'))
-    }
-    const onEnded = () => {
-      cleanup()
-      resolve(audio)
-    }
+    let settled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
     const cleanup = () => {
-      audio.removeEventListener('error', onError)
-      audio.removeEventListener('ended', onEnded)
+      if (timer) clearTimeout(timer)
+      audio.oncanplay = null
+      audio.onplaying = null
+      audio.onended = null
+      audio.onerror = null
+      audio.onabort = null
     }
 
-    audio.addEventListener('error', onError)
-    audio.addEventListener('ended', onEnded)
-    audio.src = url
+    const fail = (reason: string) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      try {
+        audio.pause()
+        audio.removeAttribute('src')
+        audio.load()
+      } catch {
+        /* ignore */
+      }
+      reject(new Error(reason))
+    }
 
-    const p = audio.play()
-    if (p && typeof p.then === 'function') {
-      p.catch(() => {
-        cleanup()
-        reject(new Error('play blocked'))
-      })
+    const succeedEnded = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve()
+    }
+
+    timer = setTimeout(() => fail('timeout'), LOAD_TIMEOUT_MS)
+
+    audio.onerror = () => fail('load failed')
+    audio.onabort = () => fail('aborted')
+    audio.onended = () => succeedEnded()
+    audio.onplaying = () => {
+      onPlaying?.()
+    }
+
+    audio.oncanplay = () => {
+      if (signal.stopped) {
+        fail('stopped')
+        return
+      }
+      const p = audio.play()
+      if (p && typeof p.then === 'function') {
+        p.catch(() => fail('play blocked'))
+      }
+    }
+
+    signal.current = audio
+
+    try {
+      audio.src = url
+      audio.load()
+    } catch {
+      fail('src failed')
     }
   })
 }
 
 async function playFirstWorking(
   urls: string[],
-  signal: { stopped: boolean },
-  onTry?: (url: string) => void,
+  signal: { stopped: boolean; current?: HTMLAudioElement },
+  onTry?: (url: string, index: number) => void,
+  onPlaying?: () => void,
 ): Promise<void> {
   let last: unknown
-  for (const url of urls) {
+  for (let i = 0; i < urls.length; i++) {
     if (signal.stopped) throw new Error('stopped')
-    onTry?.(url)
+    const url = urls[i]
+    onTry?.(url, i)
     try {
-      await playOneUrl(url, signal)
+      await playUrl(url, signal, onPlaying)
       return
     } catch (e) {
       last = e
       if (signal.stopped) throw e
+      signal.current = undefined
     }
   }
   throw last || new Error('all urls failed')
@@ -71,7 +117,6 @@ async function playFirstWorking(
 
 /**
  * Play a single ayah with fallback URLs.
- * Returns a controller to stop.
  */
 export function playAyahAudio(
   qariId: string,
@@ -79,19 +124,19 @@ export function playAyahAudio(
   ayah: number,
   onStatus?: (s: AudioStatus) => void,
 ): PlayController {
-  const signal = { stopped: false }
-  let current: HTMLAudioElement | null = null
+  const signal: { stopped: boolean; current?: HTMLAudioElement } = { stopped: false }
 
   const stop = () => {
     signal.stopped = true
-    if (current) {
+    if (signal.current) {
       try {
-        current.pause()
-        current.src = ''
+        signal.current.pause()
+        signal.current.removeAttribute('src')
+        signal.current.load()
       } catch {
         /* ignore */
       }
-      current = null
+      signal.current = undefined
     }
     onStatus?.({ phase: 'idle' })
   }
@@ -100,51 +145,36 @@ export function playAyahAudio(
     onStatus?.({
       phase: 'loading',
       ayah,
-      message: 'অডিও লোড হচ্ছে… স্ট্রিমিং শুরু হচ্ছে',
+      message: '⬇️ অডিও লোড হচ্ছে… ওয়েব থেকে স্ট্রিম শুরু',
     })
     const urls = buildAyahAudioUrls(qariId, surah, ayah)
     try {
-      // Use internal play that keeps ref
-      for (const url of urls) {
-        if (signal.stopped) return
-        try {
-          await new Promise<void>((resolve, reject) => {
-            if (signal.stopped) {
-              reject(new Error('stopped'))
-              return
-            }
-            const audio = new Audio()
-            current = audio
-            audio.preload = 'auto'
-            const fail = () => reject(new Error('fail'))
-            audio.addEventListener('error', fail)
-            audio.addEventListener('ended', () => resolve())
-            audio.addEventListener('playing', () => {
-              onStatus?.({
-                phase: 'playing',
-                ayah,
-                message: `আয়াত ${ayah} চলছে…`,
-              })
-            })
-            audio.src = url
-            const p = audio.play()
-            if (p) p.catch(fail)
+      await playFirstWorking(
+        urls,
+        signal,
+        (_url, index) => {
+          const via = index === 0 ? 'সার্ভার প্রক্সি' : 'সরাসরি CDN'
+          onStatus?.({
+            phase: 'loading',
+            ayah,
+            message: `⬇️ ${via} থেকে লোড… আয়াত ${ayah}`,
           })
-          onStatus?.({ phase: 'idle' })
-          return
-        } catch {
-          current = null
-        }
-      }
+        },
+        () => {
+          onStatus?.({
+            phase: 'playing',
+            ayah,
+            message: `▶️ আয়াত ${ayah} চলছে…`,
+          })
+        },
+      )
+      if (!signal.stopped) onStatus?.({ phase: 'idle' })
+    } catch {
       if (!signal.stopped) {
         onStatus?.({
           phase: 'error',
-          message: 'অডিও লোড হয়নি। অন্য ক্বারী চেষ্টা করো।',
+          message: 'অডিও লোড হয়নি। অন্য ক্বারী চেষ্টা করো বা নেট চেক করো।',
         })
-      }
-    } catch {
-      if (!signal.stopped) {
-        onStatus?.({ phase: 'error', message: 'অডিও চালানো যায়নি।' })
       }
     }
   })()
@@ -153,7 +183,7 @@ export function playAyahAudio(
 }
 
 /**
- * Play full surah ayah-by-ayah.
+ * Play full surah ayah-by-ayah with streaming status.
  */
 export function playSurahAudio(
   qariId: string,
@@ -161,19 +191,19 @@ export function playSurahAudio(
   ayahCount: number,
   onStatus?: (s: AudioStatus) => void,
 ): PlayController {
-  const signal = { stopped: false }
-  let current: HTMLAudioElement | null = null
+  const signal: { stopped: boolean; current?: HTMLAudioElement } = { stopped: false }
 
   const stop = () => {
     signal.stopped = true
-    if (current) {
+    if (signal.current) {
       try {
-        current.pause()
-        current.src = ''
+        signal.current.pause()
+        signal.current.removeAttribute('src')
+        signal.current.load()
       } catch {
         /* ignore */
       }
-      current = null
+      signal.current = undefined
     }
     onStatus?.({ phase: 'idle' })
   }
@@ -182,59 +212,43 @@ export function playSurahAudio(
     try {
       for (let a = 1; a <= ayahCount; a++) {
         if (signal.stopped) return
+
         onStatus?.({
           phase: 'loading',
           ayah: a,
           total: ayahCount,
-          message: `আয়াত ${a}/${ayahCount} লোড হচ্ছে…`,
+          message: `⬇️ আয়াত ${a}/${ayahCount} — ওয়েব থেকে স্ট্রিম লোড হচ্ছে…`,
         })
 
         const urls = buildAyahAudioUrls(qariId, surah, a)
-        let played = false
 
-        for (const url of urls) {
+        try {
+          await playFirstWorking(
+            urls,
+            signal,
+            (_url, index) => {
+              const via = index === 0 ? 'প্রক্সি (auto stream)' : 'ডাইরেক্ট CDN'
+              onStatus?.({
+                phase: 'loading',
+                ayah: a,
+                total: ayahCount,
+                message: `⬇️ ${via} · আয়াত ${a}/${ayahCount}`,
+              })
+            },
+            () => {
+              onStatus?.({
+                phase: 'playing',
+                ayah: a,
+                total: ayahCount,
+                message: `▶️ তিলাওয়াত চলছে · আয়াত ${a}/${ayahCount}`,
+              })
+            },
+          )
+        } catch {
           if (signal.stopped) return
-          try {
-            await new Promise<void>((resolve, reject) => {
-              if (signal.stopped) {
-                reject(new Error('stopped'))
-                return
-              }
-              const audio = new Audio()
-              current = audio
-              audio.preload = 'auto'
-              const fail = () => {
-                audio.removeEventListener('error', fail)
-                reject(new Error('fail'))
-              }
-              audio.addEventListener('error', fail)
-              audio.addEventListener('playing', () => {
-                onStatus?.({
-                  phase: 'playing',
-                  ayah: a,
-                  total: ayahCount,
-                  message: `তিলাওয়াত চলছে · আয়াত ${a}/${ayahCount}`,
-                })
-              })
-              audio.addEventListener('ended', () => {
-                audio.removeEventListener('error', fail)
-                resolve()
-              })
-              audio.src = url
-              const p = audio.play()
-              if (p) p.catch(fail)
-            })
-            played = true
-            break
-          } catch {
-            current = null
-          }
-        }
-
-        if (!played && !signal.stopped) {
           onStatus?.({
             phase: 'error',
-            message: `আয়াত ${a} লোড হয়নি। অন্য ক্বারী চেষ্টা করো।`,
+            message: `আয়াত ${a} লোড হয়নি। অন্য ক্বারী বা নেট চেষ্টা করো।`,
           })
           return
         }
