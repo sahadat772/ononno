@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/api-auth'
 import { audit } from '@/lib/audit'
 import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
 import { buildPrimarySeed, SEED_VERSION } from '@/lib/curriculum-seed'
+import { buildDemoLessonBody } from '@/lib/lesson-demo-content'
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,15 +59,9 @@ export async function POST(req: NextRequest) {
           description: SEED_VERSION.description,
         })
         .eq('id', versionId)
-      await supabase
-        .from('curriculum_versions')
-        .update({ is_active: false })
-        .neq('id', versionId)
+      await supabase.from('curriculum_versions').update({ is_active: false }).neq('id', versionId)
     } else {
-      await supabase
-        .from('curriculum_versions')
-        .update({ is_active: false })
-        .eq('is_active', true)
+      await supabase.from('curriculum_versions').update({ is_active: false }).eq('is_active', true)
 
       const { data: ver, error: verErr } = await supabase
         .from('curriculum_versions')
@@ -222,29 +217,54 @@ export async function POST(req: NextRequest) {
 
             if (existingLes?.id) continue
 
-            const { error: lesErr } = await supabase.from('curriculum_lessons').insert({
-              chapter_id: chapterId,
-              subject_id: subjectId,
-              class_id: classId,
-              title: les.title,
-              title_bn: les.titleBn,
-              slug: les.slug,
-              description: les.description,
-              lesson_number: li + 1,
-              duration_minutes: les.durationMinutes,
-              xp_reward: les.xpReward,
-              coin_reward: 5,
-              is_free_preview: li === 0,
-              is_published: true,
-              order_index: li + 1,
-              workflow_status: 'published',
-            })
+            const { data: createdLes, error: lesErr } = await supabase
+              .from('curriculum_lessons')
+              .insert({
+                chapter_id: chapterId,
+                subject_id: subjectId,
+                class_id: classId,
+                title: les.title,
+                title_bn: les.titleBn,
+                slug: les.slug,
+                description: les.description,
+                lesson_number: li + 1,
+                duration_minutes: les.durationMinutes,
+                xp_reward: les.xpReward,
+                coin_reward: 5,
+                is_free_preview: li === 0,
+                is_published: true,
+                order_index: li + 1,
+                workflow_status: 'published',
+              })
+              .select('id')
+              .single()
 
-            if (lesErr) {
+            if (lesErr || !createdLes) {
               console.error('Seed lesson error:', les.slug, lesErr)
               continue
             }
             summary.lessons += 1
+
+            const body = buildDemoLessonBody({
+              title: les.title,
+              titleBn: les.titleBn,
+              description: les.description,
+              subjectHint: `${ch.slug} ${les.slug}`,
+              isQuiz: /quiz/i.test(les.slug) || /কুইজ/.test(les.titleBn),
+            })
+            const { error: contentErr } = await supabase.from('lesson_contents').insert({
+              lesson_id: createdLes.id,
+              overview: body.overview,
+              objectives: body.objectives,
+              main_content: body.main_content,
+              examples: body.examples,
+              summary: body.summary,
+              extra_notes: body.extra_notes,
+              quiz_questions: body.quiz_questions,
+            })
+            if (contentErr) {
+              console.error('Seed lesson_contents error:', les.slug, contentErr)
+            }
           }
         }
       }
