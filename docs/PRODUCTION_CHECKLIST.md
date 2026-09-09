@@ -72,6 +72,19 @@ Keep **sandbox** until you intentionally switch live keys.
 
 ---
 
+## Runtime production steps (this sprint)
+
+| Step | Task | Status |
+|------|------|--------|
+| 1 | Live gateway | ⏸ Manual payment polished instead |
+| 2 | Curriculum seed Class 1–5 | ✅ |
+| 3 | Soft-launch hardening (health + SEO + unlock const) | ✅ |
+| Next | Richer published lesson bodies | Pending |
+
+See also `docs/PRODUCTION_STEPS.md`.
+
+---
+
 ## Phase P1 — After soft launch (not blockers)
 
 - [ ] Custom domain (e.g. `ononno.app`) + SSL
