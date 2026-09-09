@@ -52,16 +52,17 @@ Optional public checks:
 | 2 | Curriculum seed Class 1–5 | ✅ |
 | 3 | Soft-launch hardening (health + SEO + unlock const) | ✅ |
 | 4 | Richer published lesson bodies | ✅ |
-| Next | Optional Sentry / more real NCTB content | Pending |
+| 5 | Error monitoring (optional Sentry) | ✅ |
+| Next | Real NCTB content / custom domain | Pending |
 
-See also `docs/PRODUCTION_STEPS.md`.
+See also `docs/PRODUCTION_STEPS.md` and `docs/ERROR_MONITORING.md`.
 
 ---
 
 ## Phase P1 — After soft launch (not blockers)
 
 - [ ] Custom domain (e.g. `ononno.app`) + SSL
-- [ ] Error monitoring (Vercel logs / Sentry)
+- [x] Error monitoring (Vercel logs / optional Sentry DSN)
 - [ ] Supabase backup / PITR if plan allows
 - [ ] Live bKash / SSLCommerz when charging
 - [ ] More Class 1–5 subjects published
