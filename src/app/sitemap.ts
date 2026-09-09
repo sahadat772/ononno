@@ -6,19 +6,22 @@ const site =
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  return [
-    { url: site, lastModified: now, changeFrequency: "weekly", priority: 1 },
-    {
-      url: `${site}/login`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${site}/register`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
+  const paths: {
+    path: string;
+    changeFrequency: MetadataRoute.Sitemap[0]["changeFrequency"];
+    priority: number;
+  }[] = [
+    { path: "", changeFrequency: "weekly", priority: 1 },
+    { path: "/login", changeFrequency: "monthly", priority: 0.6 },
+    { path: "/register", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/contact", changeFrequency: "monthly", priority: 0.5 },
+    { path: "/free-access", changeFrequency: "weekly", priority: 0.7 },
   ];
+
+  return paths.map(({ path, changeFrequency, priority }) => ({
+    url: `${site}${path}`,
+    lastModified: now,
+    changeFrequency,
+    priority,
+  }));
 }
