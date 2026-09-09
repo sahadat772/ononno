@@ -19,14 +19,14 @@ interface Props {
 }
 
 const menuItems = [
-  { title: 'ব্যবহারকারী', desc: 'User list, role ও access control', icon: '👥', href: '/dashboard/admin/users', gradient: 'from-blue-500 to-cyan-400', border: 'border-blue-500/20' },
-  { title: 'কারিকুলাম', desc: 'Class, subject, lesson ও PDF import', icon: '📚', href: '/dashboard/admin/curriculum', gradient: 'from-violet-500 to-purple-400', border: 'border-violet-500/20' },
-  { title: 'Free Access', desc: 'এতিম/দরিদ্র আবেদন যাচাই', icon: '🤲', href: '/dashboard/admin/free-access', gradient: 'from-emerald-500 to-teal-400', border: 'border-emerald-500/20' },
-  { title: 'Subscription', desc: 'Payment verify ও plan manage', icon: '💳', href: '/dashboard/admin/subscriptions', gradient: 'from-amber-500 to-orange-400', border: 'border-amber-500/20' },
-  { title: 'ঘোষণা', desc: 'সবাইকে announcement পাঠাও', icon: '📢', href: '/dashboard/admin/announcements', gradient: 'from-rose-500 to-pink-400', border: 'border-rose-500/20' },
-  { title: 'Learning Analytics', desc: 'Session, progress ও weakness', icon: '📈', href: '/dashboard/admin/learning-analytics', gradient: 'from-cyan-500 to-sky-400', border: 'border-cyan-500/20' },
-  { title: 'AI / ML', desc: 'Tutor performance ও model usage', icon: '🧠', href: '/dashboard/admin/analytics', gradient: 'from-indigo-500 to-blue-400', border: 'border-indigo-500/20' },
-  { title: 'Content', desc: 'Content review ও moderation', icon: '📝', href: '/dashboard/admin/content', gradient: 'from-teal-500 to-emerald-400', border: 'border-teal-500/20' },
+  { title: 'ব্যবহারকারী', desc: 'User list, role ও access control', icon: '👥', href: '/dashboard/admin/users', gradient: 'from-blue-500 to-cyan-400', border: 'border-blue-500/20', tag: 'Core' },
+  { title: 'কারিকুলাম', desc: 'Class, subject, lesson ও PDF import', icon: '📚', href: '/dashboard/admin/curriculum', gradient: 'from-violet-500 to-purple-400', border: 'border-violet-500/20', tag: 'Core' },
+  { title: 'Free Access', desc: 'এতিম/দরিদ্র আবেদন যাচাই', icon: '🤲', href: '/dashboard/admin/free-access', gradient: 'from-emerald-500 to-teal-400', border: 'border-emerald-500/20', tag: 'Ops' },
+  { title: 'Subscription', desc: 'Payment verify ও plan manage', icon: '💳', href: '/dashboard/admin/subscriptions', gradient: 'from-amber-500 to-orange-400', border: 'border-amber-500/20', tag: 'Ops' },
+  { title: 'ঘোষণা', desc: 'সবাইকে announcement পাঠাও', icon: '📢', href: '/dashboard/admin/announcements', gradient: 'from-rose-500 to-pink-400', border: 'border-rose-500/20', tag: 'Comms' },
+  { title: 'Learning Analytics', desc: 'Session, progress ও weakness', icon: '📈', href: '/dashboard/admin/learning-analytics', gradient: 'from-cyan-500 to-sky-400', border: 'border-cyan-500/20', tag: 'Insight' },
+  { title: 'AI / ML', desc: 'Tutor performance ও model usage', icon: '🧠', href: '/dashboard/admin/analytics', gradient: 'from-indigo-500 to-blue-400', border: 'border-indigo-500/20', tag: 'Insight' },
+  { title: 'Content', desc: 'Content review ও moderation', icon: '📝', href: '/dashboard/admin/content', gradient: 'from-teal-500 to-emerald-400', border: 'border-teal-500/20', tag: 'Core' },
 ]
 
 const aiModels = [
@@ -144,7 +144,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
         </div>
       </nav>
 
-      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-24 md:px-6">
+      <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-24 md:px-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-7">
           <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-red-500/10 via-[#0c0c1c] to-violet-500/5 p-6 md:p-8">
             <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-red-500/10 blur-3xl" />
@@ -211,19 +211,75 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
 
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
-            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
-              {menuItems.map((item, i) => (
-                <motion.div key={item.title} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} whileHover={{ y: -4 }}>
-                  <Link href={item.href} className="block h-full">
-                    <div className={`group h-full cursor-pointer rounded-2xl border ${item.border} bg-white/[0.03] p-5 transition-all duration-300 hover:bg-white/[0.06] hover:shadow-xl`}>
-                      <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${item.gradient} text-2xl shadow-lg transition-transform group-hover:scale-110`}>{item.icon}</div>
-                      <h3 className="mb-1 text-sm font-bold text-white">{item.title}</h3>
-                      <p className="text-xs leading-relaxed text-gray-500">{item.desc}</p>
-                      <div className={`mt-4 flex items-center gap-1 bg-gradient-to-r ${item.gradient} bg-clip-text text-xs font-semibold text-transparent opacity-0 transition-opacity group-hover:opacity-100`}>খোলো →</div>
+            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className="space-y-5">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">Module hub</h2>
+                  <p className="text-xs text-gray-500">সব admin tools এক নজরে — প্রয়োজন অনুযায়ী খোলো</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-gray-400">Core</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-gray-400">Ops</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-gray-400">Insight</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-gray-400">Comms</span>
+                </div>
+              </div>
+
+              {(stats.freeRequests > 0 || pendingPay > 0) && (
+                <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent p-4 md:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-amber-100">Attention needed</p>
+                      <p className="mt-0.5 text-xs text-amber-200/70">
+                        {stats.freeRequests > 0 && `${stats.freeRequests} free access request`}
+                        {stats.freeRequests > 0 && pendingPay > 0 && ' · '}
+                        {pendingPay > 0 && `${pendingPay} pending payment`}
+                      </p>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      {stats.freeRequests > 0 && (
+                        <Link href="/dashboard/admin/free-access" className="rounded-xl bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-500/30 transition hover:bg-emerald-500/30">Free Access →</Link>
+                      )}
+                      {pendingPay > 0 && (
+                        <Link href="/dashboard/admin/subscriptions" className="rounded-xl bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-500/30 transition hover:bg-amber-500/30">Payments →</Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-4">
+                {menuItems.map((item, i) => (
+                  <motion.div key={item.title} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} whileHover={{ y: -4 }}>
+                    <Link href={item.href} className="block h-full">
+                      <div className={`group relative h-full cursor-pointer overflow-hidden rounded-2xl border ${item.border} bg-white/[0.03] p-5 transition-all duration-300 hover:bg-white/[0.06] hover:shadow-xl`}>
+                        <div className={`pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br ${item.gradient} opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-20`} />
+                        <div className="relative flex items-start justify-between gap-2">
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${item.gradient} text-2xl shadow-lg transition-transform group-hover:scale-110`}>{item.icon}</div>
+                          <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{item.tag}</span>
+                        </div>
+                        <h3 className="relative mt-4 mb-1 text-sm font-bold text-white">{item.title}</h3>
+                        <p className="relative text-xs leading-relaxed text-gray-500">{item.desc}</p>
+                        <div className={`relative mt-4 flex items-center gap-1 bg-gradient-to-r ${item.gradient} bg-clip-text text-xs font-semibold text-transparent opacity-70 transition-opacity group-hover:opacity-100`}>খোলো <span className="transition-transform group-hover:translate-x-0.5">→</span></div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { title: 'Curriculum ready', value: stats.totalSubjects, hint: 'subjects in DB', href: '/dashboard/admin/curriculum', color: 'text-violet-300' },
+                  { title: 'Students onboard', value: stats.totalStudents, hint: 'active learners', href: '/dashboard/admin/users', color: 'text-emerald-300' },
+                  { title: 'Platform users', value: stats.totalUsers, hint: 'all roles', href: '/dashboard/admin/users', color: 'text-blue-300' },
+                ].map((b) => (
+                  <Link key={b.title} href={b.href} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 transition hover:border-white/15 hover:bg-white/[0.05]">
+                    <p className="text-[11px] text-gray-500">{b.title}</p>
+                    <p className={`mt-1 text-xl font-black ${b.color}`}>{b.value.toLocaleString('bn-BD')}</p>
+                    <p className="text-[10px] text-gray-600">{b.hint}</p>
                   </Link>
-                </motion.div>
-              ))}
+                ))}
+              </div>
             </motion.div>
           )}
 
@@ -391,6 +447,56 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
           )}
         </AnimatePresence>
       </div>
+
+      <footer className="relative mt-4 border-t border-white/8 bg-[#05050e]/80">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 md:flex-row md:items-start md:justify-between md:px-6">
+          <div className="max-w-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <Image src="/icons/logo-icon.png" alt="অনন্য" width={28} height={28} className="rounded-lg" />
+              <span className="font-black tracking-tight">অনন্য</span>
+              <span className="rounded border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 text-[9px] font-bold text-red-400">ADMIN</span>
+            </div>
+            <p className="text-xs leading-relaxed text-gray-500">
+              Islamic + Academic learning platform — curriculum, payments, AI tutor ও student progress এক জায়গায়।
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+            <div>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Manage</p>
+              <ul className="space-y-1.5 text-xs text-gray-500">
+                <li><Link href="/dashboard/admin/curriculum" className="hover:text-white">Curriculum</Link></li>
+                <li><Link href="/dashboard/admin/users" className="hover:text-white">Users</Link></li>
+                <li><Link href="/dashboard/admin/subscriptions" className="hover:text-white">Payments</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Ops</p>
+              <ul className="space-y-1.5 text-xs text-gray-500">
+                <li><Link href="/dashboard/admin/free-access" className="hover:text-white">Free Access</Link></li>
+                <li><Link href="/dashboard/admin/announcements" className="hover:text-white">Announcements</Link></li>
+                <li><Link href="/dashboard/admin/content" className="hover:text-white">Content</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Insight</p>
+              <ul className="space-y-1.5 text-xs text-gray-500">
+                <li><Link href="/dashboard/admin/learning-analytics" className="hover:text-white">Learning Analytics</Link></li>
+                <li><Link href="/dashboard/admin/analytics" className="hover:text-white">AI Analytics</Link></li>
+                <li><Link href="/dashboard/admin/profile" className="hover:text-white">Profile</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-white/5">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-3 text-[11px] text-gray-600 md:px-6">
+            <span>© {new Date().getFullYear()} অনন্য · Admin control center</span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              System online
+            </span>
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }
