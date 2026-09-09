@@ -44,34 +44,6 @@ Optional public checks:
 
 ---
 
-## Phase P0 reference (keep green)
-
-### Environment (Vercel Production)
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and/or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server only)
-- `GEMINI_API_KEY`
-- `CURRICULUM_STORAGE_PROVIDER=google_drive` (or `supabase`)
-- Drive: `GOOGLE_DRIVE_CLIENT_EMAIL`, `GOOGLE_DRIVE_PRIVATE_KEY`, `GOOGLE_DRIVE_FOLDER_ID`
-- `COVER_IMAGE_PROVIDER=branded`
-- `NEXT_PUBLIC_APP_URL=https://ononno-two.vercel.app`
-
-### Auth URLs
-
-- Site URL = production domain
-- Redirects: `/auth/callback`, `/**`, preview `*.vercel.app`
-
-### Content rule
-
-Students only see **published + active** lessons. Never raw AI drafts.
-
-### Payments
-
-Keep **sandbox** until you intentionally switch live keys.
-
----
-
 ## Runtime production steps (this sprint)
 
 | Step | Task | Status |
@@ -79,7 +51,8 @@ Keep **sandbox** until you intentionally switch live keys.
 | 1 | Live gateway | ⏸ Manual payment polished instead |
 | 2 | Curriculum seed Class 1–5 | ✅ |
 | 3 | Soft-launch hardening (health + SEO + unlock const) | ✅ |
-| Next | Richer published lesson bodies | Pending |
+| 4 | Richer published lesson bodies | ✅ |
+| Next | Optional Sentry / more real NCTB content | Pending |
 
 See also `docs/PRODUCTION_STEPS.md`.
 
