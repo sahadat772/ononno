@@ -4,6 +4,8 @@
  * and student page when published lesson has empty content.
  */
 
+import { getRichLessonBody } from './nctb-rich-lessons'
+
 export type DemoQuizQ = {
   question: string
   options: string[]
@@ -30,6 +32,7 @@ function detectKind(text: string): string {
   if (/science|বিজ্ঞান|body|plant|animal|weather|season|sense/.test(t)) return 'science'
   if (/bangladesh|বাংলাদেশ|desh|gram|shohor|swadhin|manchitro|poribar/.test(t)) return 'bangladesh'
   if (/health|স্বাস্থ্য|hat-dhowa|exercise|khela|poricchon|dat-maja/.test(t)) return 'health'
+  if (/ict|computer|software|internet|hardware|spreadsheet|cyber/.test(t)) return 'ict'
   if (/quiz|কুইজ/.test(t)) return 'quiz'
   return 'general'
 }
@@ -164,6 +167,24 @@ const KIND_FLAVOR: Record<
       },
     ],
   },
+  ict: {
+    intro: 'কম্পিউটার, ইন্টারনেট ও ডিজিটাল নিরাপত্তা — দৈনন্দিন দক্ষতা।',
+    tip: 'পাসওয়ার্ড গোপন রাখো, অজানা লিংকে ক্লিক করো না।',
+    quizBase: [
+      {
+        question: 'CPU কী?',
+        options: ['কম্পিউটারের প্রসেসর', 'একটি প্রিন্টার', 'একটি মাউস', 'একটি স্পিকার'],
+        correct: 0,
+        explanation: 'CPU কম্পিউটারের কেন্দ্রীয় প্রসেসিং ইউনিট।',
+      },
+      {
+        question: 'শক্তিশালী পাসওয়ার্ডে কী থাকা ভালো?',
+        options: ['অক্ষর, সংখ্যা ও চিহ্নের মিশ্রণ', 'শুধু নাম', '১২৩৪', 'খালি'],
+        correct: 0,
+        explanation: 'মিশ্র পাসওয়ার্ড নিরাপদ।',
+      },
+    ],
+  },
   quiz: {
     intro: 'এই ধাপে যা শিখেছ তা মজার কুইজে যাচাই করো।',
     tip: 'তাড়াহুড়ো না করে পড়ে উত্তর দাও।',
@@ -212,6 +233,22 @@ export function buildDemoLessonBody(input: {
   const title = input.titleBn || input.title
   const en = input.title
   const desc = input.description || ''
+
+  const hint = input.subjectHint || ''
+  const slugGuess = hint.split(/\s+/).find((p) => p.length > 2) || ''
+  const rich =
+    getRichLessonBody(slugGuess) ||
+    getRichLessonBody(hint) ||
+    getRichLessonBody(en.toLowerCase().replace(/\s+/g, '-'))
+  if (rich && !input.isQuiz) {
+    return rich as DemoLessonBody
+  }
+  const last = hint.trim().split(/\s+/).filter(Boolean).pop()
+  const rich2 = last ? getRichLessonBody(last) : null
+  if (rich2 && !input.isQuiz) {
+    return rich2 as DemoLessonBody
+  }
+
   const kind = input.isQuiz
     ? 'quiz'
     : detectKind(`${input.subjectHint || ''} ${en} ${title} ${desc}`)
