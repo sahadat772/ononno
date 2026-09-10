@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceRoleClient } from '@/lib/supabase-admin'
 import CurriculumDashboardClient from './components/CurriculumDashboardClient'
+import { canAccess, isStaffAdmin } from '@/lib/admin-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +15,11 @@ export default async function CurriculumDashboard() {
 
   const { data: profile } = await auth
     .from('profiles')
-    .select('role')
+    .select('role, admin_permissions')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (profile?.role !== 'admin') redirect('/dashboard')
+  if (!isStaffAdmin(profile) || !canAccess(profile, 'curriculum')) redirect('/dashboard/admin')
 
   let db = auth
   try {
