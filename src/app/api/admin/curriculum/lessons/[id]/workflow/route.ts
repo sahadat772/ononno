@@ -44,7 +44,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const current = lesson.workflow_status ?? "draft";
 
-    // Restore archived / inactive lesson → reviewed (ready to generate)
     if (action === "restore") {
       if (current !== "archived" && lesson.is_active !== false) {
         return NextResponse.json(
@@ -84,7 +83,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const allowed: Record<Exclude<Action, "restore">, string[]> = {
       review: ["extracted", "draft", "generated", "archived"],
       approve: ["generated"],
-      publish: ["approved"],
+      // allow publish from approved OR generated (skip extra click)
+      publish: ["approved", "generated"],
       return_to_review: ["approved", "published", "generated"],
     };
 
@@ -102,7 +102,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       update.approved_by = auth.user.id;
       update.approved_at = new Date().toISOString();
     }
-    if (action === "publish") update.is_published = true;
+    if (action === "publish") {
+      update.is_published = true;
+      update.is_active = true;
+    }
     if (action === "return_to_review") update.is_published = false;
     if (action === "review" && current === "archived") {
       update.is_active = true;
