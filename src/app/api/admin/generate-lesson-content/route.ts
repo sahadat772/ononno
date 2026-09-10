@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/api-auth'
 import { GenerateLessonSchema, validateBody } from '@/lib/validation'
 import { audit } from '@/lib/audit'
 import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
+import { buildFullStudyEngineBlock, classToStage } from '@/lib/study-depth'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -30,33 +31,36 @@ export async function POST(req: NextRequest) {
         }
 
         const level = classLevelBn[classLevel] || classLevel
+        const classNumMatch = String(classLevel || '').match(/(\d{1,2})/)
+        const classNumber = classNumMatch ? parseInt(classNumMatch[1], 10) : null
+        const stage = classToStage(classNumber)
+        const engineBlock = buildFullStudyEngineBlock({
+            classNumber,
+            subjectName,
+            chapterTitle,
+            lessonTitle,
+        })
 
-        const prompt = `তুমি বাংলাদেশের NCTB (জাতীয় শিক্ষাক্রম ও পাঠ্যপুস্তক বোর্ড) এর একজন অভিজ্ঞ শিক্ষক।
+        const prompt = `তুমি ONONNO Study Engine — NCTB অ্যালাইনড ছাত্র-facing lesson লেখক।
+Stage: ${stage === 'secondary' ? 'মাধ্যমিক (Class 6+)' : 'প্রাথমিক (Class 1–5)'}।
+প্রাথমিক ও মাধ্যমিকের গভীরতা আলাদা — নিচের rules মেনে চলো।
 
-নিচের তথ্য অনুযায়ী একটি সম্পূর্ণ lesson content তৈরি করো:
 - শ্রেণী: ${level}
 - বিষয়: ${subjectName}
 - অধ্যায়: ${chapterTitle}
 - পাঠ: ${lessonTitle}
 
-নিচের format এ content লেখো:
+${engineBlock}
+
+নিচের format এ content লেখো (সব বাংলা, ছাত্রের ভাষায় — শিক্ষক-ম্যানুয়াল নয়):
 
 ## 📖 পাঠ পরিচিতি
-(২-৩ বাক্যে পাঠের বিষয় পরিচয় করিয়ে দাও, সহজ বাংলায়)
-
 ## 🎯 শেখার উদ্দেশ্য
-(৩-৫টা bullet point এ কী শিখবে)
-
 ## 📚 মূল বিষয়বস্তু
-(NCTB curriculum অনুযায়ী বিস্তারিত আলোচনা, সহজ ভাষায়, উদাহরণ সহ)
-
 ## 💡 মনে রাখো
-(গুরুত্বপূর্ণ points সংক্ষেপে)
-
 ## ✏️ অনুশীলন প্রশ্ন
-(৩টা প্রশ্ন — সহজ থেকে কঠিন)
 
-সব বাংলায় লেখো। বাচ্চাদের বোধগম্য ভাষায় লেখো।`
+Class 6+ সাহিত্য (যেমন চারুপাঠ): ভাব, চরিত্র/কবি, শব্দার্থ ও বোধগম্যতা রাখো।`
 
         const response = await groq.chat.completions.create({
             model: 'llama-3.3-70b-versatile',
