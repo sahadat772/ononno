@@ -1,5 +1,6 @@
 /**
  * NCTB Class 6–8 junior secondary subject packs
+ * Aligned to NCTB textbook list (core + common electives)
  */
 
 export type SeedSubjectDef = {
@@ -409,6 +410,102 @@ function juniorHealth(): SeedSubjectDef {
   }
 }
 
+function juniorWorkLife(): SeedSubjectDef {
+  return {
+    slug: 'work-life',
+    name: 'Work and Life Oriented Education',
+    nameBn: 'কর্ম ও জীবনমুখী শিক্ষা',
+    icon: '🛠️',
+    color: 'from-stone-500 to-neutral-700',
+    isMandatory: false,
+    chapters: [
+      {
+        slug: 'skills',
+        title: 'Life Skills',
+        titleBn: 'জীবন দক্ষতা',
+        description: 'দৈনন্দিন কাজ ও দায়িত্ব',
+        lessons: lessons([
+          ['daily-work', 'Daily work habits', 'দৈনন্দিন কাজ', 'সময় ও দায়িত্ব'],
+          ['teamwork', 'Teamwork', 'দলগত কাজ', 'সহযোগিতা'],
+          ['quiz-work', 'Work-life quiz', 'কুইজ', 'অনুশীলন'],
+        ]),
+      },
+    ],
+  }
+}
+
+function juniorAgriculture(): SeedSubjectDef {
+  return {
+    slug: 'agriculture',
+    name: 'Agriculture Studies',
+    nameBn: 'কৃষিশিক্ষা',
+    icon: '🌾',
+    color: 'from-lime-500 to-green-700',
+    isMandatory: false,
+    chapters: [
+      {
+        slug: 'farm-basics',
+        title: 'Farm Basics',
+        titleBn: 'কৃষির ভিত্তি',
+        description: 'ফসল, মাটি, পরিবেশ',
+        lessons: lessons([
+          ['soil-crop', 'Soil & crops', 'মাটি ও ফসল', 'প্রধান ফসল পরিচিতি'],
+          ['livestock', 'Livestock intro', 'পশুপালন পরিচিতি', 'গৃহপালিত প্রাণী'],
+          ['quiz-agri', 'Agriculture quiz', 'কৃষি কুইজ', 'অনুশীলন'],
+        ]),
+      },
+    ],
+  }
+}
+
+function juniorHomeScience(): SeedSubjectDef {
+  return {
+    slug: 'home-science',
+    name: 'Home Science',
+    nameBn: 'গার্হস্থ্যবিজ্ঞান',
+    icon: '🏠',
+    color: 'from-pink-500 to-rose-600',
+    isMandatory: false,
+    chapters: [
+      {
+        slug: 'home-care',
+        title: 'Home Care',
+        titleBn: 'গৃহ পরিচর্যা',
+        description: 'পুষ্টি, পরিচ্ছন্নতা, নিরাপত্তা',
+        lessons: lessons([
+          ['nutrition-home', 'Nutrition at home', 'গৃহে পুষ্টি', 'সুষম খাবার'],
+          ['home-safety', 'Home safety', 'গৃহ নিরাপত্তা', 'দুর্ঘটনা এড়ানো'],
+          ['quiz-home', 'Home science quiz', 'কুইজ', 'অনুশীলন'],
+        ]),
+      },
+    ],
+  }
+}
+
+function juniorArts(): SeedSubjectDef {
+  return {
+    slug: 'arts',
+    name: 'Arts and Crafts',
+    nameBn: 'চারু ও কারুকলা',
+    icon: '🎨',
+    color: 'from-fuchsia-500 to-purple-600',
+    isMandatory: false,
+    chapters: [
+      {
+        slug: 'drawing',
+        title: 'Drawing & Craft',
+        titleBn: 'অঙ্কন ও কারুকাজ',
+        description: 'রঙ, আকৃতি, হাতের কাজ',
+        lessons: lessons([
+          ['drawing-basics', 'Drawing basics', 'অঙ্কনের ভিত্তি', 'রেখা ও আকৃতি'],
+          ['crafts', 'Simple crafts', 'সহজ কারুকাজ', 'কাগজ · রঙ'],
+          ['quiz-arts', 'Arts quiz', 'কুইজ', 'অনুশীলন'],
+        ]),
+      },
+    ],
+  }
+}
+
 const CLASS_BN_JUNIOR: Record<number, string> = {
   6: 'ষষ্ঠ শ্রেণি',
   7: 'সপ্তম শ্রেণি',
@@ -430,6 +527,10 @@ export function buildJuniorSeed(classes: number[] = [6, 7, 8]): SeedClassDef[] {
       juniorBangladesh(),
       juniorIct(),
       juniorHealth(),
+      juniorWorkLife(),
+      juniorAgriculture(),
+      juniorHomeScience(),
+      juniorArts(),
     ],
   }))
 }
