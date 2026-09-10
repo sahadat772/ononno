@@ -9,6 +9,7 @@ import NurseryDashboard from './levels/NurseryDashboard'
 import GeneralDashboard from './levels/GeneralDashboard'
 import PushPermission from '@/components/notification/PushPermission'
 import SoftLaunchBanner from '@/components/student/SoftLaunchBanner'
+import ContinueLearningCard from '@/components/student/ContinueLearningCard'
 
 interface Props {
   profile: Record<string, string> | null
@@ -100,6 +101,7 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
       <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-2">
         <PushPermission />
         <SoftLaunchBanner />
+        <ContinueLearningCard />
         {announcements.length > 0 && (
           <div className="mb-4 space-y-2">
             {announcements.map((ann) => (
