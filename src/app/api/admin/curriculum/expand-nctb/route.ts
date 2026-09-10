@@ -197,6 +197,10 @@ export async function POST() {
 
           if (existingCh?.id) {
             chapterId = existingCh.id
+            await supabase
+              .from('curriculum_chapters')
+              .update({ is_active: true, title: ch.title, title_bn: ch.titleBn })
+              .eq('id', chapterId)
           } else {
             const { data: createdCh, error: chErr } = await supabase
               .from('curriculum_chapters')
@@ -230,7 +234,19 @@ export async function POST() {
               .eq('slug', les.slug)
               .maybeSingle()
 
-            if (existingLes?.id) continue
+            if (existingLes?.id) {
+              await supabase
+                .from('curriculum_lessons')
+                .update({
+                  is_published: true,
+                  is_active: true,
+                  workflow_status: 'published',
+                  title: les.title,
+                  title_bn: les.titleBn,
+                })
+                .eq('id', existingLes.id)
+              continue
+            }
 
             const { data: createdLes, error: lesErr } = await supabase
               .from('curriculum_lessons')
@@ -248,6 +264,7 @@ export async function POST() {
                 coin_reward: 5,
                 is_free_preview: li === 0,
                 is_published: true,
+                is_active: true,
                 order_index: li + 1,
                 workflow_status: 'published',
               })
@@ -290,7 +307,7 @@ export async function POST() {
       message:
         'NCTB expand সম্পন্ন — Class 1–8 subject/chapter/lesson যোগ (পুরনো ডেটা মুছে যায়নি)',
       summary,
-      tip: 'Student: Class 6–8 এ ICT, বিজ্ঞান (পদার্থ/রসায়ন/জীব), ব্যাকরণ দেখা যাবে',
+      tip: 'Student: Academic → মাধ্যমিক → ষষ্ঠ শ্রেণি → গণিত → সংখ্যা পদ্ধতি / পূর্ণসংখ্যা',
     })
   } catch (e) {
     console.error('[expand-nctb]', e)
