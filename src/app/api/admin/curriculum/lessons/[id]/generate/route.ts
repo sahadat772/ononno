@@ -7,28 +7,35 @@ import { resolvePageRange } from "@/lib/page-fields";
 import { uploadPdfToGemini } from "@/lib/curriculum-import";
 import { createCurriculumStorage } from "@/lib/storage";
 import { createServiceRoleClient } from "@/lib/supabase-admin";
-import { getDepthRules, buildStudentStudyPrompt } from "@/lib/study-depth";
+import {
+  buildDepthPromptBlock,
+  getDepthRules,
+} from "@/lib/study-depth";
 import { generateAndStoreLessonCover } from "@/lib/lesson-cover-image";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+type QuizQuestion = {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+};
+
 type GeneratedContent = {
+  mission_intro?: string;
   overview?: string;
   objectives?: string[];
   main_content?: string;
+  ai_explanation?: string;
   examples?: string[];
   vocabulary?: string[];
   practice?: string[];
-  mission_intro?: string;
   real_world_mission?: string;
   reflection?: string;
+  summary?: string;
   extra_notes?: string;
-  quiz_questions?: Array<{
-    question: string;
-    options?: string[];
-    correct_index?: number;
-    explanation?: string;
-  }>;
+  quiz_questions?: QuizQuestion[];
 };
 
 function getDb(supabase: never) {
@@ -41,16 +48,66 @@ function getDb(supabase: never) {
 
 function normalizeQuiz(
   raw: GeneratedContent["quiz_questions"],
-): Array<{ question: string; options: string[]; correct: number; explanation?: string }> {
+): QuizQuestion[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((q) => ({
       question: String(q?.question ?? "").trim(),
       options: Array.isArray(q?.options) ? q.options.map(String) : [],
-      correct: typeof q?.correct_index === "number" ? q.correct_index : 0,
-      explanation: q?.explanation ? String(q.explanation) : undefined,
+      correct: typeof q?.correct === "number" ? q.correct : 0,
+      explanation: q?.explanation ? String(q.explanation) : "",
     }))
     .filter((q) => q.question.length > 0);
+}
+
+function buildStudentStudyPrompt(opts: {
+  title: string;
+  classNumber: number | null;
+  pageStart: number | null;
+  pageEnd: number | null;
+  sourceLabel: string;
+}) {
+  const depthBlock = buildDepthPromptBlock(opts.classNumber);
+  const pages =
+    opts.pageStart != null && opts.pageEnd != null
+      ? `পৃষ্ঠা ${opts.pageStart}–${opts.pageEnd}`
+      : opts.pageStart != null
+        ? `পৃষ্ঠা ${opts.pageStart}`
+        : "প্রাসঙ্গিক অংশ";
+
+  return `তুমি ONONNO শিক্ষা প্ল্যাটফর্মের study engine।
+শিক্ষার্থীর জন্য বাংলায় পাঠ তৈরি করো — শিক্ষকের নির্দেশনা নয়।
+
+পাঠের শিরোনাম: ${opts.title}
+ক্লাস: ${opts.classNumber ?? "সাধারণ"}
+সোর্স: ${opts.sourceLabel}
+পৃষ্ঠা: ${pages}
+
+${depthBlock}
+
+PDF থেকে শুধু এই পাঠের অংশ ব্যবহার করো। JSON আউটপুট দাও:
+{
+  "mission_intro": "শুরুর মিশন ১–২ বাক্য",
+  "overview": "সারাংশ",
+  "objectives": ["আমি পারব..."],
+  "main_content": "মূল আলোচনা",
+  "examples": ["উদাহরণ"],
+  "vocabulary": ["শব্দ — অর্থ"],
+  "practice": ["অনুশীলন প্রশ্ন"],
+  "real_world_mission": "বাস্তব কাজ",
+  "reflection": "চিন্তার প্রশ্ন",
+  "summary": "সারসংক্ষেপ",
+  "extra_notes": "অতিরিক্ত নোট",
+  "quiz_questions": [
+    {
+      "question": "প্রশ্ন",
+      "options": ["ক", "খ", "গ", "ঘ"],
+      "correct": 0,
+      "explanation": "ব্যাখ্যা"
+    }
+  ]
+}
+শুধু valid JSON — কোনো markdown fence নয়।`;
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -394,9 +451,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       overview: overviewMerged || content.overview || null,
       objectives: content.objectives ?? [],
       main_content: content.main_content || null,
-      ai_explanation: content.main_content || content.overview || null,
+      ai_explanation:
+        content.ai_explanation || content.main_content || content.overview || null,
       examples,
-      summary: content.reflection || content.overview || null,
+      summary: content.summary || content.reflection || content.overview || null,
       extra_notes: extraNotes || null,
       quiz_questions: quizQuestions,
       updated_at: new Date().toISOString(),
@@ -435,7 +493,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await audit("LESSON_GENERATE", auth.user.id, {
       id,
       title,
-      depth: depthRules.label,
+      depth: depthRules.labelBn,
     });
 
     return NextResponse.json({
@@ -447,7 +505,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     console.error("generate lesson failed", error);
     await db
       .from("curriculum_lessons")
-      .update({ workflow_status: workflowStatus === "generating" ? "reviewed" : workflowStatus })
+      .update({
+        workflow_status:
+          workflowStatus === "generating" ? "reviewed" : workflowStatus,
+      })
       .eq("id", id);
 
     const msg = error instanceof Error ? error.message : String(error);
@@ -456,7 +517,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       message = "AI JSON parse হয়নি — আবার চেষ্টা করুন।";
     } else if (/API_KEY|API key|PERMISSION|403|do not have permission/i.test(msg)) {
       message =
-        "Gemini File access বন্ধ (পুরনো file URI বা key)। Source-এর gemini_file_uri clear করে আবার Generate চাপুন — auto re-upload হবে।";
+        "Gemini File access বন্ধ (পুরনো file URI বা key)। আবার Generate চাপুন — auto re-upload হবে।";
       if (source?.id) {
         await db
           .from("curriculum_sources")
