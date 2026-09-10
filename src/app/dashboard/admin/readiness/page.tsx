@@ -16,9 +16,10 @@ export default async function AdminReadinessPage() {
     .eq('id', user.id)
     .single()
 
-  if (!isStaffAdmin(profile) || !canAccess(profile, 'readiness')) {
+  if (!profile || !isStaffAdmin(profile) || !canAccess(profile, 'readiness')) {
     redirect('/dashboard/admin')
   }
 
-  return <ReadinessClient adminName={profile.full_name?.split(' ')[0] || 'Admin'} />
+  const adminName = profile.full_name?.split(' ')[0] || 'Admin'
+  return <ReadinessClient adminName={adminName} />
 }
