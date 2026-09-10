@@ -7,125 +7,50 @@ import { resolvePageRange } from "@/lib/page-fields";
 import { uploadPdfToGemini } from "@/lib/curriculum-import";
 import { createCurriculumStorage } from "@/lib/storage";
 import { createServiceRoleClient } from "@/lib/supabase-admin";
-import {
-  buildDepthPromptBlock,
-  getDepthRules,
-} from "@/lib/study-depth";
+import { getDepthRules, buildStudentStudyPrompt } from "@/lib/study-depth";
 import { generateAndStoreLessonCover } from "@/lib/lesson-cover-image";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-type QuizQuestion = {
-  question: string;
-  options: string[];
-  correct: number;
-  explanation: string;
-};
-
 type GeneratedContent = {
-  mission_intro?: string;
   overview?: string;
   objectives?: string[];
   main_content?: string;
-  ai_explanation?: string;
   examples?: string[];
   vocabulary?: string[];
   practice?: string[];
+  mission_intro?: string;
   real_world_mission?: string;
   reflection?: string;
-  summary?: string;
   extra_notes?: string;
-  quiz_questions?: QuizQuestion[];
+  quiz_questions?: Array<{
+    question: string;
+    options?: string[];
+    correct_index?: number;
+    explanation?: string;
+  }>;
 };
 
-function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
+function getDb(supabase: never) {
   try {
-    return createServiceRoleClient();
-  } catch (e) {
-    console.warn("[generate] service role unavailable, using user client", e);
-    return authSupabase;
+    return createServiceRoleClient() as typeof supabase;
+  } catch {
+    return supabase;
   }
 }
 
-function normalizeQuiz(raw: unknown, max = 5): QuizQuestion[] {
+function normalizeQuiz(
+  raw: GeneratedContent["quiz_questions"],
+): Array<{ question: string; options: string[]; correct: number; explanation?: string }> {
   if (!Array.isArray(raw)) return [];
-  const out: QuizQuestion[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const q = item as Record<string, unknown>;
-    const question = String(q.question ?? "").trim();
-    const options = Array.isArray(q.options)
-      ? q.options.map((o) => String(o).trim()).filter(Boolean)
-      : [];
-    let correct = Number(q.correct);
-    if (!Number.isFinite(correct) || correct < 0 || correct > 3) correct = 0;
-    const explanation =
-      String(q.explanation ?? "").trim() || "সঠিক উত্তরটি বেছে নাও।";
-    if (question && options.length >= 2) {
-      while (options.length < 4) options.push("—");
-      out.push({
-        question,
-        options: options.slice(0, 4),
-        correct: Math.min(correct, 3),
-        explanation,
-      });
-    }
-    if (out.length >= max) break;
-  }
-  return out;
-}
-
-function buildStudentStudyPrompt(opts: {
-  title: string;
-  classNumber?: number | null;
-  pageStart?: number | null;
-  pageEnd?: number | null;
-  sourceLabel: string;
-}) {
-  const rules = getDepthRules(opts.classNumber);
-  const depthBlock = buildDepthPromptBlock(opts.classNumber);
-
-  return `তুমি ONONNO platform-এর Curriculum Intelligence Engine।
-কাজ: NCTB PDF থেকে **ছাত্রদের জন্য study lesson + quiz** তৈরি করা।
-
-⚠️ শিক্ষক-ম্যানুয়াল ভাষা ("শিক্ষক করবেন", "জড়তা কাটান", "শিখনফল") কপি করবে না।
-
-পাঠের নাম: "${opts.title}"
-পৃষ্ঠা: ${opts.pageStart ?? "?"}–${opts.pageEnd ?? "?"}
-সোর্স: ${opts.sourceLabel}
-
-${depthBlock}
-
-নিয়ম:
-1. শুধু এই পাঠের তথ্য। মিথ্যা বানাবে না। PDF-এ যা নেই তা বানাবে না।
-2. সব ফিল্ড ছাত্র-facing বাংলা।
-3. mission_intro, overview, objectives, main_content, ai_explanation, examples, vocabulary, practice, real_world_mission, reflection, summary, extra_notes — volume rules মেনে লেখো।
-4. **quiz_questions**: ঠিক ${rules.quizCount}টি MCQ। প্রতিটিতে ৪টি options। correct = 0-based index (0–3)। explanation ছোট বাংলা।
-5. শুধু valid JSON।
-
-JSON:
-{
-  "mission_intro": "ছোট উৎসাহী intro — আজকের মিশন (1–2 বাক্য)",
-  "overview": "string",
-  "objectives": ["string"],
-  "main_content": "string",
-  "ai_explanation": "string",
-  "examples": ["string"],
-  "vocabulary": ["শব্দ — অর্থ"],
-  "practice": ["প্রশ্ন"],
-  "real_world_mission": "বাস্তব জীবনে ছোট নিরাপদ কাজ (Class উপযোগী)",
-  "reflection": "শেখার পর 1টি চিন্তার প্রশ্ন",
-  "summary": "string",
-  "extra_notes": "string",
-  "quiz_questions": [
-    {
-      "question": "string",
-      "options": ["A", "B", "C", "D"],
-      "correct": 0,
-      "explanation": "string"
-    }
-  ]
-}`;
+  return raw
+    .map((q) => ({
+      question: String(q?.question ?? "").trim(),
+      options: Array.isArray(q?.options) ? q.options.map(String) : [],
+      correct: typeof q?.correct_index === "number" ? q.correct_index : 0,
+      explanation: q?.explanation ? String(q.explanation) : undefined,
+    }))
+    .filter((q) => q.question.length > 0);
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -232,51 +157,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json(
       {
         error: "ALREADY_PUBLISHED",
-        message:
-          "Published lesson আবার generate করা যায় না। Force Re-generate ব্যবহার করুন।",
+        message: "Published lesson — force=1 দিয়ে regenerate করুন।",
       },
       { status: 409 },
     );
   }
 
-  if (workflowStatus === "approved" && !force) {
-    return NextResponse.json(
-      {
-        error: "STRUCTURE_COMMIT_FAILED",
-        message: "Approved lesson generate/overwrite করা যাবে না (force ছাড়া)।",
-      },
-      { status: 409 },
-    );
-  }
-
-  const { data: existingContent } = await db
-    .from("lesson_contents")
-    .select("*")
-    .eq("lesson_id", id)
-    .maybeSingle();
-
-  if (existingContent && workflowStatus === "generated" && !force) {
-    return NextResponse.json({
-      lessonId: id,
-      content: existingContent,
-      status: "generated",
-      cached: true,
-      message:
-        "আগেই generate করা content আছে। নতুন করতে Force Re-generate (?force=1) ব্যবহার করুন।",
-    });
-  }
-
-  if (
-    !["reviewed", "generated", "extracted", "draft"].includes(workflowStatus)
-  ) {
-    return NextResponse.json(
-      {
-        error: "STRUCTURE_VALIDATION_FAILED",
-        message: `বর্তমান status (${workflowStatus}) এ generate করা যাবে না।`,
-      },
-      { status: 409 },
-    );
-  }
+  const sourceId = lesson.source_id as string | null;
+  const classId = lesson.class_id as string | null;
+  const subjectId = lesson.subject_id as string | null;
 
   let source: {
     id: string;
@@ -287,10 +176,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     file_name?: string | null;
     mime_type?: string | null;
   } | null = null;
-
-  const sourceId = lesson.source_id as string | null;
-  const classId = lesson.class_id as string | null;
-  const subjectId = lesson.subject_id as string | null;
 
   if (sourceId) {
     const { data } = await db
@@ -346,48 +231,52 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const depthRules = getDepthRules(classNumber);
 
-  let fileUri = source.gemini_file_uri;
-  if (!fileUri) {
-    if (!source.storage_path) {
-      return NextResponse.json(
-        {
-          error: "PDF_NOT_FOUND",
-          message: "storage_path ও gemini_file_uri নেই।",
-        },
-        { status: 409 },
+  async function ensureGeminiFileUri(forceReupload = false): Promise<string> {
+    if (source!.gemini_file_uri && !forceReupload) {
+      return String(source!.gemini_file_uri);
+    }
+    if (!source!.storage_path) {
+      throw new Error(
+        "storage_path ও gemini_file_uri নেই। Import → Extract + Commit চালান।",
       );
     }
-    try {
-      const storage = createCurriculumStorage(db as never);
-      const pdfBlob = await storage.download(source.storage_path);
-      const geminiFile = await uploadPdfToGemini({
-        pdf: pdfBlob,
-        displayName: source.file_name ?? source.title ?? "curriculum.pdf",
-      });
-      fileUri = geminiFile.uri!;
-      await db
-        .from("curriculum_sources")
-        .update({
-          gemini_file_uri: fileUri,
-          gemini_file_name: geminiFile.name ?? null,
-        })
-        .eq("id", source.id);
-    } catch (uploadErr) {
-      console.error("generate: gemini upload failed", uploadErr);
-      const det =
-        uploadErr instanceof Error
-          ? uploadErr.message.slice(0, 400)
-          : String(uploadErr);
-      return NextResponse.json(
-        {
-          error: "PDF_PROCESSING_FAILED",
-          message:
-            "PDF storage থেকে পড়ে Gemini-তে পাঠানো যায়নি। Drive path/share বা Supabase file চেক করো।",
-          details: det,
-        },
-        { status: 500 },
-      );
-    }
+    const storage = createCurriculumStorage(db as never);
+    const pdfBlob = await storage.download(source!.storage_path);
+    const geminiFile = await uploadPdfToGemini({
+      pdf: pdfBlob,
+      displayName: source!.file_name ?? source!.title ?? "curriculum.pdf",
+    });
+    const uri = geminiFile.uri;
+    if (!uri) throw new Error("Gemini file URI পাওয়া যায়নি।");
+    await db
+      .from("curriculum_sources")
+      .update({
+        gemini_file_uri: uri,
+        gemini_file_name: geminiFile.name ?? null,
+      })
+      .eq("id", source!.id);
+    source!.gemini_file_uri = uri;
+    return uri;
+  }
+
+  let fileUri: string;
+  try {
+    fileUri = await ensureGeminiFileUri(false);
+  } catch (uploadErr) {
+    console.error("generate: gemini upload failed", uploadErr);
+    const det =
+      uploadErr instanceof Error
+        ? uploadErr.message.slice(0, 400)
+        : String(uploadErr);
+    return NextResponse.json(
+      {
+        error: "PDF_PROCESSING_FAILED",
+        message:
+          "PDF storage থেকে পড়ে Gemini-তে পাঠানো যায়নি। Drive path/share বা Supabase file চেক করো।",
+        details: det,
+      },
+      { status: 500 },
+    );
   }
 
   const pages = resolvePageRange({
@@ -413,24 +302,50 @@ export async function POST(request: NextRequest, context: RouteContext) {
       sourceLabel: source.title ?? source.file_name ?? "NCTB curriculum PDF",
     });
 
-    const response = await ai.models.generateContent({
-      model: CURRICULUM_GEMINI_MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [
+    let response;
+    let activeFileUri = fileUri;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: CURRICULUM_GEMINI_MODEL,
+          contents: [
             {
-              fileData: {
-                fileUri,
-                mimeType: source.mime_type ?? "application/pdf",
-              },
+              role: "user",
+              parts: [
+                {
+                  fileData: {
+                    fileUri: activeFileUri,
+                    mimeType: source.mime_type ?? "application/pdf",
+                  },
+                },
+                { text: prompt },
+              ],
             },
-            { text: prompt },
           ],
-        },
-      ],
-      config: { responseMimeType: "application/json", temperature: 0.4 },
-    });
+          config: { responseMimeType: "application/json", temperature: 0.4 },
+        });
+        break;
+      } catch (genErr) {
+        const msg = genErr instanceof Error ? genErr.message : String(genErr);
+        const denied =
+          /PERMISSION_DENIED|403|do not have permission to access the File/i.test(
+            msg,
+          );
+        if (denied && attempt === 0 && source.storage_path) {
+          console.warn(
+            "generate: stale Gemini file URI — re-uploading from storage",
+          );
+          await db
+            .from("curriculum_sources")
+            .update({ gemini_file_uri: null, gemini_file_name: null })
+            .eq("id", source.id);
+          activeFileUri = await ensureGeminiFileUri(true);
+          continue;
+        }
+        throw genErr;
+      }
+    }
+    if (!response) throw new Error("Gemini response empty");
 
     const raw = (response.text ?? "")
       .replace(/```json/gi, "")
@@ -442,10 +357,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     } catch {
       throw new Error("INVALID_AI_JSON");
     }
-
-    const blob = JSON.stringify(content);
-    const teacherLeak =
-      /শিক্ষক করবেন|জড়তা কাট|শিখনফল|প্রশ্নোত্তরের মাধ্যমে উৎসাহিত/.test(blob);
 
     const examples = [
       ...(content.examples ?? []),
@@ -476,168 +387,94 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .filter(Boolean)
       .join("\n\n");
 
-    const quizQuestions = normalizeQuiz(
-      content.quiz_questions,
-      depthRules.quizCount,
-    );
+    const quizQuestions = normalizeQuiz(content.quiz_questions);
 
-    const upsertPayload: Record<string, unknown> = {
+    const payload = {
       lesson_id: id,
       overview: overviewMerged || content.overview || null,
       objectives: content.objectives ?? [],
-      main_content: content.main_content ?? null,
-      ai_explanation: content.ai_explanation ?? null,
+      main_content: content.main_content || null,
+      ai_explanation: content.main_content || content.overview || null,
       examples,
-      summary: content.summary ?? null,
+      summary: content.reflection || content.overview || null,
       extra_notes: extraNotes || null,
-      is_ai_generated: true,
-      ai_prompt: `student-study+quiz v5 mission class=${classNumber ?? "?"} p.${pageStart ?? "?"}-${pageEnd ?? "?"}; ${CURRICULUM_GEMINI_MODEL}; force=${force}; quiz=${quizQuestions.length}`,
       quiz_questions: quizQuestions,
+      updated_at: new Date().toISOString(),
     };
 
-    let { data, error: contentError } = await db
+    const { data: existing } = await db
       .from("lesson_contents")
-      .upsert(upsertPayload, { onConflict: "lesson_id" })
-      .select()
-      .single();
+      .select("id")
+      .eq("lesson_id", id)
+      .maybeSingle();
 
-    if (contentError && /quiz_questions/i.test(contentError.message ?? "")) {
-      delete upsertPayload.quiz_questions;
-      const retry = await db
-        .from("lesson_contents")
-        .upsert(upsertPayload, { onConflict: "lesson_id" })
-        .select()
-        .single();
-      data = retry.data;
-      contentError = retry.error;
-    }
-
-    if (contentError) throw contentError;
-
-    let coverPath: string | null = null;
-    let coverUrl: string | null = null;
-    let coverModel: string | null = null;
-    try {
-      const cover = await generateAndStoreLessonCover({
-        supabase: db as never,
-        lessonId: id,
-        title,
-        overview: content.overview ?? null,
-        classNumber,
-      });
-      if (cover) {
-        coverPath = cover.path;
-        coverUrl = cover.url;
-        coverModel = cover.model;
-        const coverPatch: Record<string, unknown> = {
-          cover_image_path: cover.path,
-          cover_image_url: cover.url,
-        };
-        const { error: coverErr } = await db
-          .from("lesson_contents")
-          .update(coverPatch)
-          .eq("lesson_id", id);
-        if (coverErr && /cover_image/i.test(coverErr.message ?? "")) {
-          console.warn(
-            "[generate] cover_image columns missing — run migration SQL",
-            coverErr.message,
-          );
-        } else if (coverErr) {
-          console.warn("[generate] cover update failed", coverErr.message);
-        } else if (data && typeof data === "object") {
-          (data as Record<string, unknown>).cover_image_path = cover.path;
-          (data as Record<string, unknown>).cover_image_url = cover.url;
-        }
-      }
-    } catch (coverEx) {
-      console.warn("[generate] cover pipeline error", coverEx);
+    if (existing?.id) {
+      await db.from("lesson_contents").update(payload).eq("id", existing.id);
+    } else {
+      await db.from("lesson_contents").insert(payload);
     }
 
     await db
       .from("curriculum_lessons")
-      .update({ workflow_status: "generated" })
+      .update({
+        workflow_status: "generated",
+        is_active: true,
+      })
       .eq("id", id);
 
-    await audit("GENERATE_LESSON_CONTENT", auth.user.id, {
-      lessonId: id,
-      sourceId: source.id,
-      model: CURRICULUM_GEMINI_MODEL,
-      pageStart,
-      pageEnd,
-      force,
-      studentFacing: true,
-      teacherLeak,
-      quizCount: quizQuestions.length,
-      studyDepth: depthRules.depth,
-      classNumber,
-      coverImage: Boolean(coverPath),
-      coverModel,
-      hasMission: Boolean(content.mission_intro),
-      hasRealWorld: Boolean(content.real_world_mission),
+    try {
+      await generateAndStoreLessonCover({
+        lessonId: id,
+        title,
+        classNumber,
+      });
+    } catch (coverErr) {
+      console.warn("cover generation skipped", coverErr);
+    }
+
+    await audit("LESSON_GENERATE", auth.user.id, {
+      id,
+      title,
+      depth: depthRules.label,
     });
 
     return NextResponse.json({
-      lessonId: id,
-      content: data,
-      status: "generated",
-      cached: false,
-      force,
-      quizCount: quizQuestions.length,
-      studyDepth: depthRules.depth,
-      classNumber,
-      coverImage: Boolean(coverPath),
-      cover_image_url: coverUrl,
-      cover_image_path: coverPath,
-      teacherLeakWarning: teacherLeak
-        ? "Output-এ শিক্ষক-ম্যানুয়াল ভাষা ধরা পড়েছে — Force Re-generate আবার চেষ্টা করুন।"
-        : null,
+      ok: true,
+      workflow_status: "generated",
+      message: "Study draft save হয়েছে।",
     });
   } catch (error) {
-    console.error("Lesson generation error:", error);
+    console.error("generate lesson failed", error);
     await db
       .from("curriculum_lessons")
-      .update({ workflow_status: "reviewed" })
+      .update({ workflow_status: workflowStatus === "generating" ? "reviewed" : workflowStatus })
       .eq("id", id);
 
-    const rawMsg =
-      error instanceof Error ? error.message : String(error ?? "unknown");
-    const lower = rawMsg.toLowerCase();
-
-    let code = "GEMINI_REQUEST_FAILED";
-    let message = "Lesson draft generate করা যায়নি।";
-
-    if (rawMsg === "INVALID_AI_JSON") {
-      code = "INVALID_AI_JSON";
+    const msg = error instanceof Error ? error.message : String(error);
+    let message = "Generate ব্যর্থ হয়েছে।";
+    if (/INVALID_AI_JSON/i.test(msg)) {
+      message = "AI JSON parse হয়নি — আবার চেষ্টা করুন।";
+    } else if (/API_KEY|API key|PERMISSION|403|do not have permission/i.test(msg)) {
       message =
-        "AI JSON parse হয়নি — আবার Generate চাপো। (model response invalid)";
-    } else if (
-      lower.includes("not found") &&
-      (lower.includes("model") || lower.includes("models/"))
-    ) {
-      code = "GEMINI_MODEL_NOT_FOUND";
+        "Gemini File access বন্ধ (পুরনো file URI বা key)। Source-এর gemini_file_uri clear করে আবার Generate চাপুন — auto re-upload হবে।";
+      if (source?.id) {
+        await db
+          .from("curriculum_sources")
+          .update({ gemini_file_uri: null, gemini_file_name: null })
+          .eq("id", source.id);
+      }
+    } else if (/model/i.test(msg)) {
       message =
         "Gemini model পাওয়া যায়নি। Model name / GEMINI_API_KEY চেক করো।";
-    } else if (lower.includes("quota") || lower.includes("resource_exhausted")) {
-      code = "GEMINI_QUOTA";
-      message = "Gemini quota শেষ বা rate limit — একটু পরে আবার চেষ্টা করো।";
-    } else if (lower.includes("api key") || lower.includes("permission")) {
-      code = "GEMINI_AUTH";
-      message = "GEMINI_API_KEY অবৈধ বা permission নেই।";
-    } else if (lower.includes("storage") || lower.includes("download")) {
-      code = "PDF_STORAGE_FAILED";
-      message =
-        "PDF storage থেকে পড়া যায়নি (Drive/Supabase path বা permission)।";
-    } else if (rawMsg.length > 0 && rawMsg.length < 200) {
-      message = `Generate fail: ${rawMsg}`;
     }
 
     return NextResponse.json(
       {
-        error: code,
+        error: "GENERATE_FAILED",
         message,
-        details: rawMsg.slice(0, 500),
+        details: msg.slice(0, 500),
       },
-      { status: code === "INVALID_AI_JSON" ? 422 : 500 },
+      { status: 500 },
     );
   }
 }
