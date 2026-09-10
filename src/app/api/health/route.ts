@@ -65,6 +65,9 @@ export async function GET() {
         cover_provider: process.env.COVER_IMAGE_PROVIDER || "branded",
         payment_mode: "manual",
         curriculum_unlock_threshold_pct: 60,
+        free_lessons_per_day: Number(
+          process.env.NEXT_PUBLIC_SOFT_LAUNCH_FREE_LESSONS || "5",
+        ),
       },
     },
     {

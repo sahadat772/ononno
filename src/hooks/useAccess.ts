@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { SOFT_LAUNCH } from '@/lib/soft-launch'
 
 // Class level hierarchy
 const CLASS_HIERARCHY: Record<string, number> = {
@@ -75,7 +76,7 @@ export function useAccess() {
                         .gte('completed_at', todayStart.toISOString())
 
                     todayLessonsCount = count || 0
-                    canDoLesson = todayLessonsCount < 1 // দিনে ১টা
+                    canDoLesson = todayLessonsCount < SOFT_LAUNCH.freeLessonsPerDay
                 }
 
                 setAccess({
@@ -108,7 +109,7 @@ export function useAccess() {
     // Lesson করতে পারবে কিনা (free user limit check)
     function canDoLessonForClass(contentClass: string): boolean {
         if (access.isPaid) return canAccessClass(contentClass)
-        return access.canDoLesson // Free user দিনে ১টা
+        return access.canDoLesson // Free user soft-launch daily limit
     }
 
     return {
