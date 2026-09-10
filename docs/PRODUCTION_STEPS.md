@@ -9,19 +9,18 @@
 | 5 | Error monitoring (optional Sentry) | ✅ |
 | 6 | Soft-launch readiness console | ✅ |
 | 7 | Student soft-launch experience | ✅ Free tier 5/day + hub banner |
+| 8 | Continue learning on student hub | ✅ API + resume card |
 
-## Step 7 details
+## Step 8 details
 
-1. **`src/lib/soft-launch.ts`** — free lessons/day (default **5**, env `NEXT_PUBLIC_SOFT_LAUNCH_FREE_LESSONS`)
-2. **`useAccess`** — soft-launch limit
-3. **`SoftLaunchBanner`** on student dashboard
+1. **`GET /api/student/continue-learning`** — latest academic progress → deep link
+2. **`ContinueLearningCard`** on student dashboard (under soft-launch banner)
+3. No progress → CTA to `/dashboard/student/academic`
 
-Verify: student login → hub banner → Academic.
+Verify: complete/start a lesson → hub shows **চালিয়ে যাও** with correct link.
 
 ## Verify after deploy
 
 ```text
 https://ononno-two.vercel.app/dashboard/student
-https://ononno-two.vercel.app/dashboard/admin/readiness
-https://ononno-two.vercel.app/api/health
 ```
