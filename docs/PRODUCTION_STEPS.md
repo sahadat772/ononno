@@ -10,17 +10,16 @@
 | 6 | Soft-launch readiness console | ✅ |
 | 7 | Student soft-launch experience | ✅ Free tier 5/day + hub banner |
 | 8 | Continue learning on student hub | ✅ API + resume card |
+| 9 | Parent soft-launch summary | ✅ Weekly snapshot card |
 
-## Step 8 details
+## Step 9 details
 
-1. **`GET /api/student/continue-learning`** — latest academic progress → deep link
-2. **`ContinueLearningCard`** on student dashboard (under soft-launch banner)
-3. No progress → CTA to `/dashboard/student/academic`
+1. **`GET /api/parent/soft-launch-summary`** — linked children progress (week + total)
+2. **`ParentSoftLaunchCard`** on parent dashboard
+3. Empty state → create-child CTA
 
-Verify: complete/start a lesson → hub shows **চালিয়ে যাও** with correct link.
-
-## Verify after deploy
+Verify: parent login → soft-launch progress card.
 
 ```text
-https://ononno-two.vercel.app/dashboard/student
+https://ononno-two.vercel.app/dashboard/parent
 ```
