@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import ProfilePage from '@/components/shared/ProfilePage'
+import AdminProfileClient from './AdminProfileClient'
 
 export default async function AdminProfile() {
     const supabase = await createServerSupabaseClient()
@@ -13,5 +13,5 @@ export default async function AdminProfile() {
         .eq('id', user.id)
         .single()
 
-    return <ProfilePage profile={profile} role="admin" />
+    return <AdminProfileClient profile={profile} />
 }
