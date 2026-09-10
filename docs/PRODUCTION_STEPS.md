@@ -11,15 +11,17 @@
 | 7 | Student soft-launch experience | ✅ Free tier 5/day + hub banner |
 | 8 | Continue learning on student hub | ✅ API + resume card |
 | 9 | Parent soft-launch summary | ✅ Weekly snapshot card |
+| 10 | Real NCTB content expand | ✅ 7 subjects + expand API |
 
-## Step 9 details
+## Step 10 — Real NCTB content
 
-1. **`GET /api/parent/soft-launch-summary`** — linked children progress (week + total)
-2. **`ParentSoftLaunchCard`** on parent dashboard
-3. Empty state → create-child CTA
+1. Expanded seed: বাংলা · ইংরেজি · গণিত · ইসলাম · বিজ্ঞান · **বাংলাদেশ ও বিশ্বপরিচয়** · **স্বাস্থ্য**
+2. Class 3–5 richer chapters (place value, multiplication, history map, etc.)
+3. **`POST /api/admin/curriculum/expand-nctb`** — safe merge (no delete)
+4. Admin Curriculum → **Expand NCTB** button
 
-Verify: parent login → soft-launch progress card.
+Run once after deploy: Admin → Curriculum → **Expand NCTB** → refresh page.
 
 ```text
-https://ononno-two.vercel.app/dashboard/parent
+https://ononno-two.vercel.app/dashboard/admin/curriculum
 ```
