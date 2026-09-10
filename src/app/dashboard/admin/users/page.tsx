@@ -1,237 +1,264 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import {
+  ADMIN_PERMISSIONS,
+  PERMISSION_META,
+  type AdminPermission,
+  normalizePermissions,
+} from '@/lib/admin-access'
 
 interface User {
-    id: string
-    full_name: string
-    email: string
-    role: string
-    created_at: string
-    class_level?: string
-    is_active?: boolean
+  id: string
+  full_name: string
+  email: string
+  role: string
+  created_at: string
+  class_level?: string
+  is_active?: boolean
+  admin_permissions?: string[] | null
 }
 
 const roleColors: Record<string, string> = {
-    student: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    teacher: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    parent: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    admin: 'bg-red-500/20 text-red-400 border-red-500/30',
-    adult: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  student: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  teacher: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  parent: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  admin: 'bg-fuchsia-500/20 text-pink-300 border-fuchsia-500/40',
+  sub_admin: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+  adult: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
 }
 
 const roleLabels: Record<string, string> = {
-    student: '🎓 শিক্ষার্থী',
-    teacher: '👨‍🏫 শিক্ষক',
-    parent: '👨‍👩‍👧 অভিভাবক',
-    admin: '⚙️ অ্যাডমিন',
-    adult: '👤 প্রাপ্তবয়স্ক',
+  student: '🎓 শিক্ষার্থী',
+  teacher: '👨‍🏫 শিক্ষক',
+  parent: '👨‍👩‍👧 অভিভাবক',
+  admin: '⚙️ Super Admin',
+  sub_admin: '🛡️ Sub Admin',
+  adult: '👤 প্রাপ্তবয়স্ক',
 }
 
+const ASSIGN_ROLES = ['student', 'teacher', 'parent', 'adult', 'sub_admin'] as const
+
 export default function AdminUsersPage() {
-    const [users, setUsers] = useState<User[]>([])
-    const [loading, setLoading] = useState(true)
-    const [searchQuery, setSearchQuery] = useState('')
-    const [selectedRole, setSelectedRole] = useState('all')
-    const [selectedUser, setSelectedUser] = useState<User | null>(null)
-    const [stats, setStats] = useState({
-        total: 0, students: 0, teachers: 0, parents: 0, adults: 0,
-    })
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedRole, setSelectedRole] = useState('all')
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [actorRole, setActorRole] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [editRole, setEditRole] = useState('student')
+  const [editPerms, setEditPerms] = useState<AdminPermission[]>([])
+  const [stats, setStats] = useState({
+    total: 0, students: 0, teachers: 0, parents: 0, adults: 0, subAdmins: 0,
+  })
 
-    useEffect(() => {
+  const isSuper = actorRole === 'admin'
 
+  const fetchUsers = useCallback(async () => {
+    const supabase = createClient()
+    setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        setActorRole(me?.role ?? null)
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, created_at, class_level, is_active, admin_permissions')
+        .order('created_at', { ascending: false })
+      if (data) {
+        setUsers(data as User[])
+        setStats({
+          total: data.length,
+          students: data.filter((u) => u.role === 'student').length,
+          teachers: data.filter((u) => u.role === 'teacher').length,
+          parents: data.filter((u) => u.role === 'parent').length,
+          adults: data.filter((u) => u.role === 'adult').length,
+          subAdmins: data.filter((u) => u.role === 'sub_admin').length,
+        })
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-        const fetchUsers = async () => {
-            const supabase = createClient()
-            setLoading(true)
-            try {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .order('created_at', { ascending: false })
+  useEffect(() => { void fetchUsers() }, [fetchUsers])
 
-                if (data) {
-                    setUsers(data)
-                    setStats({
-                        total: data.length,
-                        students: data.filter(u => u.role === 'student').length,
-                        teachers: data.filter(u => u.role === 'teacher').length,
-                        parents: data.filter(u => u.role === 'parent').length,
-                        adults: data.filter(u => u.role === 'adult').length,
-                    })
-                }
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchUsers()
-    }, [])
+  const openEdit = (u: User) => {
+    setSelectedUser(u)
+    setEditRole(u.role === 'admin' ? 'admin' : u.role)
+    setEditPerms(normalizePermissions(u.admin_permissions))
+    setMessage(null)
+  }
 
-    const filteredUsers = users.filter(u => {
-        const matchSearch = u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchRole = selectedRole === 'all' || u.role === selectedRole
-        return matchSearch && matchRole
-    })
+  const togglePerm = (p: AdminPermission) => {
+    setEditPerms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))
+  }
 
-    return (
-        <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-                <Link href="/dashboard/admin" className="text-blue-400 hover:text-blue-300 text-sm mb-4 inline-flex items-center gap-2">
-                    ← Admin Panel এ ফিরে যাও
-                </Link>
-                <div className="flex items-center justify-between mt-2 flex-wrap gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-3xl shadow-lg">
-                            👥
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                                ব্যবহারকারী ব্যবস্থাপনা
-                            </h1>
-                            <p className="text-gray-400 mt-1">মোট {stats.total} জন ব্যবহারকারী</p>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
+  const saveRole = async () => {
+    if (!selectedUser || !isSuper) return
+    setSaving(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/admin/users/role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          role: editRole,
+          permissions: editRole === 'sub_admin' ? editPerms : [],
+        }),
+      })
+      const json = (await res.json()) as { error?: string; message?: string }
+      if (!res.ok) {
+        setMessage({ type: 'err', text: json.error || 'সেভ হয়নি' })
+        return
+      }
+      setMessage({ type: 'ok', text: json.message || 'সেভ হয়েছে' })
+      await fetchUsers()
+      setSelectedUser((prev) =>
+        prev
+          ? { ...prev, role: editRole, admin_permissions: editRole === 'sub_admin' ? editPerms : [] }
+          : null,
+      )
+    } catch {
+      setMessage({ type: 'err', text: 'নেটওয়ার্ক এরর' })
+    } finally {
+      setSaving(false)
+    }
+  }
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-                {[
-                    { label: 'মোট', value: stats.total, icon: '👥', color: 'from-blue-500 to-cyan-500' },
-                    { label: 'শিক্ষার্থী', value: stats.students, icon: '🎓', color: 'from-emerald-500 to-teal-500' },
-                    { label: 'শিক্ষক', value: stats.teachers, icon: '👨‍🏫', color: 'from-violet-500 to-purple-500' },
-                    { label: 'অভিভাবক', value: stats.parents, icon: '👨‍👩‍👧', color: 'from-amber-500 to-yellow-500' },
-                    { label: 'প্রাপ্তবয়স্ক', value: stats.adults, icon: '👤', color: 'from-rose-500 to-pink-500' },
-                ].map((stat, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08 }}
-                        className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center"
-                    >
-                        <div className="text-2xl mb-1">{stat.icon}</div>
-                        <div className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
-                            {stat.value}
-                        </div>
-                        <div className="text-xs text-gray-400">{stat.label}</div>
-                    </motion.div>
-                ))}
+  const filteredUsers = users.filter((u) => {
+    const matchSearch =
+      u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchSearch && (selectedRole === 'all' || u.role === selectedRole)
+  })
+
+  return (
+    <div className="min-h-screen bg-[#030711] px-3 py-5 font-sans text-[#f7f7ff] sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <header>
+          <Link href="/dashboard/admin" className="mb-2 inline-flex rounded-md border border-slate-600/80 bg-[#080d1b] px-2 py-0.5 text-[10px] text-slate-400 hover:text-pink-300">
+            ← Admin Dashboard
+          </Link>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="grid size-12 place-items-center rounded-xl border border-blue-500/50 bg-gradient-to-br from-blue-900/50 to-slate-950 text-2xl">👥</div>
+            <div>
+              <h1 className="text-xl font-extrabold sm:text-2xl">
+                ব্যবহারকারী <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">ব্যবস্থাপনা</span>
+              </h1>
+              <p className="text-sm text-slate-400">মোট {stats.total} · Sub-admin {stats.subAdmins}{!isSuper && ' · Role change: Super Admin only'}</p>
             </div>
+          </div>
+        </header>
 
-            {/* Filter Bar */}
-            <div className="flex flex-col md:flex-row gap-3 mb-6">
-                <input
-                    type="text"
-                    placeholder="নাম বা ইমেইল দিয়ে খুঁজুন..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
-                />
-                <div className="flex gap-2 flex-wrap">
-                    {['all', 'student', 'teacher', 'parent', 'adult', 'admin'].map(role => (
-                        <button
-                            key={role}
-                            onClick={() => setSelectedRole(role)}
-                            className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${selectedRole === role
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
-                                }`}
-                        >
-                            {role === 'all' ? '🌐 সব' : roleLabels[role] || role}
-                        </button>
-                    ))}
-                </div>
+        {message && (
+          <div className={`rounded-xl border px-4 py-3 text-sm ${message.type === 'ok' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' : 'border-rose-500/40 bg-rose-500/10 text-rose-300'}`}>
+            {message.text}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          {[ ['মোট', stats.total, '👥'], ['শিক্ষার্থী', stats.students, '🎓'], ['শিক্ষক', stats.teachers, '👨‍🏫'], ['অভিভাবক', stats.parents, '👨‍👩‍👧'], ['Adult', stats.adults, '👤'], ['Sub Admin', stats.subAdmins, '🛡️'] ].map(([label, value, icon]) => (
+            <div key={String(label)} className="rounded-2xl border border-slate-700/70 bg-[#080d1b] p-3 text-center">
+              <div className="text-xl">{icon}</div>
+              <div className="text-xl font-black">{value}</div>
+              <div className="text-[11px] text-slate-500">{label}</div>
             </div>
-
-            {/* Users Table */}
-            {loading ? (
-                <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="rounded-2xl bg-white/5 border border-white/5 p-4 animate-pulse h-16" />
-                    ))}
-                </div>
-            ) : (
-                <div className="space-y-2">
-                    {filteredUsers.length === 0 ? (
-                        <div className="text-center py-16 text-gray-500">
-                            <p className="text-4xl mb-3">🔍</p>
-                            <p>কোনো ব্যবহারকারী পাওয়া যায়নি</p>
-                        </div>
-                    ) : (
-                        filteredUsers.map((user, i) => (
-                            <motion.div
-                                key={user.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.03 }}
-                                onClick={() => setSelectedUser(selectedUser?.id === user.id ? null : user)}
-                                className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-4 transition-all"
-                            >
-                                <div className="flex items-center gap-4">
-                                    {/* Avatar */}
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                                        {user.full_name?.charAt(0) || '?'}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="font-semibold text-white">{user.full_name || 'নাম নেই'}</p>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${roleColors[user.role] || 'bg-gray-500/20 text-gray-400'}`}>
-                                                {roleLabels[user.role] || user.role}
-                                            </span>
-                                        </div>
-                                        <p className="text-gray-400 text-sm truncate">{user.email}</p>
-                                    </div>
-                                    <div className="text-right flex-shrink-0">
-                                        <p className="text-xs text-gray-500">
-                                            {new Date(user.created_at).toLocaleDateString('bn-BD')}
-                                        </p>
-                                        {user.class_level && (
-                                            <p className="text-xs text-blue-400">{user.class_level}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Expanded */}
-                                <AnimatePresence>
-                                    {selectedUser?.id === user.id && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: 'auto' }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            className="mt-4 pt-4 border-t border-white/10"
-                                        >
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                                <div className="bg-white/5 rounded-xl p-3">
-                                                    <p className="text-xs text-gray-500 mb-1">User ID</p>
-                                                    <p className="text-xs text-white font-mono truncate">{user.id}</p>
-                                                </div>
-                                                <div className="bg-white/5 rounded-xl p-3">
-                                                    <p className="text-xs text-gray-500 mb-1">Role</p>
-                                                    <p className="text-xs text-white">{roleLabels[user.role] || user.role}</p>
-                                                </div>
-                                                <div className="bg-white/5 rounded-xl p-3">
-                                                    <p className="text-xs text-gray-500 mb-1">যোগ দিয়েছেন</p>
-                                                    <p className="text-xs text-white">{new Date(user.created_at).toLocaleDateString('bn-BD')}</p>
-                                                </div>
-                                                <div className="bg-white/5 rounded-xl p-3">
-                                                    <p className="text-xs text-gray-500 mb-1">শ্রেণী</p>
-                                                    <p className="text-xs text-white">{user.class_level || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </motion.div>
-                        ))
-                    )}
-                </div>
-            )}
+          ))}
         </div>
-    )
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="নাম বা ইমেইল…" className="flex-1 rounded-xl border border-slate-600 bg-[#080d1b] px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+          <div className="flex flex-wrap gap-1.5">
+            {['all', 'student', 'teacher', 'parent', 'adult', 'sub_admin', 'admin'].map((role) => (
+              <button key={role} type="button" onClick={() => setSelectedRole(role)} className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${selectedRole === role ? 'border border-blue-500/40 bg-blue-500/20 text-blue-200' : 'border border-slate-700 bg-[#080d1b] text-slate-400'}`}>
+                {role === 'all' ? '🌐 সব' : roleLabels[role] || role}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="py-12 text-center text-slate-500">লোড…</p>
+        ) : (
+          <div className="space-y-2">
+            {filteredUsers.map((user) => (
+              <div key={user.id} className="rounded-2xl border border-slate-700/70 bg-[#080d1b] p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 text-sm font-bold">{(user.full_name || '?').charAt(0).toUpperCase()}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{user.full_name || '—'}</p>
+                    <p className="truncate text-xs text-slate-500">{user.email}</p>
+                  </div>
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${roleColors[user.role] || 'border-slate-600 text-slate-400'}`}>{roleLabels[user.role] || user.role}</span>
+                  <button type="button" onClick={() => (selectedUser?.id === user.id ? setSelectedUser(null) : openEdit(user))} className="rounded-xl border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-blue-500/40">
+                    {selectedUser?.id === user.id ? 'বন্ধ' : isSuper ? 'Role / Access' : 'বিস্তারিত'}
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {selectedUser?.id === user.id && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-4 space-y-4 border-t border-slate-800 pt-4">
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 text-xs">
+                        <div className="rounded-xl border border-slate-700 bg-[#030711] p-2"><p className="text-slate-500">ID</p><p className="truncate">{user.id.slice(0, 8)}…</p></div>
+                        <div className="rounded-xl border border-slate-700 bg-[#030711] p-2"><p className="text-slate-500">Joined</p><p>{new Date(user.created_at).toLocaleDateString('bn-BD')}</p></div>
+                        <div className="rounded-xl border border-slate-700 bg-[#030711] p-2"><p className="text-slate-500">Class</p><p>{user.class_level || 'N/A'}</p></div>
+                        <div className="rounded-xl border border-slate-700 bg-[#030711] p-2"><p className="text-slate-500">Perms</p><p className="truncate">{user.role === 'admin' ? 'সব' : (user.admin_permissions || []).join(', ') || '—'}</p></div>
+                      </div>
+
+                      {isSuper && user.role !== 'admin' && (
+                        <div className="rounded-xl border border-orange-500/25 bg-orange-500/5 p-4">
+                          <p className="mb-3 text-sm font-bold text-orange-100">🛡️ Role ও Access</p>
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            {ASSIGN_ROLES.map((r) => (
+                              <button key={r} type="button" onClick={() => setEditRole(r)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${editRole === r ? 'border border-orange-400/50 bg-orange-500/20 text-orange-100' : 'border border-slate-700 bg-[#030711] text-slate-400'}`}>
+                                {roleLabels[r]}
+                              </button>
+                            ))}
+                          </div>
+                          {editRole === 'sub_admin' && (
+                            <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                              {ADMIN_PERMISSIONS.map((p) => {
+                                const meta = PERMISSION_META[p]
+                                const on = editPerms.includes(p)
+                                return (
+                                  <button key={p} type="button" onClick={() => togglePerm(p)} className={`flex items-start gap-2 rounded-xl border p-3 text-left ${on ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-slate-700 bg-[#030711]'}`}>
+                                    <span>{meta.icon}</span>
+                                    <span className="flex-1"><span className="block text-xs font-bold">{meta.labelBn}</span><span className="block text-[10px] text-slate-500">{meta.desc}</span></span>
+                                    <span className="text-xs">{on ? '✅' : '○'}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                          <button type="button" disabled={saving} onClick={() => void saveRole()} className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                            {saving ? '⏳…' : '✅ Role সেভ করো'}
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-slate-700/70 bg-[#080d1b] p-4 text-xs text-slate-400">
+          <p className="mb-1 font-bold text-slate-300">কীভাবে</p>
+          <p><strong className="text-pink-300">Super Admin</strong> — সব + role assign</p>
+          <p><strong className="text-orange-300">Sub Admin</strong> — শুধু permission অনুযায়ী module</p>
+          <p>প্রথমবার Supabase-এ <code className="text-slate-300">20260910_sub_admin_permissions.sql</code> চালান</p>
+        </div>
+      </div>
+    </div>
+  )
 }
