@@ -1,8 +1,10 @@
 /**
- * NCTB-style curriculum seed — Class 1–5
- * Expanded: বাংলা · ইংরেজি · গণিত · ইসলাম · বিজ্ঞান · বাংলাদেশ ও বিশ্বপরিচয় · স্বাস্থ্য
+ * NCTB-style curriculum seed — Class 1–8
+ * Primary 1–5 + Junior 6–8 (see curriculum-seed-junior.ts)
  * Admin: /api/admin/curriculum/seed · /api/admin/curriculum/expand-nctb
  */
+
+import { buildJuniorSeed } from './curriculum-seed-junior'
 
 export type SeedSubjectDef = {
   slug: string
@@ -457,20 +459,23 @@ function health(c: number): SeedSubjectDef {
   }
 }
 
-export function buildPrimarySeed(classes: number[] = [1, 2, 3, 4, 5]): SeedClassDef[] {
-  const CLASS_BN: Record<number, string> = {
-    1: 'প্রথম শ্রেণি',
-    2: 'দ্বিতীয় শ্রেণি',
-    3: 'তৃতীয় শ্রেণি',
-    4: 'চতুর্থ শ্রেণি',
-    5: 'পঞ্চম শ্রেণি',
-  }
+const CLASS_BN: Record<number, string> = {
+  1: 'প্রথম শ্রেণি',
+  2: 'দ্বিতীয় শ্রেণি',
+  3: 'তৃতীয় শ্রেণি',
+  4: 'চতুর্থ শ্রেণি',
+  5: 'পঞ্চম শ্রেণি',
+  6: 'ষষ্ঠ শ্রেণি',
+  7: 'সপ্তম শ্রেণি',
+  8: 'অষ্টম শ্রেণি',
+}
 
+export function buildPrimarySeed(classes: number[] = [1, 2, 3, 4, 5]): SeedClassDef[] {
   return classes.map((n) => ({
     classNumber: n,
     slug: `class-${n}`,
     name: CLASS_BN[n] || `শ্রেণি ${n}`,
-    description: `NCTB অ্যালাইনড পাঠ্যক্রম — ${CLASS_BN[n] || n} (৭টি বিষয়)`,
+    description: `NCTB অ্যালাইনড পাঠ্যক্রম — ${CLASS_BN[n] || n} (প্রাইমারি)`,
     subjects: [
       bangla(n),
       english(n),
@@ -483,13 +488,25 @@ export function buildPrimarySeed(classes: number[] = [1, 2, 3, 4, 5]): SeedClass
   }))
 }
 
+export function buildNctbSeed(classes: number[] = [1, 2, 3, 4, 5, 6, 7, 8]): SeedClassDef[] {
+  const primary = classes.filter((n) => n >= 1 && n <= 5)
+  const junior = classes.filter((n) => n >= 6 && n <= 8)
+  return [...buildPrimarySeed(primary), ...buildJuniorSeed(junior)]
+}
+
+export { buildJuniorSeed }
+
 export const SEED_VERSION = {
-  slug: 'nctb-2026-expanded',
-  name: 'NCTB 2026 Expanded',
+  slug: 'nctb-2026-class-1-8',
+  name: 'NCTB 2026 Class 1–8',
   year: 2026,
   description:
-    'প্রাইমারি ১–৫: বাংলা · ইংরেজি · গণিত · ইসলাম · বিজ্ঞান · বাংলাদেশ ও বিশ্বপরিচয় · স্বাস্থ্য — NCTB-স্টাইল অধ্যায়/পাঠ',
+    'প্রাইমারি ১–৫ + জুনিয়র ৬–৮: বাংলা · ইংরেজি · গণিত · বিজ্ঞান · ইসলাম · বাংলাদেশ · ICT · স্বাস্থ্য',
   status: 'published' as const,
 }
 
-export const LEGACY_SEED_SLUGS = ['nctb-2026-baseline', 'nctb-2026-expanded']
+export const LEGACY_SEED_SLUGS = [
+  'nctb-2026-baseline',
+  'nctb-2026-expanded',
+  'nctb-2026-class-1-8',
+]
