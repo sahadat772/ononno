@@ -1,6 +1,7 @@
 /**
  * Slice A — Class-aware study volume
  * Higher class → deeper / longer student study content.
+ * Primary (1–5) vs Secondary (6+) study style is different.
  */
 
 export type StudyDepth = "light" | "standard" | "deep";
@@ -115,4 +116,81 @@ Volume rules (বাধ্যতামূলক মেনে চলো):
 - ${r.targetWords}
 
 ⚠️ Class 1–2 হলে অতিরিক্ত লম্বা লেখা লিখবে না। Class 6+ হলে অতিরিক্ত সংক্ষিপ্ত করবে না।`;
+}
+
+/** Primary (1–5) vs Secondary (6–12) stage for study engine */
+export function classToStage(
+  classNumber: number | null | undefined,
+): "primary" | "secondary" {
+  if (classNumber == null || !Number.isFinite(classNumber)) return "primary";
+  return classNumber >= 6 ? "secondary" : "primary";
+}
+
+/**
+ * Extra NCTB-aligned guidance (e.g. Class 6 চারুপাঠ literature style).
+ */
+export function buildSubjectStudyHints(opts: {
+  classNumber?: number | null;
+  subjectName?: string | null;
+  subjectNameBn?: string | null;
+  chapterTitle?: string | null;
+  lessonTitle?: string | null;
+}): string {
+  const stage = classToStage(opts.classNumber);
+  const sub = `${opts.subjectNameBn || ""} ${opts.subjectName || ""} ${opts.chapterTitle || ""} ${opts.lessonTitle || ""}`.toLowerCase();
+
+  const isLit =
+    /চারুপাঠ|আনন্দপাঠ|সাহিত্য|গদ্য|কবিতা|bangla|বাংলা|charupath|anandapath|prose|poetry|literature/.test(
+      sub,
+    );
+  const isMath = /গণিত|math|সংখ্যা|বীজগণিত|জ্যামিতি/.test(sub);
+  const isScience = /বিজ্ঞান|science|পদার্থ|রসায়ন|জীব/.test(sub);
+
+  if (stage === "primary") {
+    return `🎓 Stage: PRIMARY (Class 1–5)
+- খেলার মতো, ছোট বাক্য, ছবি/উদাহরণ কল্পনায় বোঝাও।
+- মুখস্থ চাপ নয় — বুঝে শেখা।
+- কুইজ সহজ ও উৎসাহী।`;
+  }
+
+  let subjectExtra = "";
+  if (isLit) {
+    subjectExtra = `
+📚 সাহিত্য/চারুপাঠ স্টাইল (Class 6+):
+- লেখক/কবির নাম ও প্রসঙ্গ সংক্ষেপে (যদি পাঠে থাকে)।
+- গদ্য: মূল ভাব, চরিত্র, শিক্ষণীয় বার্তা — ছাত্রের ভাষায়।
+- কবিতা: সহজ অর্থ, ছন্দ/চিত্রকল্প এক লাইনে, অনুভূতি।
+- শব্দার্থ + ২–৩টি বোধগম্যতা প্রশ্ন practice-এ।
+- শিক্ষক-ম্যানুয়াল কপি নয়; ছাত্র নিজে পড়ে বুঝবে এমন লেখা।`;
+  } else if (isMath) {
+    subjectExtra = `
+🔢 গণিত (মাধ্যমিক):
+- সংজ্ঞা → উদাহরণ → ধাপে সমাধান → একটা ছোট অনুশীলন।
+- সূত্র থাকলে স্পষ্ট করে লেখো; ভুল ধারণা এড়াও।`;
+  } else if (isScience) {
+    subjectExtra = `
+🔬 বিজ্ঞান (মাধ্যমিক):
+- পর্যবেক্ষণ → ধারণা → দৈনন্দিন উদাহরণ।
+- নিরাপদ real_world_mission (ঘরে করা যায়)।`;
+  }
+
+  return `🎓 Stage: SECONDARY / মাধ্যমিক (Class 6+)
+- প্রাথমিকের চেয়ে গভীর, কিন্তু এখনও ছাত্র-facing সহজ বাংলা।
+- NCTB বইয়ের পাঠের সাথে সামঞ্জস্য; মিথ্যা অধ্যায় বানাবে না।
+- ধারণা সংযোগ ও চিন্তার প্রশ্ন রাখো।
+${subjectExtra}`;
+}
+
+/** Full study-engine system add-on for any generate path */
+export function buildFullStudyEngineBlock(opts: {
+  classNumber?: number | null;
+  subjectName?: string | null;
+  subjectNameBn?: string | null;
+  chapterTitle?: string | null;
+  lessonTitle?: string | null;
+}): string {
+  return [
+    buildDepthPromptBlock(opts.classNumber),
+    buildSubjectStudyHints(opts),
+  ].join("\n\n");
 }
