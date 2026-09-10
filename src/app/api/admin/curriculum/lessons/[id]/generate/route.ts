@@ -38,35 +38,51 @@ type GeneratedContent = {
   quiz_questions?: QuizQuestion[];
 };
 
-function getDb(supabase: never) {
+function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
   try {
-    return createServiceRoleClient() as typeof supabase;
-  } catch {
-    return supabase;
+    return createServiceRoleClient();
+  } catch (e) {
+    console.warn("[generate] service role unavailable, using user client", e);
+    return authSupabase;
   }
 }
 
-function normalizeQuiz(
-  raw: GeneratedContent["quiz_questions"],
-): QuizQuestion[] {
+function normalizeQuiz(raw: unknown, max = 5): QuizQuestion[] {
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map((q) => ({
-      question: String(q?.question ?? "").trim(),
-      options: Array.isArray(q?.options) ? q.options.map(String) : [],
-      correct: typeof q?.correct === "number" ? q.correct : 0,
-      explanation: q?.explanation ? String(q.explanation) : "",
-    }))
-    .filter((q) => q.question.length > 0);
+  const out: QuizQuestion[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const q = item as Record<string, unknown>;
+    const question = String(q.question ?? "").trim();
+    const options = Array.isArray(q.options)
+      ? q.options.map((o) => String(o).trim()).filter(Boolean)
+      : [];
+    let correct = Number(q.correct);
+    if (!Number.isFinite(correct) || correct < 0 || correct > 3) correct = 0;
+    const explanation =
+      String(q.explanation ?? "").trim() || "সঠিক উত্তরটি বেছে নাও।";
+    if (question && options.length >= 2) {
+      while (options.length < 4) options.push("—");
+      out.push({
+        question,
+        options: options.slice(0, 4),
+        correct: Math.min(correct, 3),
+        explanation,
+      });
+    }
+    if (out.length >= max) break;
+  }
+  return out;
 }
 
 function buildStudentStudyPrompt(opts: {
   title: string;
-  classNumber: number | null;
-  pageStart: number | null;
-  pageEnd: number | null;
+  classNumber?: number | null;
+  pageStart?: number | null;
+  pageEnd?: number | null;
   sourceLabel: string;
 }) {
+  const rules = getDepthRules(opts.classNumber);
   const depthBlock = buildDepthPromptBlock(opts.classNumber);
   const pages =
     opts.pageStart != null && opts.pageEnd != null
@@ -85,29 +101,36 @@ function buildStudentStudyPrompt(opts: {
 
 ${depthBlock}
 
-PDF থেকে শুধু এই পাঠের অংশ ব্যবহার করো। JSON আউটপুট দাও:
+নিয়ম:
+1. শুধু এই পাঠের তথ্য। মিথ্যা বানাবে না। PDF-এ যা নেই তা বানাবে না।
+2. সব ফিল্ড ছাত্র-facing বাংলা।
+3. mission_intro, overview, objectives, main_content, ai_explanation, examples, vocabulary, practice, real_world_mission, reflection, summary, extra_notes — volume rules মেনে লেখো।
+4. **quiz_questions**: ঠিক ${rules.quizCount}টি MCQ। প্রতিটিতে ৪টি options। correct = 0-based index (0–3)। explanation ছোট বাংলা।
+5. শুধু valid JSON।
+
+JSON:
 {
-  "mission_intro": "শুরুর মিশন ১–২ বাক্য",
-  "overview": "সারাংশ",
-  "objectives": ["আমি পারব..."],
-  "main_content": "মূল আলোচনা",
-  "examples": ["উদাহরণ"],
+  "mission_intro": "ছোট উৎসাহী intro — আজকের মিশন (1–2 বাক্য)",
+  "overview": "string",
+  "objectives": ["string"],
+  "main_content": "string",
+  "ai_explanation": "string",
+  "examples": ["string"],
   "vocabulary": ["শব্দ — অর্থ"],
-  "practice": ["অনুশীলন প্রশ্ন"],
-  "real_world_mission": "বাস্তব কাজ",
-  "reflection": "চিন্তার প্রশ্ন",
-  "summary": "সারসংক্ষেপ",
-  "extra_notes": "অতিরিক্ত নোট",
+  "practice": ["প্রশ্ন"],
+  "real_world_mission": "বাস্তব জীবনে ছোট নিরাপদ কাজ (Class উপযোগী)",
+  "reflection": "শেখার পর 1টি চিন্তার প্রশ্ন",
+  "summary": "string",
+  "extra_notes": "string",
   "quiz_questions": [
     {
-      "question": "প্রশ্ন",
-      "options": ["ক", "খ", "গ", "ঘ"],
+      "question": "string",
+      "options": ["A", "B", "C", "D"],
       "correct": 0,
-      "explanation": "ব্যাখ্যা"
+      "explanation": "string"
     }
   ]
-}
-শুধু valid JSON — কোনো markdown fence নয়।`;
+}`;
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -444,9 +467,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .filter(Boolean)
       .join("\n\n");
 
-    const quizQuestions = normalizeQuiz(content.quiz_questions);
+    const quizQuestions = normalizeQuiz(
+      content.quiz_questions,
+      getDepthRules(classNumber).quizCount,
+    );
 
-    const payload = {
+    const upsertPayload: Record<string, unknown> = {
       lesson_id: id,
       overview: overviewMerged || content.overview || null,
       objectives: content.objectives ?? [],
@@ -460,16 +486,48 @@ export async function POST(request: NextRequest, context: RouteContext) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data: existing } = await db
+    let { data, error: contentError } = await db
       .from("lesson_contents")
-      .select("id")
-      .eq("lesson_id", id)
-      .maybeSingle();
+      .upsert(upsertPayload, { onConflict: "lesson_id" })
+      .select()
+      .single();
 
-    if (existing?.id) {
-      await db.from("lesson_contents").update(payload).eq("id", existing.id);
-    } else {
-      await db.from("lesson_contents").insert(payload);
+    if (contentError && /quiz_questions/i.test(contentError.message ?? "")) {
+      delete upsertPayload.quiz_questions;
+      const retry = await db
+        .from("lesson_contents")
+        .upsert(upsertPayload, { onConflict: "lesson_id" })
+        .select()
+        .single();
+      data = retry.data;
+      contentError = retry.error;
+    }
+
+    if (contentError) throw contentError;
+
+    try {
+      const cover = await generateAndStoreLessonCover({
+        supabase: db as never,
+        lessonId: id,
+        title,
+        overview: content.overview ?? null,
+        classNumber,
+      });
+      if (cover) {
+        const coverPatch: Record<string, unknown> = {
+          cover_image_path: cover.path,
+          cover_image_url: cover.url,
+        };
+        const { error: coverErr } = await db
+          .from("lesson_contents")
+          .update(coverPatch)
+          .eq("lesson_id", id);
+        if (coverErr && /cover_image/i.test(coverErr.message ?? "")) {
+          console.warn("cover columns missing", coverErr.message);
+        }
+      }
+    } catch (coverErr) {
+      console.warn("cover generation skipped", coverErr);
     }
 
     await db
@@ -479,16 +537,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         is_active: true,
       })
       .eq("id", id);
-
-    try {
-      await generateAndStoreLessonCover({
-        lessonId: id,
-        title,
-        classNumber,
-      });
-    } catch (coverErr) {
-      console.warn("cover generation skipped", coverErr);
-    }
 
     await audit("LESSON_GENERATE", auth.user.id, {
       id,
@@ -500,6 +548,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ok: true,
       workflow_status: "generated",
       message: "Study draft save হয়েছে।",
+      content: data,
     });
   } catch (error) {
     console.error("generate lesson failed", error);
