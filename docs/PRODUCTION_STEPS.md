@@ -1,29 +1,27 @@
 # ONONNO — Production work steps (runtime)
 
-Conversation track for soft-launch production tasks.
-
 | Step | Task | Status |
 |------|------|--------|
-| 1 | Live payment gateway | ⏸ Skipped for now — **manual bKash/Nagad** polished instead |
-| 2 | Curriculum baseline seed (Class 1–5) | ✅ Admin API + Seed Baseline button |
-| 3 | Soft-launch hardening | ✅ Health checks, robots/sitemap, unlock constant |
-| 4 | Richer published lesson bodies / QA path | ✅ Demo bodies + seed lesson_contents |
-| 5 | Error monitoring (optional Sentry) | ✅ /api/errors + boundaries + DSN forward |
-| 6 | Soft-launch readiness console | ✅ Admin readiness API + UI |
+| 1 | Live payment gateway | ⏸ Manual bKash/Nagad polished |
+| 2 | Curriculum baseline seed (Class 1–5) | ✅ |
+| 3 | Soft-launch hardening | ✅ |
+| 4 | Richer published lesson bodies | ✅ |
+| 5 | Error monitoring (optional Sentry) | ✅ |
+| 6 | Soft-launch readiness console | ✅ |
+| 7 | Student soft-launch experience | ✅ Free tier 5/day + hub banner |
 
-## Step 6 details
+## Step 7 details
 
-1. **`GET /api/admin/readiness`** — env, curriculum coverage, ops queue, monitoring
-2. **`/dashboard/admin/readiness`** — checklist UI + backfill/seed shortcuts
-3. Admin Overview module + nav link: **Readiness**
+1. **`src/lib/soft-launch.ts`** — free lessons/day (default **5**, env `NEXT_PUBLIC_SOFT_LAUNCH_FREE_LESSONS`)
+2. **`useAccess`** — soft-launch limit
+3. **`SoftLaunchBanner`** on student dashboard
 
-Open after deploy: `https://ononno-two.vercel.app/dashboard/admin/readiness`
+Verify: student login → hub banner → Academic.
 
 ## Verify after deploy
 
 ```text
-https://ononno-two.vercel.app/api/health
+https://ononno-two.vercel.app/dashboard/student
 https://ononno-two.vercel.app/dashboard/admin/readiness
-POST /api/errors smoke test
-Student: Class 1 → বাংলা → অধ্যায় → পাঠ → কুইজ
+https://ononno-two.vercel.app/api/health
 ```
