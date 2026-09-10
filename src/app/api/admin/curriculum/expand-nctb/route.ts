@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/api-auth'
 import { audit } from '@/lib/audit'
 import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
 import {
-  buildPrimarySeed,
+  buildNctbSeed,
   SEED_VERSION,
   LEGACY_SEED_SLUGS,
 } from '@/lib/curriculum-seed'
@@ -11,8 +11,7 @@ import { buildDemoLessonBody } from '@/lib/lesson-demo-content'
 
 /**
  * POST /api/admin/curriculum/expand-nctb
- * Idempotent: adds missing NCTB subjects/chapters/lessons for Class 1–5
- * without deleting existing data (safe for production soft-launch).
+ * Idempotent: adds missing NCTB subjects/chapters/lessons for Class 1–8
  */
 export async function POST() {
   try {
@@ -87,7 +86,7 @@ export async function POST() {
       }
     }
 
-    const seedClasses = buildPrimarySeed([1, 2, 3, 4, 5])
+    const seedClasses = buildNctbSeed([1, 2, 3, 4, 5, 6, 7, 8])
     const summary = {
       versionId,
       classesCreated: 0,
@@ -289,9 +288,9 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       message:
-        'NCTB expand সম্পন্ন — নতুন subject/chapter/lesson যোগ হয়েছে (পুরনো ডেটা মুছে যায়নি)',
+        'NCTB expand সম্পন্ন — Class 1–8 subject/chapter/lesson যোগ (পুরনো ডেটা মুছে যায়নি)',
       summary,
-      tip: 'Student: Class 1–5 এ এখন বাংলাদেশ ও বিশ্বপরিচয় + স্বাস্থ্যও দেখা যাবে',
+      tip: 'Student: Class 6–8 এ ICT, বিজ্ঞান (পদার্থ/রসায়ন/জীব), ব্যাকরণ দেখা যাবে',
     })
   } catch (e) {
     console.error('[expand-nctb]', e)
@@ -303,8 +302,8 @@ export async function GET() {
   const auth = await requireRole(['admin'])
   if ('error' in auth) return auth.error
 
-  const seed = buildPrimarySeed([1, 2, 3, 4, 5])
-  const subjects = seed[0]?.subjects.map((s) => s.nameBn) ?? []
+  const seed = buildNctbSeed([1, 2, 3, 4, 5, 6, 7, 8])
+  const subjects = seed.find((c) => c.classNumber === 6)?.subjects.map((s) => s.nameBn) ?? []
   const lessonCount = seed.reduce(
     (acc, c) =>
       acc +
@@ -318,7 +317,7 @@ export async function GET() {
   return NextResponse.json({
     version: SEED_VERSION,
     classes: seed.map((c) => c.slug),
-    subjectsPerClass: subjects,
+    subjectsSampleClass6: subjects,
     totalLessonsInSeed: lessonCount,
     endpoint: 'POST /api/admin/curriculum/expand-nctb',
   })
