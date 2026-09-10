@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/api-auth'
 import { audit } from '@/lib/audit'
 import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
-import { buildPrimarySeed, SEED_VERSION } from '@/lib/curriculum-seed'
+import { buildNctbSeed, SEED_VERSION } from '@/lib/curriculum-seed'
 import { buildDemoLessonBody } from '@/lib/lesson-demo-content'
 
 export async function POST(req: NextRequest) {
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       versionId = ver.id
     }
 
-    const seedClasses = buildPrimarySeed([1, 2, 3, 4, 5])
+    const seedClasses = buildNctbSeed([1, 2, 3, 4, 5, 6, 7, 8])
     const summary = {
       versionId,
       classes: 0,
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
               title: les.title,
               titleBn: les.titleBn,
               description: les.description,
-              subjectHint: `${ch.slug} ${les.slug}`,
+              subjectHint: `${sub.slug} ${ch.slug} ${les.slug}`,
               isQuiz: /quiz/i.test(les.slug) || /কুইজ/.test(les.titleBn),
             })
             const { error: contentErr } = await supabase.from('lesson_contents').insert({
@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Baseline curriculum seed সম্পন্ন',
+      message: 'NCTB Class 1–8 curriculum seed সম্পন্ন',
       summary,
     })
   } catch (error) {
@@ -302,7 +302,7 @@ export async function GET() {
         .limit(5),
     ])
 
-    const seed = buildPrimarySeed([1, 2, 3, 4, 5])
+    const seed = buildNctbSeed([1, 2, 3, 4, 5, 6, 7, 8])
     const expectedLessons = seed.reduce(
       (n, c) =>
         n +
