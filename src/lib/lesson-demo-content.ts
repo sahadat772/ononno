@@ -28,6 +28,8 @@ function detectKind(text: string): string {
   if (/math|গণিত|number|sangkhya|jog|biy|shape|akriti/.test(t)) return 'math'
   if (/islam|ইসলাম|iman|dua|salam|adab|quran|allah/.test(t)) return 'islam'
   if (/science|বিজ্ঞান|body|plant|animal|weather|season|sense/.test(t)) return 'science'
+  if (/bangladesh|বাংলাদেশ|desh|gram|shohor|swadhin|manchitro|poribar/.test(t)) return 'bangladesh'
+  if (/health|স্বাস্থ্য|hat-dhowa|exercise|khela|poricchon|dat-maja/.test(t)) return 'health'
   if (/quiz|কুইজ/.test(t)) return 'quiz'
   return 'general'
 }
@@ -123,6 +125,42 @@ const KIND_FLAVOR: Record<
         options: ['অক্সিজেন ও ছায়া', 'শুধু শব্দ', 'শুধু আলো', 'কিছু না'],
         correct: 0,
         explanation: 'গাছ অক্সিজেন দেয় এবং ছায়া দেয়।',
+      },
+    ],
+  },
+  bangladesh: {
+    intro: 'বাংলাদেশ, পরিবার ও সমাজ — নিজের দেশ ও মানুষ চিনি।',
+    tip: 'পতাকা, প্রতীক ও পরিবারের ভূমিকা মনে রাখো।',
+    quizBase: [
+      {
+        question: 'বাংলাদেশের জাতীয় পতাকায় কোন রং আছে?',
+        options: ['সবুজ ও লাল', 'শুধু নীল', 'কালো-সাদা', 'হলুদ'],
+        correct: 0,
+        explanation: 'সবুজ মাঠ ও লাল সূর্য — জাতীয় পতাকা।',
+      },
+      {
+        question: 'পরিবারে কারা থাকেন?',
+        options: ['মা-বাবা ও ভাই-বোন', 'শুধু শিক্ষক', 'শুধু পাখি', 'কেউ না'],
+        correct: 0,
+        explanation: 'পরিবারে মা-বাবা, ভাই-বোনসহ প্রিয়জন থাকেন।',
+      },
+    ],
+  },
+  health: {
+    intro: 'পরিচ্ছন্নতা ও খেলাধুলা — সুস্থ শরীর, সুস্থ মন।',
+    tip: 'হাত ধোয়া ও প্রতিদিন একটু ব্যায়াম অভ্যাস করো।',
+    quizBase: [
+      {
+        question: 'খাওয়ার আগে কী করা উচিত?',
+        options: ['হাত ধোয়া', 'দৌড়ানো', 'ঘুমানো', 'কিছু না'],
+        correct: 0,
+        explanation: 'খাওয়ার আগে সাবান দিয়ে হাত ধোয়া উচিত।',
+      },
+      {
+        question: 'খেলাধুলার উপকার কী?',
+        options: ['শরীর সুস্থ রাখে', 'শুধু ক্লান্তি', 'কোনো উপকার নেই', 'শুধু রাগ'],
+        correct: 0,
+        explanation: 'নিয়মিত খেলা শরীর ও মন দুটোই ভালো রাখে।',
       },
     ],
   },
@@ -233,7 +271,8 @@ export function buildDemoLessonBody(input: {
     main_content,
     examples,
     summary,
-    extra_notes: 'ডেমো/বেসলাইন কন্টেন্ট — অ্যাডমিন পরে পূর্ণ NCTB পাঠ যোগ করতে পারবেন।',
+    extra_notes:
+      'NCTB-স্টাইল বেসলাইন পাঠ — অ্যাডমিন চাইলে আসল বইয়ের টেক্সট/PDF দিয়ে সমৃদ্ধ করতে পারবেন।',
     quiz_questions,
   }
 }
