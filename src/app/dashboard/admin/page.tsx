@@ -48,20 +48,21 @@ export default async function AdminDashboard() {
         .order('created_at', { ascending: false })
         .limit(8)
 
-    // Cast: AdminClient may not list optional perm props until full client push lands
-    const clientProps = {
-        profile,
-        isSuperAdmin: isSuperAdmin(profile),
-        permissions: getPermissions(profile),
-        stats: {
-            totalUsers: totalUsers || 0,
-            totalStudents: totalStudents || 0,
-            freeRequests: freeRequests || 0,
-            totalSubjects: totalSubjects || 0,
-            pendingPayments: pendingPayments || 0,
-        },
-        recentUsers: recentUsers || [],
-    }
-
-    return <AdminClient {...(clientProps as React.ComponentProps<typeof AdminClient>)} />
+    return (
+        <AdminClient
+            profile={profile}
+            stats={{
+                totalUsers: totalUsers || 0,
+                totalStudents: totalStudents || 0,
+                freeRequests: freeRequests || 0,
+                totalSubjects: totalSubjects || 0,
+                pendingPayments: pendingPayments || 0,
+            }}
+            recentUsers={recentUsers || []}
+            {...({
+                isSuperAdmin: isSuperAdmin(profile),
+                permissions: getPermissions(profile),
+            } as Record<string, unknown>)}
+        />
+    )
 }
