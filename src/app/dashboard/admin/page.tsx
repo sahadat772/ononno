@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import AdminClient from './AdminClient'
+import { getPermissions, isStaffAdmin, isSuperAdmin } from '@/lib/admin-access'
 
 export default async function AdminDashboard() {
     const supabase = await createServerSupabaseClient()
@@ -14,7 +15,7 @@ export default async function AdminDashboard() {
         .eq('id', user.id)
         .single()
 
-    if (!profile || profile.role !== 'admin') {
+    if (!isStaffAdmin(profile)) {
         redirect('/dashboard/student')
     }
 
@@ -50,6 +51,8 @@ export default async function AdminDashboard() {
     return (
         <AdminClient
             profile={profile}
+            isSuperAdmin={isSuperAdmin(profile)}
+            permissions={getPermissions(profile)}
             stats={{
                 totalUsers: totalUsers || 0,
                 totalStudents: totalStudents || 0,

@@ -1,10 +1,9 @@
-import { redirect } from 'next/navigation'
+import { canAccess, isStaffAdmin } from '@/lib/admin-access'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
 import LearningAnalyticsClient from './LearningAnalyticsClient'
 
-export const dynamic = 'force-dynamic'
-
-export default async function AdminLearningAnalyticsPage() {
+export default async function LearningAnalyticsPage() {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -13,11 +12,11 @@ export default async function AdminLearningAnalyticsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, admin_permissions')
     .eq('id', user.id)
-    .maybeSingle()
+    .single()
 
-  if (profile?.role !== 'admin') redirect('/dashboard')
+  if (!isStaffAdmin(profile) || !canAccess(profile, 'analytics')) redirect('/dashboard/admin')
 
   return <LearningAnalyticsClient />
 }
