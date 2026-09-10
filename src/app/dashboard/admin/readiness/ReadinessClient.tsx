@@ -84,6 +84,28 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
     }
   }
 
+  async function runExpandNctb() {
+    setBusy(true)
+    setBackfillMsg(null)
+    try {
+      const res = await fetch('/api/admin/curriculum/expand-nctb', { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) {
+        setBackfillMsg(json.error || 'NCTB expand failed')
+      } else {
+        const s = json.summary
+        setBackfillMsg(
+          `✅ NCTB Expand · +Subject ${s?.subjectsAdded ?? 0} · +Chapter ${s?.chaptersAdded ?? 0} · +Lesson ${s?.lessonsAdded ?? 0}`,
+        )
+        await load()
+      }
+    } catch {
+      setBackfillMsg('Server error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#060612] text-white">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -227,6 +249,14 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
                   >
                     📚 Curriculum · Seed Baseline
                   </Link>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void runExpandNctb()}
+                    className="rounded-xl border border-lime-500/30 bg-lime-500/10 px-4 py-2.5 text-left text-sm font-semibold text-lime-200 hover:bg-lime-500/20 disabled:opacity-50"
+                  >
+                    {busy ? 'Expanding…' : '📚 Expand NCTB (7 subjects)'}
+                  </button>
                   <button
                     type="button"
                     disabled={busy}
