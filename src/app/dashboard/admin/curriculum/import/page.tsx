@@ -42,26 +42,28 @@ export default async function ImportPage() {
   const subjects = (subjectsRes.data ?? []).filter((s) => s.is_active !== false);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
-      <PdfPipelineClient
-        classes={classes.map((c) => ({
-          id: String(c.id),
-          name: c.name,
-          class_number: c.class_number,
-        }))}
-        subjects={subjects.map((s) => ({
-          id: String(s.id),
-          name: s.name,
-          name_bn: s.name_bn,
-          class_id: s.class_id ? String(s.class_id) : "",
-        }))}
-        initialSources={(sourcesRes.data ?? []).map((s) => ({
-          ...s,
-          id: String(s.id),
-          class_id: s.class_id ? String(s.class_id) : undefined,
-          subject_id: s.subject_id ? String(s.subject_id) : undefined,
-        }))}
-      />
+    <main className="min-h-screen bg-[#030711] px-3 py-5 font-sans text-[#f7f7ff] sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <PdfPipelineClient
+          classes={classes.map((c) => ({
+            id: String(c.id),
+            name: c.name,
+            class_number: c.class_number,
+          }))}
+          subjects={subjects.map((s) => ({
+            id: String(s.id),
+            name: s.name,
+            name_bn: s.name_bn,
+            class_id: s.class_id ? String(s.class_id) : "",
+          }))}
+          initialSources={(sourcesRes.data ?? []).map((s) => ({
+            ...s,
+            id: String(s.id),
+            class_id: s.class_id ? String(s.class_id) : undefined,
+            subject_id: s.subject_id ? String(s.subject_id) : undefined,
+          }))}
+        />
+      </div>
     </main>
   );
 }
