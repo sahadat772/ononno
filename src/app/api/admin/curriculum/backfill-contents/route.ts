@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/api-auth'
 import { audit } from '@/lib/audit'
 import { rateLimit, rateLimitDefaults } from '@/lib/rateLimiter'
@@ -7,12 +7,20 @@ import { buildDemoLessonBody } from '@/lib/lesson-demo-content'
 /**
  * POST /api/admin/curriculum/backfill-contents
  * Fills lesson_contents for published lessons that have no body yet.
- * Safe for existing production DB (does not delete lessons).
+ * Body `{ force: true }` upgrades thin/demo bodies to richer NCTB text.
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const auth = await requireRole(['admin'])
     if ('error' in auth) return auth.error
+
+    let forceUpgrade = false
+    try {
+      const body = await req.json()
+      forceUpgrade = Boolean(body?.force)
+    } catch {
+      /* empty body ok */
+    }
 
     const rateError = await rateLimit(
       `admin-curriculum-backfill:${auth.user.id}`,
@@ -43,11 +51,15 @@ export async function POST() {
         .eq('lesson_id', les.id)
         .maybeSingle()
 
-      const hasBody = Boolean(
-        (existing?.main_content && String(existing.main_content).trim()) ||
-          (existing?.overview && String(existing.overview).trim()),
-      )
-      if (hasBody) {
+      const mainLen = existing?.main_content ? String(existing.main_content).trim().length : 0
+      const hasBody =
+        mainLen >= 120 ||
+        Boolean(existing?.overview && String(existing.overview).trim().length >= 80)
+      if (hasBody && !forceUpgrade) {
+        skipped += 1
+        continue
+      }
+      if (hasBody && forceUpgrade && mainLen >= 400) {
         skipped += 1
         continue
       }
@@ -103,7 +115,9 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: 'Empty lesson bodies backfilled with rich demo content',
+      message: forceUpgrade
+        ? 'Lesson bodies upgraded (force)'
+        : 'Empty lesson bodies backfilled',
       summary,
     })
   } catch (e) {
