@@ -37,17 +37,20 @@ export type SeedClassDef = {
   subjects: SeedSubjectDef[]
 }
 
-function lessons(
-  items: [string, string, string, string?][],
-): SeedSubjectDef['chapters'][0]['lessons'] {
-  return items.map(([slug, title, titleBn, description], i) => ({
-    slug,
-    title,
-    titleBn,
-    description: description || `${titleBn} — NCTB স্টাইল মৌলিক ধারণা ও অনুশীলন।`,
-    durationMinutes: 12 + (i % 3) * 4,
-    xpReward: 15 + (i % 2) * 10,
-  }))
+type LessonRow = [string, string, string, string?]
+
+function lessons(items: ReadonlyArray<readonly string[]>): SeedSubjectDef['chapters'][0]['lessons'] {
+  return items.map((row, i) => {
+    const [slug, title, titleBn, description] = row as LessonRow
+    return {
+      slug,
+      title,
+      titleBn,
+      description: description || `${titleBn} — NCTB স্টাইল মৌলিক ধারণা ও অনুশীলন।`,
+      durationMinutes: 12 + (i % 3) * 4,
+      xpReward: 15 + (i % 2) * 10,
+    }
+  })
 }
 
 function bangla(c: number): SeedSubjectDef {
@@ -92,10 +95,10 @@ function bangla(c: number): SeedSubjectDef {
           ['choto-bakko', 'Short sentences', 'ছোট বাক্য', 'আমি পড়ি · তুমি লেখ'],
           ['onucched', 'Paragraph', 'অনুচ্ছেদ', 'সহজ গল্প পড়া'],
           ...(upper
-            ? ([
+            ? [
                 ['kobita-pora', 'Poem reading', 'কবিতা পড়া', 'ছোট কবিতার ছন্দ'],
                 ['bodhgomota', 'Comprehension', 'বোধগম্যতা', 'প্রশ্নোত্তর অনুশীলন'],
-              ] as [string, string, string, string?][])
+              ]
             : []),
           ['quiz-pora', 'Reading quiz', 'পড়ার কুইজ', 'বোঝার অনুশীলন'],
         ]),
@@ -108,14 +111,7 @@ function bangla(c: number): SeedSubjectDef {
         lessons: lessons([
           ['okkhor-gothon', 'Letter forms', 'অক্ষর গঠন', 'সঠিক আকারে লেখা'],
           ['shobdo-lekha', 'Word writing', 'শব্দ লেখা', 'শব্দ কপি ও অনুশীলন'],
-          ...(upper
-            ? ([['bakko-lekha', 'Sentence writing', 'বাক্য লেখা', 'নিজের কথায় লেখা']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(upper ? [['bakko-lekha', 'Sentence writing', 'বাক্য লেখা', 'নিজের কথায় লেখা']] : []),
         ]),
       },
     ],
@@ -140,14 +136,7 @@ function english(c: number): SeedSubjectDef {
         lessons: lessons([
           ['a-to-m', 'A to M', 'A থেকে M', 'Letters A–M with sounds'],
           ['n-to-z', 'N to Z', 'N থেকে Z', 'Letters N–Z with sounds'],
-          ...(upper
-            ? ([['phonics', 'Phonics', 'Phonics', 'Letter sounds & blends']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(upper ? [['phonics', 'Phonics', 'Phonics', 'Letter sounds & blends']] : []),
           ['quiz-abc', 'ABC quiz', 'ABC কুইজ', 'Match letter and sound'],
         ]),
       },
@@ -159,11 +148,7 @@ function english(c: number): SeedSubjectDef {
         lessons: lessons([
           ['home-words', 'Home words', 'বাড়ির শব্দ', 'mother · father · home'],
           ['school-words', 'School words', 'স্কুলের শব্দ', 'book · pen · teacher'],
-          ...(upper
-            ? ([
-                ['action-words', 'Action words', 'ক্রিয়া শব্দ', 'run · eat · read · write'],
-              ] as [string, string, string, string?][])
-            : []),
+          ...(upper ? [['action-words', 'Action words', 'ক্রিয়া শব্দ', 'run · eat · read · write']] : []),
           ['quiz-words', 'Word quiz', 'শব্দ কুইজ', 'Picture to word'],
         ]),
       },
@@ -175,11 +160,7 @@ function english(c: number): SeedSubjectDef {
         lessons: lessons([
           ['i-am', 'I am / You are', 'I am / You are', 'Basic be-verbs'],
           ['this-is', 'This is', 'This is', 'Pointing and naming'],
-          ...(upper
-            ? ([
-                ['present-simple', 'Present simple', 'Present simple', 'I play · She reads'],
-              ] as [string, string, string, string?][])
-            : []),
+          ...(upper ? [['present-simple', 'Present simple', 'Present simple', 'I play · She reads']] : []),
         ]),
       },
     ],
@@ -205,10 +186,10 @@ function math(c: number): SeedSubjectDef {
           ['count-1-10', 'Count 1–10', '১ থেকে ১০', 'গণনা ও চেনানো'],
           ['count-11-20', 'Count 11–20', '১১ থেকে ২০', 'দশকের পরের সংখ্যা'],
           ...(upper
-            ? ([
+            ? [
                 ['place-value', 'Place value', 'স্থানীয় মান', 'একক · দশক · শতক'],
                 ['count-100', 'Up to 100', '১০০ পর্যন্ত', 'বড় সংখ্যা পড়া'],
-              ] as [string, string, string, string?][])
+              ]
             : [['count-to-50', 'Count to 50', '৫০ পর্যন্ত', 'ধাপে ধাপে গণনা']]),
           ['quiz-number', 'Number quiz', 'সংখ্যা কুইজ', 'মজার গণনা'],
         ]),
@@ -222,10 +203,10 @@ function math(c: number): SeedSubjectDef {
           ['addition', 'Addition', 'যোগ', 'ছোট সংখ্যার যোগ'],
           ['subtraction', 'Subtraction', 'বিয়োগ', 'ছোট সংখ্যার বিয়োগ'],
           ...(upper
-            ? ([
+            ? [
                 ['multiplication', 'Multiplication', 'গুণ', '২ ও ৫ এর নামতা'],
                 ['division', 'Division', 'ভাগ', 'সম ভাগের ধারণা'],
-              ] as [string, string, string, string?][])
+              ]
             : []),
           ['quiz-ops', 'Ops quiz', 'অপারেশন কুইজ', 'দ্রুত অনুশীলন'],
         ]),
@@ -237,14 +218,7 @@ function math(c: number): SeedSubjectDef {
         description: 'জ্যামিতি ও দৈনন্দিন পরিমাপ',
         lessons: lessons([
           ['basic-shapes', 'Basic shapes', 'মৌলিক আকৃতি', 'গোল · বর্গ · ত্রিভুজ'],
-          ...(upper
-            ? ([['measurement', 'Measurement', 'পরিমাপ', 'লম্বা · ওজন · সময়']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(upper ? [['measurement', 'Measurement', 'পরিমাপ', 'লম্বা · ওজন · সময়']] : []),
           ['shape-quiz', 'Shape quiz', 'আকৃতি কুইজ', 'চেনা ও মিলানো'],
         ]),
       },
@@ -318,14 +292,7 @@ function science(c: number): SeedSubjectDef {
         lessons: lessons([
           ['senses', 'Five senses', 'পাঁচ ইন্দ্রিয়', 'দেখা · শোনা · স্বাদ'],
           ['care', 'Body care', 'যত্ন', 'পরিষ্কার-পরিচ্ছন্নতা'],
-          ...(upper
-            ? ([['food', 'Food & health', 'খাবার ও স্বাস্থ্য', 'পুষ্টিকর খাবার']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(upper ? [['food', 'Food & health', 'খাবার ও স্বাস্থ্য', 'পুষ্টিকর খাবার']] : []),
         ]),
       },
       {
@@ -336,14 +303,7 @@ function science(c: number): SeedSubjectDef {
         lessons: lessons([
           ['plants', 'Plants', 'গাছপালা', 'গাছ কীভাবে বেড়ে ওঠে'],
           ['animals', 'Animals', 'প্রাণী', 'পোষা ও বন্য প্রাণী'],
-          ...(upper
-            ? ([['habitat', 'Habitat', 'বাসস্থান', 'জল · স্থল · আকাশ']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(upper ? [['habitat', 'Habitat', 'বাসস্থান', 'জল · স্থল · আকাশ']] : []),
         ]),
       },
       {
@@ -354,14 +314,7 @@ function science(c: number): SeedSubjectDef {
         lessons: lessons([
           ['rain-sun', 'Rain & sun', 'বৃষ্টি ও রোদ', 'দৈনন্দিন আবহাওয়া'],
           ['seasons', 'Seasons', 'ঋতু', 'গ্রীষ্ম · বর্ষা · শীত'],
-          ...(upper
-            ? ([['earth', 'Our earth', 'আমাদের পৃথিবী', 'মাটি · পানি · বাতাস']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(upper ? [['earth', 'Our earth', 'আমাদের পৃথিবী', 'মাটি · পানি · বাতাস']] : []),
         ]),
       },
     ],
@@ -445,14 +398,7 @@ function health(c: number): SeedSubjectDef {
         lessons: lessons([
           ['morning-exercise', 'Morning exercise', 'সকালের ব্যায়াম', 'সহজ stretching'],
           ['team-play', 'Team games', 'দলীয় খেলা', 'সহযোগিতা'],
-          ...(c >= 3
-            ? ([['safety-play', 'Safe play', 'নিরাপদ খেলা', 'সতর্কতা']] as [
-                string,
-                string,
-                string,
-                string?,
-              ][])
-            : []),
+          ...(c >= 3 ? [['safety-play', 'Safe play', 'নিরাপদ খেলা', 'সতর্কতা']] : []),
         ]),
       },
     ],
