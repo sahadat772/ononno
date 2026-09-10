@@ -27,6 +27,7 @@ const menuItems = [
   { title: 'Learning Analytics', desc: 'Session, progress ও weakness', icon: '📈', href: '/dashboard/admin/learning-analytics', gradient: 'from-cyan-500 to-sky-400', border: 'border-cyan-500/20', tag: 'Insight' },
   { title: 'AI / ML', desc: 'Tutor performance ও model usage', icon: '🧠', href: '/dashboard/admin/analytics', gradient: 'from-indigo-500 to-blue-400', border: 'border-indigo-500/20', tag: 'Insight' },
   { title: 'Content', desc: 'Content review ও moderation', icon: '📝', href: '/dashboard/admin/content', gradient: 'from-teal-500 to-emerald-400', border: 'border-teal-500/20', tag: 'Core' },
+  { title: 'Readiness', desc: 'Soft-launch checklist ও ops snapshot', icon: '🚀', href: '/dashboard/admin/readiness', gradient: 'from-lime-500 to-emerald-400', border: 'border-lime-500/20', tag: 'Ops' },
 ]
 
 const aiModels = [
@@ -58,6 +59,7 @@ const navLinks = [
   { label: 'Free Access', href: '/dashboard/admin/free-access', icon: '🤲' },
   { label: 'Users', href: '/dashboard/admin/users', icon: '👥' },
   { label: 'Announce', href: '/dashboard/admin/announcements', icon: '📢' },
+  { label: 'Readiness', href: '/dashboard/admin/readiness', icon: '🚀' },
 ]
 
 function roleBadge(role: string) {
@@ -201,6 +203,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
             🤲 Free Access{stats.freeRequests > 0 && <span className="ml-1.5 rounded-full bg-emerald-500/30 px-1.5 py-0.5 text-[10px]">{stats.freeRequests}</span>}
           </Link>
           <Link href="/dashboard/admin/learning-analytics" className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3.5 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/20">📈 Analytics</Link>
+          <Link href="/dashboard/admin/readiness" className="rounded-xl border border-lime-500/25 bg-lime-500/10 px-3.5 py-2 text-xs font-semibold text-lime-200 transition hover:bg-lime-500/20">🚀 Readiness</Link>
         </div>
 
         <div className="mb-6 flex w-fit gap-1 rounded-2xl border border-white/8 bg-white/[0.03] p-1.5">
@@ -439,6 +442,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
                       <li className="flex justify-between gap-2"><span>Free access requests</span><Link href="/dashboard/admin/free-access" className="font-semibold text-amber-300 hover:underline">{stats.freeRequests}</Link></li>
                       <li className="flex justify-between gap-2"><span>Pending payments</span><Link href="/dashboard/admin/subscriptions" className="font-semibold text-amber-300 hover:underline">{pendingPay}</Link></li>
                       <li className="flex justify-between gap-2"><span>Curriculum subjects</span><Link href="/dashboard/admin/curriculum" className="font-semibold text-amber-300 hover:underline">{stats.totalSubjects}</Link></li>
+                      <li className="flex justify-between gap-2"><span>Soft-launch readiness</span><Link href="/dashboard/admin/readiness" className="font-semibold text-lime-300 hover:underline">Open →</Link></li>
                     </ul>
                   </div>
                 </div>
@@ -474,7 +478,7 @@ export default function AdminClient({ profile, stats, recentUsers }: Props) {
               <ul className="space-y-1.5 text-xs text-gray-500">
                 <li><Link href="/dashboard/admin/free-access" className="hover:text-white">Free Access</Link></li>
                 <li><Link href="/dashboard/admin/announcements" className="hover:text-white">Announcements</Link></li>
-                <li><Link href="/dashboard/admin/content" className="hover:text-white">Content</Link></li>
+                <li><Link href="/dashboard/admin/readiness" className="hover:text-white">Readiness</Link></li>
               </ul>
             </div>
             <div>
