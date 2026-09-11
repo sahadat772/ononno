@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
 import { requireRole } from "@/lib/api-auth";
 import { rateLimit, rateLimitDefaults } from "@/lib/rateLimiter";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { chat, isGroqConfigured } from "@/lib/groq";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -21,11 +19,11 @@ export async function POST(req: NextRequest) {
   );
   if (rateError) return rateError;
 
-  if (!process.env.GROQ_API_KEY) {
+  if (!isGroqConfigured()) {
     return NextResponse.json(
       {
         error: "AI_NOT_CONFIGURED",
-        message: "GROQ_API_KEY configured নেই।",
+        message: "GROQ_API_KEY configured নেই। Vercel env-এ যোগ করো।",
       },
       { status: 500 },
     );
@@ -67,16 +65,19 @@ export async function POST(req: NextRequest) {
        )`,
     )
     .eq("id", lessonId)
-    .eq("is_published", true)
     .maybeSingle();
 
   if (lesErr || !lesson) {
     return NextResponse.json(
-      {
-        error: "LESSON_NOT_FOUND",
-        message: "Published lesson পাওয়া যায়নি।",
-      },
+      { error: "LESSON_NOT_FOUND", message: "পাঠ পাওয়া যায়নি।" },
       { status: 404 },
+    );
+  }
+
+  if (!lesson.is_published && auth.role !== "admin") {
+    return NextResponse.json(
+      { error: "NOT_PUBLISHED", message: "পাঠ published নয়।" },
+      { status: 403 },
     );
   }
 
@@ -85,83 +86,56 @@ export async function POST(req: NextRequest) {
     | Record<string, unknown>[]
     | null;
   const content = Array.isArray(raw) ? raw[0] : raw;
-  if (!content) {
-    return NextResponse.json(
-      {
-        error: "NO_CONTENT",
-        message: "এই পাঠে study content নেই।",
-      },
-      { status: 409 },
-    );
-  }
-
   const title =
     (lesson.title_bn as string) || (lesson.title as string) || "পাঠ";
-  const objectives = Array.isArray(content.objectives)
-    ? (content.objectives as string[]).join("\n- ")
-    : "";
-  const examples = Array.isArray(content.examples)
-    ? (content.examples as string[]).join("\n- ")
-    : "";
 
   const studyContext = [
-    `পাঠের নাম: ${title}`,
-    content.overview ? `পরিচিতি: ${content.overview}` : "",
-    objectives ? `শেখার লক্ষ্য:\n- ${objectives}` : "",
-    content.main_content ? `মূল পাঠ:\n${content.main_content}` : "",
-    content.ai_explanation
-      ? `সহজ ব্যাখ্যা:\n${content.ai_explanation}`
-      : "",
-    examples ? `উদাহরণ:\n- ${examples}` : "",
-    content.summary ? `সারসংক্ষেপ:\n${content.summary}` : "",
-    content.extra_notes ? `নোট:\n${content.extra_notes}` : "",
+    content?.overview && `সংক্ষেপ: ${content.overview}`,
+    content?.main_content && `মূল পাঠ: ${content.main_content}`,
+    content?.ai_explanation && `ব্যাখ্যা: ${content.ai_explanation}`,
+    content?.summary && `সারাংশ: ${content.summary}`,
+    Array.isArray(content?.objectives) &&
+      `উদ্দেশ্য: ${(content.objectives as string[]).join("; ")}`,
+    Array.isArray(content?.examples) &&
+      `উদাহরণ: ${(content.examples as string[]).join("; ")}`,
   ]
     .filter(Boolean)
-    .join("\n\n")
-    .slice(0, 6000);
+    .join("\n")
+    .slice(0, 7000);
 
-  const system = `তুমি ONONNO platform-এর AI শিক্ষক (পাঠ-সহায়ক)।
-
-LOCKED RULES:
-1. শুধু নিচের PUBLISHED lesson content থেকে উত্তর দাও।
-2. নতুন curriculum / lesson generate করবে না।
-3. Content-এ যা নেই তা অনুমান করে বানাবে না — বলো "এই পাঠে এটা নেই, পাঠটি আবার পড়ো"।
-4. সবসময় সহজ বাংলায়, ছোট অনুচ্ছেদে উত্তর দাও।
-5. শিক্ষার্থীকে উৎসাহিত করো; অপমান করো না।
-6. প্রয়োজনে ১টি follow-up প্রশ্ন দাও।
+  const system = `তুমি ONONNO AI Teacher। শুধু নিচের পাঠ context থেকে বাংলায় উত্তর দাও।
+পাঠ: ${title}
 
 --- LESSON CONTEXT ---
-${studyContext}
---- END ---`;
+${studyContext || "(কন্টেন্ট সীমিত)"}
+--- END ---
+
+নিয়ম: context-এ যা নেই তা বানাবে না; সংক্ষিপ্ত ও উৎসাহী থাকো।`;
 
   const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
-  const messages: { role: "system" | "user" | "assistant"; content: string }[] =
-    [
-      { role: "system", content: system },
-      ...history
-        .filter(
-          (h) =>
-            h &&
-            (h.role === "user" || h.role === "assistant") &&
-            typeof h.content === "string",
-        )
-        .map((h) => ({
-          role: h.role as "user" | "assistant",
-          content: String(h.content).slice(0, 1000),
-        })),
-      { role: "user", content: message },
-    ];
+  const messages = [
+    ...history
+      .filter(
+        (h) =>
+          h &&
+          (h.role === "user" || h.role === "assistant") &&
+          typeof h.content === "string",
+      )
+      .map((h) => ({
+        role: h.role as "user" | "assistant",
+        content: String(h.content).slice(0, 1000),
+      })),
+    { role: "user" as const, content: message },
+  ];
 
   try {
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages,
+    const replyRaw = await chat(messages, {
+      systemPrompt: system,
       temperature: 0.4,
-      max_tokens: 700,
+      maxTokens: 700,
     });
-
     const reply =
-      response.choices[0]?.message?.content?.trim() ||
+      replyRaw.trim() ||
       "দুঃখিত, এখন উত্তর দিতে পারিনি। আবার চেষ্টা করো।";
 
     return NextResponse.json({
