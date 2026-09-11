@@ -88,12 +88,12 @@ export async function GET() {
     for (const cols of selectAttempts) {
       const { data, error } = await db
         .from('profiles')
-        .select(cols)
+        .select(cols as never)
         .order('created_at', { ascending: false })
         .limit(500)
 
       if (!error) {
-        rows = (data as Record<string, unknown>[] | null) ?? []
+        rows = ((data as unknown) as Record<string, unknown>[] | null) ?? []
         if (cols !== selectAttempts[0] && cols !== '*') {
           warning = `কিছু column skip করা হয়েছে (select: ${cols})`
         }
