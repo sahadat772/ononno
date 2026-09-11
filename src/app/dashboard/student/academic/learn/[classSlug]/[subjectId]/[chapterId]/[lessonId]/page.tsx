@@ -10,6 +10,12 @@ import LockOverlay from '@/components/shared/LockOverlay'
 import StudySessionTimer from '@/components/student/StudySessionTimer'
 import AiTeacherPanel from '@/components/student/AiTeacherPanel'
 import { fallbackLessons, isFallbackId } from '@/lib/academic-fallback'
+import {
+  scoreToBand,
+  bandLabelBn,
+  bandColor,
+  type PerformanceBand,
+} from '@/lib/quiz-performance'
 
 interface LessonContent {
   overview?: string | null
@@ -88,10 +94,74 @@ function normalizeQuestions(raw: unknown): Question[] {
   return out
 }
 
+function buildQuizSummary(opts: {
+  correct: number
+  total: number
+  percent: number
+  band: PerformanceBand
+  wrongTopics: string[]
+}): string {
+  const { correct, total, percent, band, wrongTopics } = opts
+  const lines: string[] = []
+  lines.push(
+    `কুইজ ফলাফল: ${correct}/${total} সঠিক (${percent}%) — ${bandLabelBn(band)}।`,
+  )
+  if (band === 'strong') {
+    lines.push(
+      'দারুণ! এই পাঠের মূল ধারণা তুমি ভালোভাবে ধরেছো। পরের পাঠে এগোতে পারো।',
+    )
+  } else if (band === 'medium') {
+    lines.push(
+      'ভালো চেষ্টা। কিছু জায়গায় আর একটু অনুশীলন করলে পুরোপুরি শক্তিশালী হবে।',
+    )
+  } else if (band === 'weak') {
+    lines.push(
+      'চিন্তা কোরো না — আবার পাঠ পড়ে কুইজ দিলে স্কোর উন্নত হবে।',
+    )
+  }
+  if (wrongTopics.length > 0) {
+    lines.push('মনোযোগ দাও: ' + wrongTopics.slice(0, 3).join(' · '))
+  }
+  return lines.join('\n')
+}
+
+async function saveLessonProgress(opts: {
+  lessonId: string
+  subjectId: string
+  chapterId: string
+  scorePercent: number
+  xp: number
+}) {
+  if (isFallbackId(opts.lessonId)) return { ok: true as const, skipped: true }
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false as const, error: 'লগইন নেই' }
+
+  const payload: Record<string, unknown> = {
+    user_id: user.id,
+    lesson_id: opts.lessonId,
+    subject_id: opts.subjectId,
+    chapter_id: opts.chapterId,
+    score: opts.scorePercent,
+    xp_earned: opts.xp,
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+  }
+
+  const { error } = await supabase.from('learning_progress').upsert(payload, {
+    onConflict: 'user_id,lesson_id',
+  })
+  if (error) {
+    const ins = await supabase.from('learning_progress').insert(payload)
+    if (ins.error) return { ok: false as const, error: ins.error.message }
+  }
+  return { ok: true as const, skipped: false }
+}
+
 export default function LessonContentPage() {
   const params = useParams()
-  const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
-  const router = useRouter()
   const classSlug = params.classSlug as string
   const subjectId = params.subjectId as string
   const chapterId = params.chapterId as string
@@ -107,6 +177,11 @@ export default function LessonContentPage() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [quizDone, setQuizDone] = useState(false)
+  const [scorePercent, setScorePercent] = useState(0)
+  const [band, setBand] = useState<PerformanceBand>('unknown')
+  const [quizSummary, setQuizSummary] = useState('')
+  const [savingProgress, setSavingProgress] = useState(false)
+  const [progressMsg, setProgressMsg] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -226,7 +301,11 @@ export default function LessonContentPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#070b14] flex items-center justify-center">
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="text-5xl">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1 }}
+          className="text-5xl"
+        >
           ⚙️
         </motion.div>
       </div>
@@ -293,13 +372,16 @@ export default function LessonContentPage() {
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
             <p className="text-sm font-semibold text-amber-300 mb-1">দ্রুত কুইজ</p>
             <p className="text-xs text-amber-200/70 mb-3">
-              প্রতিটি প্রশ্নের উত্তর বেছে নাও · {Object.keys(answers).length}/{questions.length} সম্পন্ন
+              প্রতিটি প্রশ্নের উত্তর বেছে নাও · {Object.keys(answers).length}/
+              {questions.length} সম্পন্ন
             </p>
             {questions.map((q, qi) => {
               const picked = answers[qi]
               return (
                 <div key={qi} className="mb-5">
-                  <p className="font-bold text-white mb-2">{qi + 1}. {q.question}</p>
+                  <p className="font-bold text-white mb-2">
+                    {qi + 1}. {q.question}
+                  </p>
                   <div className="grid gap-2">
                     {q.options.map((opt, oi) => {
                       const selected = picked === oi
@@ -331,17 +413,56 @@ export default function LessonContentPage() {
               type="button"
               disabled={Object.keys(answers).length < questions.length}
               onClick={() => {
-                let s = 0
-                questions.forEach((q, i) => {
-                  if (answers[i] === q.correct) s += 1
-                })
-                setScore(s)
-                setQuizDone(true)
-                setXpEarned(
-                  Math.round(
-                    ((lesson?.xp_reward ?? 10) * s) / Math.max(questions.length, 1),
-                  ),
-                )
+                void (async () => {
+                  let correct = 0
+                  const wrongTopics: string[] = []
+                  questions.forEach((q, i) => {
+                    if (answers[i] === q.correct) correct += 1
+                    else wrongTopics.push(q.question.slice(0, 60))
+                  })
+                  const total = Math.max(questions.length, 1)
+                  const percent = Math.round((correct / total) * 100)
+                  const nextBand = scoreToBand(percent)
+                  const xp = Math.round(
+                    ((lesson?.xp_reward ?? 10) * correct) / total,
+                  )
+                  const summaryText = buildQuizSummary({
+                    correct,
+                    total: questions.length,
+                    percent,
+                    band: nextBand,
+                    wrongTopics,
+                  })
+
+                  setScore(correct)
+                  setScorePercent(percent)
+                  setBand(nextBand)
+                  setQuizSummary(summaryText)
+                  setXpEarned(xp)
+                  setQuizDone(true)
+                  setProgressMsg(null)
+                  setSavingProgress(true)
+                  try {
+                    const res = await saveLessonProgress({
+                      lessonId,
+                      subjectId,
+                      chapterId,
+                      scorePercent: percent,
+                      xp,
+                    })
+                    if (!res.ok) {
+                      setProgressMsg(`প্রোগ্রেস সেভ হয়নি: ${res.error}`)
+                    } else if (!('skipped' in res && res.skipped)) {
+                      setProgressMsg('প্রোগ্রেস সেভ হয়েছে ✓')
+                    }
+                  } catch (e) {
+                    setProgressMsg(
+                      e instanceof Error ? e.message : 'প্রোগ্রেস সেভ ব্যর্থ',
+                    )
+                  } finally {
+                    setSavingProgress(false)
+                  }
+                })()
               }}
               className="mt-2 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white disabled:opacity-40"
             >
@@ -355,43 +476,73 @@ export default function LessonContentPage() {
         {quizDone && questions.length > 0 && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-5 text-center">
-              <p className="text-3xl mb-2">🎉</p>
+              <p className="text-3xl mb-2">
+                {scorePercent >= 80 ? '🏆' : scorePercent >= 50 ? '🎉' : '💪'}
+              </p>
               <p className="text-lg font-black text-emerald-200">পাঠ সম্পন্ন!</p>
               <p className="mt-2 text-sm text-emerald-100/90">
-                স্কোর: <span className="font-bold">{score}</span> / {questions.length}
+                স্কোর: <span className="font-bold">{score}</span> /{' '}
+                {questions.length}
                 {' · '}
-                {Math.round((score / Math.max(questions.length, 1)) * 100)}%
+                {scorePercent}%
+              </p>
+              <p
+                className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${bandColor(band)}`}
+              >
+                {bandLabelBn(band)}
               </p>
               {xpEarned > 0 && (
-                <p className="mt-1 text-xs text-amber-300">+{xpEarned} XP</p>
+                <p className="mt-2 text-xs text-amber-300">+{xpEarned} XP</p>
+              )}
+              {savingProgress && (
+                <p className="mt-2 text-xs text-slate-400">প্রোগ্রেস সেভ হচ্ছে…</p>
+              )}
+              {progressMsg && (
+                <p className="mt-1 text-xs text-slate-400">{progressMsg}</p>
               )}
             </div>
 
+            <div className="rounded-2xl border border-violet-500/25 bg-violet-500/10 p-4">
+              <p className="text-sm font-semibold text-violet-300 mb-2">
+                কুইজ সারাংশ
+              </p>
+              <Paragraphs text={quizSummary || 'কুইজ সম্পন্ন হয়েছে।'} />
+            </div>
+
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-sm font-semibold text-violet-300 mb-2">পাঠের সারাংশ</p>
+              <p className="text-sm font-semibold text-sky-300 mb-2">
+                পাঠের সারাংশ
+              </p>
               {content?.summary ? (
                 <Paragraphs text={content.summary} />
               ) : content?.overview ? (
                 <Paragraphs text={content.overview} />
               ) : (
                 <p className="text-sm text-slate-400">
-                  এই পাঠে মূল ধারণা শিখেছো এবং কুইজে নিজেকে যাচাই করেছো। ভুল উত্তর থাকলে আবার চেষ্টা করো।
+                  এই পাঠে মূল ধারণা শিখেছো এবং কুইজে নিজেকে যাচাই করেছো। ভুল
+                  উত্তর থাকলে আবার চেষ্টা করো।
                 </p>
               )}
             </div>
 
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-              <p className="text-sm font-semibold text-amber-300 mb-3">উত্তর পর্যালোচনা</p>
+              <p className="text-sm font-semibold text-amber-300 mb-3">
+                উত্তর পর্যালোচনা
+              </p>
               {questions.map((q, qi) => {
                 const picked = answers[qi]
                 const ok = picked === q.correct
                 return (
-                  <div key={qi} className="mb-3 border-b border-white/5 pb-3 last:border-0">
+                  <div
+                    key={qi}
+                    className="mb-3 border-b border-white/5 pb-3 last:border-0"
+                  >
                     <p className="text-sm font-bold text-white">
                       {ok ? '✅' : '❌'} {qi + 1}. {q.question}
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      তোমার উত্তর: {picked != null ? q.options[picked] : '—'}
+                      তোমার উত্তর:{' '}
+                      {picked != null ? q.options[picked] : '—'}
                     </p>
                     {!ok && (
                       <p className="text-xs text-emerald-300">
@@ -399,7 +550,9 @@ export default function LessonContentPage() {
                       </p>
                     )}
                     {q.explanation && (
-                      <p className="mt-1 text-xs text-slate-500">{q.explanation}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {q.explanation}
+                      </p>
                     )}
                   </div>
                 )
@@ -412,7 +565,11 @@ export default function LessonContentPage() {
                 setAnswers({})
                 setQuizDone(false)
                 setScore(0)
+                setScorePercent(0)
+                setBand('unknown')
+                setQuizSummary('')
                 setXpEarned(0)
+                setProgressMsg(null)
               }}
               className="w-full rounded-xl border border-violet-400/40 bg-violet-500/15 py-3 text-sm font-bold text-violet-100 hover:bg-violet-500/25"
             >
