@@ -70,7 +70,6 @@ export default function AdminUsersPage() {
         setActorRole(me?.role ?? null)
       }
 
-      // Service-role API — client RLS often returns 0 other users
       const res = await fetch('/api/admin/users', { credentials: 'include' })
       const json = (await res.json()) as {
         users?: User[]
@@ -78,10 +77,14 @@ export default function AdminUsersPage() {
         error?: string
         warning?: string | null
         detail?: string
+        debug?: { usedServiceRole?: boolean; actorRole?: string; count?: number }
       }
 
       if (!res.ok) {
-        setMessage({ type: 'err', text: json.error || json.detail || 'Users load ব্যর্থ' })
+        setMessage({
+          type: 'err',
+          text: `${json.error || 'Users load ব্যর্থ'}${json.detail ? ' — ' + json.detail : ''}${json.debug ? ` [role=${json.debug.actorRole}, serviceRole=${json.debug.usedServiceRole}]` : ''}`,
+        })
         setUsers([])
         return
       }
@@ -107,7 +110,14 @@ export default function AdminUsersPage() {
           subAdmins: list.filter((u) => u.role === 'sub_admin').length,
         })
       }
+
       if (json.warning) setMessage({ type: 'err', text: json.warning })
+      if (json.debug && (list.length === 0 || !json.debug.usedServiceRole)) {
+        setMessage({
+          type: 'err',
+          text: `Debug: serviceRole=${json.debug.usedServiceRole} · role=${json.debug.actorRole} · count=${json.debug.count ?? list.length}${json.warning ? ' · ' + json.warning : ''}`,
+        })
+      }
     } catch (e) {
       setMessage({ type: 'err', text: e instanceof Error ? e.message : 'Users load ব্যর্থ' })
       setUsers([])
@@ -286,8 +296,8 @@ export default function AdminUsersPage() {
           <p className="mb-1 font-bold text-slate-300">কীভাবে</p>
           <p><strong className="text-pink-300">Super Admin</strong> — সব + role assign</p>
           <p><strong className="text-orange-300">Sub Admin</strong> — শুধু permission অনুযায়ী module</p>
-          <p>প্রথমবার Supabase-এ <code className="text-slate-300">20260910_sub_admin_permissions.sql</code> চালান</p>
-          <p className="mt-1 text-slate-500">Vercel-এ <code className="text-slate-400">SUPABASE_SERVICE_ROLE_KEY</code> থাকতে হবে</p>
+          <p>Env: <code className="text-slate-300">SUPABASE_SERVICE_ROLE_KEY</code> + redeploy</p>
+          <p>SQL: <code className="text-slate-300">20260910_sub_admin_permissions.sql</code></p>
         </div>
       </div>
     </div>
