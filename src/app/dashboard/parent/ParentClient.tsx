@@ -137,8 +137,8 @@ export default function ParentClient({ profile, childrenData }: Props) {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-20">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-[#12122a] to-fuchsia-500/10 p-5 md:p-7">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-28 pt-20 md:pb-16">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-[#12122a] to-fuchsia-500/10 p-4 sm:rounded-3xl sm:p-5 md:p-7">
           <p className="text-sm text-slate-400">{greeting} · {new Date().toLocaleDateString('bn-BD', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
           <h1 className="mt-1 text-2xl font-black md:text-3xl">আস-সালামু আলাইকুম, <span className="bg-gradient-to-r from-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{firstName}</span></h1>
           <p className="mt-2 max-w-xl text-sm text-slate-400">সন্তানের পড়াশোনা, অগ্রগতি ও সেশন — একাডেমিক + ইসলামিক শেখার সাথে তাল মিলিয়ে দেখুন।</p>
@@ -162,13 +162,13 @@ export default function ParentClient({ profile, childrenData }: Props) {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
-          <Link href="/dashboard/parent/create-child" className="rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2 text-xs font-semibold text-violet-200">➕ নতুন child</Link>
+          <Link href="/dashboard/parent/create-child" className="rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2.5 text-xs font-semibold text-violet-200 active:scale-[0.98]">➕ নতুন child</Link>
           <button type="button" onClick={() => setShowAddChild(true)} className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔗 ইমেইল লিংক</button>
           <Link href="/dashboard/parent/notifications" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔔 নোটিশ</Link>
           <Link href="/dashboard/parent/profile" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">👤 প্রোফাইল</Link>
         </div>
 
-        <h2 className="mb-1 text-lg font-bold">আমার <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">সন্তান</span></h2>
+        <h2 id="children" className="mb-1 scroll-mt-24 text-lg font-bold">আমার <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">সন্তান</span></h2>
         <p className="mb-4 text-xs text-slate-500">অগ্রগতি, সেশন ও ক্লাস এক নজরে</p>
 
         {childrenData.length === 0 ? (
@@ -204,7 +204,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
                   </div>
                   {child.lastSession && <p className="mb-3 text-[11px] text-slate-500">শেষ সেশন: {formatTime(child.lastSession.login_at)}{child.lastSession.duration_minutes != null ? ` · ${child.lastSession.duration_minutes} মি.` : ''}</p>}
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/parent/child/${child.child_id}`} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2 text-center text-xs font-bold">বিস্তারিত</Link>
+                    <Link href={`/dashboard/parent/child/${child.child_id}`} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold active:opacity-90">বিস্তারিত</Link>
                     <Link href={`/dashboard/parent/child/${child.child_id}/progress`} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300">অগ্রগতি</Link>
                     <Link href={`/dashboard/parent/child/${child.child_id}/sessions`} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300">সেশন</Link>
                   </div>
