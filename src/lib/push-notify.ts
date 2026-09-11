@@ -1,5 +1,5 @@
 /**
- * Server-side FCM helpers (Phase 2).
+ * Server-side FCM helpers (Phase 2–3).
  * Safe to call from API routes — never import in client components.
  */
 import { createServiceRoleClient } from '@/lib/supabase-admin'
@@ -123,4 +123,24 @@ export async function notifyParentsOfStudent(
       detail: e instanceof Error ? e.message : e,
     }
   }
+}
+
+/** Bangladesh local hour 0–23 */
+export function dhakaHourNow(): number {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Dhaka',
+      hour: 'numeric',
+      hour12: false,
+    })
+    return Number(fmt.format(new Date()))
+  } catch {
+    return new Date().getUTCHours() + 6
+  }
+}
+
+/** Quiet hours: 22:00–07:00 Asia/Dhaka — skip non-critical digests */
+export function isQuietHours(): boolean {
+  const h = dhakaHourNow()
+  return h >= 22 || h < 7
 }

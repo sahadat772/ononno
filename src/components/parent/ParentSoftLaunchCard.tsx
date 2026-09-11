@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import PushPermission from '@/components/notification/PushPermission'
+import PWAInstallBanner from '@/components/notification/PWAInstallBanner'
 
 type ChildRow = {
   child_id: string
@@ -55,6 +56,7 @@ export default function ParentSoftLaunchCard() {
 
   return (
     <div className="mb-5 space-y-3">
+      <PWAInstallBanner />
       <PushPermission variant="parent" showWhenGranted />
       <motion.div
         initial={{ opacity: 0, y: 10 }}
