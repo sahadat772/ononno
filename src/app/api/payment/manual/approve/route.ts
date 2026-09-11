@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { notifyUser } from '@/lib/push-notify'
 import { getPlanById } from '@/lib/plans'
 
 export async function POST(req: NextRequest) {
@@ -35,7 +36,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
         }
 
-        // Load existing row so we can merge metadata (don't wipe user_trx_id etc.)
         const { data: existingTx, error: fetchErr } = await supabase
             .from('payment_transactions')
             .select('id, status, metadata')
@@ -99,6 +99,13 @@ export async function POST(req: NextRequest) {
             type: 'payment_success',
             is_read: false,
         })
+
+        void notifyUser(userId, {
+            title: 'সাবস্ক্রিপশন Activate হয়েছে! 🎉',
+            body: `তোমার ${plan.name} প্ল্যান সফলভাবে চালু হয়েছে। অনন্যে পড়া চালিয়ে যাও।`,
+            url: '/dashboard/student',
+            tag: 'payment-success',
+        }).catch(() => {})
 
         return NextResponse.json({
             success: true,

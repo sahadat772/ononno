@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { notifyUser } from '@/lib/push-notify'
 
 export async function POST(req: NextRequest) {
     try {
         const supabase = await createServerSupabaseClient()
 
-        // Admin check
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -31,7 +31,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
         }
 
-        // Request status update করো
         const { error: reqError } = await supabase
             .from('free_access_requests')
             .update({
@@ -46,13 +45,11 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === 'approved') {
-            // Profile এ is_free_tier = true করো
             await supabase
                 .from('profiles')
                 .update({ is_free_tier: true })
                 .eq('id', userId)
 
-            // Subscription activate করো — 1 বছরের জন্য
             const expiresAt = new Date()
             expiresAt.setFullYear(expiresAt.getFullYear() + 1)
 
@@ -69,7 +66,6 @@ export async function POST(req: NextRequest) {
                     expires_at: expiresAt.toISOString(),
                 }, { onConflict: 'user_id' })
 
-            // Notification পাঠাও
             await supabase
                 .from('notifications')
                 .insert({
@@ -79,8 +75,14 @@ export async function POST(req: NextRequest) {
                     type: 'free_access_approved',
                     is_read: false,
                 })
+
+            void notifyUser(userId, {
+                title: 'বিনামূল্যে অ্যাক্সেস অনুমোদিত! 🎉',
+                body: 'আলহামদুলিল্লাহ! তোমার আবেদন পাস হয়েছে — এখন সব content ব্যবহার করতে পারবে।',
+                url: '/dashboard/student',
+                tag: 'free-access-approved',
+            }).catch(() => {})
         } else {
-            // Rejected notification
             await supabase
                 .from('notifications')
                 .insert({
@@ -90,6 +92,13 @@ export async function POST(req: NextRequest) {
                     type: 'free_access_rejected',
                     is_read: false,
                 })
+
+            void notifyUser(userId, {
+                title: 'আবেদন প্রত্যাখ্যাত',
+                body: 'বিনামূল্যে শিক্ষার আবেদন এবার গ্রহণ হয়নি। বিস্তারিত জানতে যোগাযোগ করো।',
+                url: '/dashboard/student',
+                tag: 'free-access-rejected',
+            }).catch(() => {})
         }
 
         return NextResponse.json({
