@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Groq from "groq-sdk";
 import { requireRole } from "@/lib/api-auth";
 import { rateLimit, rateLimitDefaults } from "@/lib/rateLimiter";
+import { chat, isGroqConfigured } from "@/lib/groq";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -12,14 +12,9 @@ type QuizQ = {
   explanation: string;
 };
 
-const groq = process.env.GROQ_API_KEY
-  ? new Groq({ apiKey: process.env.GROQ_API_KEY })
-  : null;
-
 /**
  * POST /api/student/lessons/[id]/generate-quiz
  * AI generates extra practice MCQs from published lesson content.
- * Used after the built-in lesson quiz is completed.
  */
 export async function POST(req: NextRequest, context: RouteContext) {
   const auth = await requireRole(["student", "admin"]);
@@ -104,13 +99,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
     );
   }
 
-  if (!groq) {
+  if (!isGroqConfigured()) {
     const questions = fallbackQuestions(title, textParts, count);
     return NextResponse.json({
       ok: true,
       source: "fallback",
       questions,
-      message: "AI key নেই — practice কুইজ (fallback)।",
+      message: "GROQ_API_KEY নেই — practice কুইজ (fallback)।",
     });
   }
 
@@ -124,8 +119,8 @@ ${textParts}
 1. ঠিক ${count}টি MCQ তৈরি করো — শুধু এই পাঠ থেকে।
 2. প্রতিটিতে ৪টি options (বাংলা)। correct = 0-based index (0–3)।
 3. explanation ছোট বাংলা।
-4. আগের মতো সহজ নকল প্রশ্ন এড়িয়ে নতুন practice প্রশ্ন দাও।
-5. শুধু valid JSON array আউটপুট — কোনো markdown নয়।
+4. নতুন practice প্রশ্ন দাও।
+5. শুধু valid JSON array — কোনো markdown নয়।
 
 [
   {
@@ -137,19 +132,13 @@ ${textParts}
 ]`;
 
   try {
-    const completion = await groq.chat.completions.create({
-      model: process.env.GROQ_QUIZ_MODEL || "llama-3.3-70b-versatile",
+    const rawText = await chat([{ role: "user", content: prompt }], {
+      systemPrompt:
+        "Reply with only a valid JSON array of quiz questions. No markdown.",
       temperature: 0.4,
-      messages: [
-        {
-          role: "system",
-          content: "Reply with only a valid JSON array of quiz questions.",
-        },
-        { role: "user", content: prompt },
-      ],
+      maxTokens: 2048,
+      model: process.env.GROQ_QUIZ_MODEL,
     });
-
-    const rawText = completion.choices[0]?.message?.content ?? "";
     const questions = parseQuestions(rawText, count);
     if (questions.length === 0) {
       return NextResponse.json({
@@ -238,18 +227,13 @@ function fallbackQuestions(title: string, body: string, count: number): QuizQ[] 
       explanation: "শেখা মজবুত করতে অনুশীলন জরুরি।",
     },
     {
-      question: "পাঠে যা বলা হয়েছে তা কি সত্যি যাচাই করতে কী করবে?",
-      options: [
-        "কুইজ ও রিভিশন",
-        "কিছুই না",
-        "শুধু শিরোনাম পড়া",
-        "বন্ধুকে দোষ দেওয়া",
-      ],
+      question: "পাঠ যাচাই করতে কী করবে?",
+      options: ["কুইজ ও রিভিশন", "কিছুই না", "শুধু শিরোনাম পড়া", "স্কোর লুকানো"],
       correct: 0,
       explanation: "কুইজ নিজেকে যাচাই করতে সাহায্য করে।",
     },
     {
-      question: "দুর্বল স্কোর এলে সবচেয়ে ভালো পদক্ষেপ কোনটি?",
+      question: "দুর্বল স্কোর এলে কী করবে?",
       options: [
         "পাঠ আবার পড়ে কুইজ দেওয়া",
         "পাঠ ছেড়ে দেওয়া",
