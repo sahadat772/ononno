@@ -60,29 +60,57 @@ export default function AdminUsersPage() {
   const isSuper = actorRole === 'admin'
 
   const fetchUsers = useCallback(async () => {
-    const supabase = createClient()
     setLoading(true)
+    setMessage(null)
     try {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
         setActorRole(me?.role ?? null)
       }
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, role, created_at, class_level, is_active, admin_permissions')
-        .order('created_at', { ascending: false })
-      if (data) {
-        setUsers(data as User[])
+
+      // Service-role API — client RLS often returns 0 other users
+      const res = await fetch('/api/admin/users', { credentials: 'include' })
+      const json = (await res.json()) as {
+        users?: User[]
+        stats?: { total: number; students: number; teachers: number; parents: number; adults: number; subAdmins: number }
+        error?: string
+        warning?: string | null
+        detail?: string
+      }
+
+      if (!res.ok) {
+        setMessage({ type: 'err', text: json.error || json.detail || 'Users load ব্যর্থ' })
+        setUsers([])
+        return
+      }
+
+      const list = json.users ?? []
+      setUsers(list)
+      if (json.stats) {
         setStats({
-          total: data.length,
-          students: data.filter((u) => u.role === 'student').length,
-          teachers: data.filter((u) => u.role === 'teacher').length,
-          parents: data.filter((u) => u.role === 'parent').length,
-          adults: data.filter((u) => u.role === 'adult').length,
-          subAdmins: data.filter((u) => u.role === 'sub_admin').length,
+          total: json.stats.total ?? list.length,
+          students: json.stats.students ?? 0,
+          teachers: json.stats.teachers ?? 0,
+          parents: json.stats.parents ?? 0,
+          adults: json.stats.adults ?? 0,
+          subAdmins: json.stats.subAdmins ?? 0,
+        })
+      } else {
+        setStats({
+          total: list.length,
+          students: list.filter((u) => u.role === 'student').length,
+          teachers: list.filter((u) => u.role === 'teacher').length,
+          parents: list.filter((u) => u.role === 'parent').length,
+          adults: list.filter((u) => u.role === 'adult').length,
+          subAdmins: list.filter((u) => u.role === 'sub_admin').length,
         })
       }
+      if (json.warning) setMessage({ type: 'err', text: json.warning })
+    } catch (e) {
+      setMessage({ type: 'err', text: e instanceof Error ? e.message : 'Users load ব্যর্থ' })
+      setUsers([])
     } finally {
       setLoading(false)
     }
@@ -188,6 +216,8 @@ export default function AdminUsersPage() {
 
         {loading ? (
           <p className="py-12 text-center text-slate-500">লোড…</p>
+        ) : filteredUsers.length === 0 ? (
+          <p className="py-12 text-center text-slate-500">কোনো ব্যবহারকারী পাওয়া যায়নি</p>
         ) : (
           <div className="space-y-2">
             {filteredUsers.map((user) => (
@@ -257,6 +287,7 @@ export default function AdminUsersPage() {
           <p><strong className="text-pink-300">Super Admin</strong> — সব + role assign</p>
           <p><strong className="text-orange-300">Sub Admin</strong> — শুধু permission অনুযায়ী module</p>
           <p>প্রথমবার Supabase-এ <code className="text-slate-300">20260910_sub_admin_permissions.sql</code> চালান</p>
+          <p className="mt-1 text-slate-500">Vercel-এ <code className="text-slate-400">SUPABASE_SERVICE_ROLE_KEY</code> থাকতে হবে</p>
         </div>
       </div>
     </div>
