@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-admin'
-import { canAccess, isStaffAdmin } from '@/lib/admin-access'
+import {
+  canAccess,
+  isStaffAdmin,
+  type ProfileLike,
+  normalizePermissions,
+} from '@/lib/admin-access'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 /**
@@ -17,7 +22,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let profile: { role?: string | null; admin_permissions?: unknown } | null = null
+    let profile: ProfileLike = null
     {
       const full = await supabase
         .from('profiles')
@@ -31,8 +36,13 @@ export async function GET() {
           .eq('id', user.id)
           .maybeSingle()
         profile = basic.data
-      } else {
-        profile = full.data
+          ? { role: basic.data.role, admin_permissions: [] }
+          : null
+      } else if (full.data) {
+        profile = {
+          role: full.data.role,
+          admin_permissions: normalizePermissions(full.data.admin_permissions),
+        }
       }
     }
 
