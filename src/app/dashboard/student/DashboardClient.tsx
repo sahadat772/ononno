@@ -8,6 +8,7 @@ import LogoutButton from '@/components/shared/LogoutButton'
 import NurseryDashboard from './levels/NurseryDashboard'
 import GeneralDashboard from './levels/GeneralDashboard'
 import PushPermission from '@/components/notification/PushPermission'
+import PWAInstallBanner from '@/components/notification/PWAInstallBanner'
 import SoftLaunchBanner from '@/components/student/SoftLaunchBanner'
 import ContinueLearningCard from '@/components/student/ContinueLearningCard'
 
@@ -105,6 +106,7 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
       </nav>
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-2">
+        <PWAInstallBanner />
         <PushPermission variant="student" showWhenGranted />
         <SoftLaunchBanner />
         <ContinueLearningCard />
