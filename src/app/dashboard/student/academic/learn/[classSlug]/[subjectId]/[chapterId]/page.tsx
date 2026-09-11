@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 import { fallbackChapters, fallbackLessons, isFallbackId } from '@/lib/academic-fallback'
+import { isLessonUnlockedByCompletion } from '@/lib/curriculum-unlock'
 
 interface Lesson {
   id: string
@@ -64,42 +65,42 @@ export default function ChapterLessonsPage() {
           const fbChaps = fallbackChapters(subjectId)
           const fb = fbChaps.find((c) => c.id === chapterId)
           if (fb) setChapter(fb)
-          else setError('অধ্যায় পাওয়া যায়নি।')
         }
 
-        const { data: lsnsRaw } = await supabase
+        const { data: les } = await supabase
           .from('curriculum_lessons')
-          .select('*')
+          .select(
+            'id, title, title_bn, lesson_number, order_index, duration_minutes, xp_reward, is_published, workflow_status, is_active',
+          )
           .eq('chapter_id', chapterId)
-          .or('is_active.eq.true,is_active.is.null')
+          .eq('is_published', true)
           .order('order_index', { ascending: true })
 
-        const lsns = (lsnsRaw ?? []).filter(
-          (l) =>
-            l.is_published === true ||
-            l.workflow_status === 'published' ||
-            l.workflow_status === 'approved',
-        )
-
-        if (lsns.length > 0) {
-          const sorted = [...lsns].sort(
+        if (les && les.length > 0) {
+          const sorted = [...les].sort(
             (a, b) =>
-              (a.order_index ?? 0) - (b.order_index ?? 0) ||
-              (a.lesson_number ?? 0) - (b.lesson_number ?? 0),
+              (a.order_index ?? a.lesson_number ?? 0) -
+              (b.order_index ?? b.lesson_number ?? 0),
           )
           setLessons(sorted)
         } else {
           setLessons(fallbackLessons(chapterId))
         }
 
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
         if (user) {
           const { data: prog } = await supabase
             .from('learning_progress')
             .select('lesson_id, status')
             .eq('user_id', user.id)
             .eq('status', 'completed')
-          setDoneIds(new Set((prog ?? []).map((p) => String(p.lesson_id)).filter(Boolean)))
+          setDoneIds(
+            new Set(
+              (prog ?? []).map((p) => String(p.lesson_id)).filter(Boolean),
+            ),
+          )
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'লোড ব্যর্থ')
@@ -123,40 +124,78 @@ export default function ChapterLessonsPage() {
         </Link>
         <header>
           <h1 className="text-2xl font-black tracking-tight">{title}</h1>
-          <p className="mt-1 text-sm text-slate-400">Published lessons · student view</p>
+          <p className="mt-1 text-sm text-slate-400">
+            Published lessons · আগের পাঠ AI কুইজ (≥৬০%) শেষ হলে পরেরটা unlock
+          </p>
         </header>
 
         {loading ? (
           <p className="py-12 text-center text-slate-500">লোড হচ্ছে…</p>
         ) : error ? (
-          <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">{error}</p>
+          <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+            {error}
+          </p>
         ) : lessons.length === 0 ? (
-          <p className="py-12 text-center text-slate-500">এই অধ্যায়ে এখনো published lesson নেই।</p>
+          <p className="py-12 text-center text-slate-500">
+            এই অধ্যায়ে এখনো published lesson নেই।
+          </p>
         ) : (
           <div className="space-y-2">
             {lessons.map((lesson, i) => {
               const done = doneIds.has(String(lesson.id))
+              const prevDone =
+                i === 0 || doneIds.has(String(lessons[i - 1]?.id))
+              const unlocked = isLessonUnlockedByCompletion(i, prevDone)
               const href = `/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}/${lesson.id}`
-              return (
-                <motion.div key={lesson.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                  <Link
-                    href={href}
-                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-500/30 hover:bg-white/[0.08]"
+              const body = (
+                <>
+                  <div
+                    className={`grid size-10 place-items-center rounded-xl text-sm font-bold ${
+                      done
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : unlocked
+                          ? 'bg-sky-500/20 text-sky-300'
+                          : 'bg-slate-700/50 text-slate-500'
+                    }`}
                   >
-                    <div className={`grid size-10 place-items-center rounded-xl text-sm font-bold ${
-                      done ? 'bg-emerald-500/20 text-emerald-300' : 'bg-sky-500/20 text-sky-300'
-                    }`}>
-                      {done ? '✓' : lesson.lesson_number ?? i + 1}
+                    {done
+                      ? '✓'
+                      : unlocked
+                        ? (lesson.lesson_number ?? i + 1)
+                        : '🔒'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">
+                      {lesson.title_bn || lesson.title}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {unlocked
+                        ? `${lesson.duration_minutes ?? 15} মিনিট · ${lesson.xp_reward ?? 10} XP`
+                        : 'আগের পাঠ AI কুইজ (≥৬০%) শেষ করো'}
+                    </p>
+                  </div>
+                  <span className="text-slate-500">{unlocked ? '→' : ''}</span>
+                </>
+              )
+              return (
+                <motion.div
+                  key={lesson.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                >
+                  {unlocked ? (
+                    <Link
+                      href={href}
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-500/30 hover:bg-white/[0.08]"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-4 opacity-70">
+                      {body}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{lesson.title_bn || lesson.title}</p>
-                      <p className="text-xs text-slate-500">
-                        {lesson.duration_minutes ?? 15} মিনিট · {lesson.xp_reward ?? 10} XP
-                        {lesson.workflow_status ? ` · ${lesson.workflow_status}` : ''}
-                      </p>
-                    </div>
-                    <span className="text-slate-500">→</span>
-                  </Link>
+                  )}
                 </motion.div>
               )
             })}
