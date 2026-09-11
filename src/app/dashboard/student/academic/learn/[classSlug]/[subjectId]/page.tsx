@@ -11,6 +11,10 @@ import {
   isFallbackId,
   parseClassNum,
 } from '@/lib/academic-fallback'
+import {
+  chapterProgressPct,
+  isChapterUnlockedByProgress,
+} from '@/lib/curriculum-unlock'
 
 interface Chapter {
   id: string
@@ -183,18 +187,14 @@ export default function ChapterListPage() {
       .map((p) => String(p.lesson_id)),
   )
 
-  const getChapterProgress = (chapterId: string) => {
-    const lessonIds = lessonsByChapter[chapterId] || []
-    if (lessonIds.length === 0) return 0
-    const done = lessonIds.filter((id) => completedLessonIds.has(String(id))).length
-    return Math.round((done / lessonIds.length) * 100)
-  }
+  const getChapterProgress = (chapterId: string) =>
+    chapterProgressPct(lessonsByChapter[chapterId] || [], completedLessonIds)
 
   const isChapterUnlocked = (index: number) => {
     if (index === 0) return true
     const prevChapter = chapters[index - 1]
     if (!prevChapter) return false
-    return getChapterProgress(prevChapter.id) >= 60
+    return isChapterUnlockedByProgress(index, getChapterProgress(prevChapter.id))
   }
 
   const allLessonIds = Object.values(lessonsByChapter).flat()
@@ -248,9 +248,6 @@ export default function ChapterListPage() {
               {subject.icon || '📚'}
             </div>
             <h1 className="text-2xl font-black text-white">{subject.name_bn || subject.name}</h1>
-            {subject.name_bn && subject.name && subject.name_bn !== subject.name && (
-              <p className="mt-0.5 text-sm text-slate-400">{subject.name}</p>
-            )}
             <div className="mt-3 flex items-center justify-center gap-3 text-sm text-slate-400">
               <span>{chapters.length}টি অধ্যায়</span>
               <span className="text-slate-600">·</span>
@@ -287,7 +284,7 @@ export default function ChapterListPage() {
               href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${ch.id}`}
               className="mb-5 block"
             >
-              <div className="flex items-center gap-3 rounded-2xl border border-violet-500/35 bg-gradient-to-r from-violet-500/20 to-purple-500/15 p-4 shadow-lg shadow-violet-500/10 transition active:scale-[0.99]">
+              <div className="flex items-center gap-3 rounded-2xl border border-violet-500/35 bg-gradient-to-r from-violet-500/20 to-purple-500/15 p-4">
                 <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-xl">
                   ▶️
                 </div>
@@ -313,13 +310,6 @@ export default function ChapterListPage() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
             <p className="text-4xl">📭</p>
             <p className="mt-2 font-bold text-white">এখনো কোনো অধ্যায় নেই</p>
-            <p className="mt-1 text-sm text-slate-400">পাবলিশ করা পাঠ যোগ হলে এখানে দেখাবে</p>
-            <Link
-              href={`/dashboard/student/academic/learn/${classSlug}`}
-              className="mt-4 inline-block rounded-xl bg-sky-500 px-4 py-2 text-sm font-bold text-white"
-            >
-              বিষয়ে ফিরে যাও
-            </Link>
           </div>
         ) : (
           <div className="space-y-3">
@@ -370,11 +360,6 @@ export default function ChapterListPage() {
                                 </span>
                               )}
                             </div>
-                            {chapter.description && (
-                              <p className="mt-0.5 truncate text-sm text-slate-400">
-                                {chapter.description}
-                              </p>
-                            )}
                             <div className="mt-2">
                               <div className="mb-1 flex justify-between text-[11px] text-slate-500">
                                 <span>
@@ -415,7 +400,7 @@ export default function ChapterListPage() {
                             {chapter.title_bn || chapter.title}
                           </h3>
                           <p className="text-sm text-slate-600">
-                            আগের অধ্যায় ৬০% সম্পন্ন করলে আনলক হবে
+                            আগের অধ্যায়ের সব পাঠ পরীক্ষা পাস করলে আনলক হবে
                           </p>
                         </div>
                       </div>
