@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 import { fallbackChapters, fallbackLessons, isFallbackId } from '@/lib/academic-fallback'
-import { isLessonUnlockedByCompletion } from '@/lib/curriculum-unlock'
+import {
+  isLessonUnlockedByCompletion,
+  chapterProgressPct,
+} from '@/lib/curriculum-unlock'
 
 interface Lesson {
   id: string
@@ -112,6 +115,10 @@ export default function ChapterLessonsPage() {
   }, [chapterId, subjectId])
 
   const title = chapter?.title_bn || chapter?.title || 'অধ্যায়'
+  const pct = chapterProgressPct(
+    lessons.map((l) => String(l.id)),
+    doneIds,
+  )
 
   return (
     <div className="min-h-screen bg-[#030711] px-4 py-6 text-white sm:px-6">
@@ -125,8 +132,24 @@ export default function ChapterLessonsPage() {
         <header>
           <h1 className="text-2xl font-black tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Published lessons · আগের পাঠ AI কুইজ (≥৬০%) শেষ হলে পরেরটা unlock
+            পাঠ পরীক্ষা ≥৬০% পাস → পরের পাঠ · সব পাঠ শেষ → পরের অধ্যায় unlock
           </p>
+          {lessons.length > 0 && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="mb-1 flex justify-between text-xs text-slate-400">
+                <span>অধ্যায় প্রোগ্রেস</span>
+                <span>
+                  {doneIds.size}/{lessons.length} · {pct}%
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
         </header>
 
         {loading ? (
@@ -171,7 +194,7 @@ export default function ChapterLessonsPage() {
                     <p className="text-xs text-slate-500">
                       {unlocked
                         ? `${lesson.duration_minutes ?? 15} মিনিট · ${lesson.xp_reward ?? 10} XP`
-                        : 'আগের পাঠ AI কুইজ (≥৬০%) শেষ করো'}
+                        : 'আগের পাঠের পরীক্ষা (≥৬০%) পাস করো'}
                     </p>
                   </div>
                   <span className="text-slate-500">{unlocked ? '→' : ''}</span>
