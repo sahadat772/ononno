@@ -38,6 +38,58 @@ type GeneratedContent = {
   quiz_questions?: QuizQuestion[];
 };
 
+function extractModelText(response: unknown): string {
+  const r = response as {
+    text?: string;
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
+  if (typeof r?.text === "string" && r.text.trim()) return r.text;
+  const parts = r?.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .map((p) => (typeof p?.text === "string" ? p.text : ""))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function parseGeneratedJson(rawInput: string): GeneratedContent {
+  let raw = (rawInput || "").trim();
+  if (!raw) throw new Error("INVALID_AI_JSON:empty");
+
+  raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  raw = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    raw = raw.slice(start, end + 1);
+  }
+
+  const attempts: string[] = [raw];
+  attempts.push(raw.replace(/,\s*([}\]])/g, "$1"));
+  attempts.push(
+    raw
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/,\s*([}\]])/g, "$1"),
+  );
+
+  let lastErr: unknown;
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate) as GeneratedContent;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+
+  const snippet = raw.slice(0, 280).replace(/\s+/g, " ");
+  throw new Error(
+    `INVALID_AI_JSON:${lastErr instanceof Error ? lastErr.message : "parse"}|${snippet}`,
+  );
+}
+
 function getDb(authSupabase: ReturnType<typeof createServiceRoleClient>) {
   try {
     return createServiceRoleClient();
@@ -106,11 +158,11 @@ ${depthBlock}
 2. সব ফিল্ড ছাত্র-facing বাংলা।
 3. mission_intro, overview, objectives, main_content, ai_explanation, examples, vocabulary, practice, real_world_mission, reflection, summary, extra_notes — volume rules মেনে লেখো।
 4. **quiz_questions**: ঠিক ${rules.quizCount}টি MCQ। প্রতিটিতে ৪টি options। correct = 0-based index (0–3)। explanation ছোট বাংলা।
-5. শুধু valid JSON।
+5. আউটপুট শুধু valid JSON object — কোনো markdown, কোনো ব্যাখ্যা টেক্সট নয়।
 
-JSON:
+JSON schema:
 {
-  "mission_intro": "ছোট উৎসাহী intro — আজকের মিশন (1–2 বাক্য)",
+  "mission_intro": "ছোট উৎসাহী intro",
   "overview": "string",
   "objectives": ["string"],
   "main_content": "string",
@@ -118,8 +170,8 @@ JSON:
   "examples": ["string"],
   "vocabulary": ["শব্দ — অর্থ"],
   "practice": ["প্রশ্ন"],
-  "real_world_mission": "বাস্তব জীবনে ছোট নিরাপদ কাজ (Class উপযোগী)",
-  "reflection": "শেখার পর 1টি চিন্তার প্রশ্ন",
+  "real_world_mission": "বাস্তব কাজ",
+  "reflection": "চিন্তার প্রশ্ন",
   "summary": "string",
   "extra_notes": "string",
   "quiz_questions": [
@@ -402,7 +454,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
               ],
             },
           ],
-          config: { responseMimeType: "application/json", temperature: 0.4 },
+          config: { responseMimeType: "application/json", temperature: 0.2 },
         });
         break;
       } catch (genErr) {
@@ -427,16 +479,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     if (!response) throw new Error("Gemini response empty");
 
-    const raw = (response.text ?? "")
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
-    let content: GeneratedContent;
-    try {
-      content = JSON.parse(raw) as GeneratedContent;
-    } catch {
-      throw new Error("INVALID_AI_JSON");
+    const rawText = extractModelText(response);
+    if (!rawText.trim()) {
+      throw new Error("INVALID_AI_JSON:empty response text");
     }
+    const content = parseGeneratedJson(rawText);
 
     const examples = [
       ...(content.examples ?? []),
@@ -563,7 +610,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const msg = error instanceof Error ? error.message : String(error);
     let message = "Generate ব্যর্থ হয়েছে।";
     if (/INVALID_AI_JSON/i.test(msg)) {
-      message = "AI JSON parse হয়নি — আবার চেষ্টা করুন।";
+      message =
+        "AI JSON parse হয়নি — আবার Generate চাপুন। (মডেল কখনো কখনো incomplete JSON দেয়)";
     } else if (/API_KEY|API key|PERMISSION|403|do not have permission/i.test(msg)) {
       message =
         "Gemini File access বন্ধ (পুরনো file URI বা key)। আবার Generate চাপুন — auto re-upload হবে।";
