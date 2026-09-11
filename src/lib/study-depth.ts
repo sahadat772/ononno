@@ -2,6 +2,7 @@
  * Slice A — Class-aware study volume
  * Higher class → deeper / longer student study content.
  * Primary (1–5) vs Secondary (6+) study style is different.
+ * Bangla/English: vocabulary (শব্দার্থ) from textbook lesson end when present.
  */
 
 export type StudyDepth = "light" | "standard" | "deep";
@@ -81,53 +82,41 @@ export function getDepthRules(
     mainContent:
       "৬–৮টি অনুচ্ছেদ (মোট ~৪৫০–৮০০ শব্দ)। ধারণা, কারণ, উদাহরণ আলাদা করে লেখো।",
     examplesCount: "৭–১০টি উদাহরণ / কেস",
-    vocabularyCount: "৮–১২টি শব্দ/পদ",
-    practiceCount: "৫–৭টি প্রশ্ন (সহজ → কঠিন)",
-    quizCount: 5,
-    summaryStyle: "সুশৃঙ্খল সারসংক্ষেপ + মূল takeaway",
-    targetWords: "মোট study text আনুমানিক ৮০০–১২০০ শব্দ",
+    vocabularyCount:
+      "১০–১৬টি শব্দ/পদ — পাঠের শেষে শব্দার্থ থাকলে সেখান থেকে অগ্রাধিকার",
+    practiceCount: "৫–৭টি প্রশ্ন",
+    quizCount: 6,
+    summaryStyle: "৬–৮ বাক্য + মূল পয়েন্ট",
+    targetWords: "মোট study text আনুমানিক ৭০০–১২০০ শব্দ",
   };
 }
 
-/** Prompt block injected into Gemini student-study generation */
 export function buildDepthPromptBlock(
-  classNumber: number | null | undefined,
+  classNumber?: number | null,
 ): string {
   const r = getDepthRules(classNumber);
-  const cn =
-    classNumber != null && Number.isFinite(classNumber)
-      ? String(classNumber)
-      : "অজানা";
-
-  return `📊 Study depth (Slice A — class-aware volume)
-Class number: ${cn}
-Depth level: ${r.depth} — ${r.labelBn}
+  return `📏 Study depth: ${r.labelBn}
 ${r.ageHint}
-
-Volume rules (বাধ্যতামূলক মেনে চলো):
 - overview: ${r.overviewSentences}
 - objectives: ${r.objectivesCount}
 - main_content: ${r.mainContent}
 - examples: ${r.examplesCount}
 - vocabulary: ${r.vocabularyCount}
 - practice: ${r.practiceCount}
+- quiz: ${r.quizCount} MCQ
 - summary: ${r.summaryStyle}
-- quiz_questions: ঠিক ${r.quizCount}টি MCQ (৪টি options, correct 0–3)
-- ${r.targetWords}
-
-⚠️ Class 1–2 হলে অতিরিক্ত লম্বা লেখা লিখবে না। Class 6+ হলে অতিরিক্ত সংক্ষিপ্ত করবে না।`;
+- ${r.targetWords}`;
 }
 
-/** Primary (1–5) vs Secondary (6–12) stage for study engine */
 export function classToStage(
-  classNumber: number | null | undefined,
+  classNumber?: number | null,
 ): "primary" | "secondary" {
   if (classNumber == null || !Number.isFinite(classNumber)) return "primary";
   return classNumber >= 6 ? "secondary" : "primary";
 }
 
 /**
- * Extra NCTB-aligned guidance (e.g. Class 6 চারুপাঠ literature style).
+ * Extra NCTB-aligned guidance (চারুপাঠ, English word lists, large PDFs).
  */
 export function buildSubjectStudyHints(opts: {
   classNumber?: number | null;
@@ -139,44 +128,80 @@ export function buildSubjectStudyHints(opts: {
   const stage = classToStage(opts.classNumber);
   const sub = `${opts.subjectNameBn || ""} ${opts.subjectName || ""} ${opts.chapterTitle || ""} ${opts.lessonTitle || ""}`.toLowerCase();
 
-  const isLit =
-    /চারুপাঠ|আনন্দপাঠ|সাহিত্য|গদ্য|কবিতা|bangla|বাংলা|charupath|anandapath|prose|poetry|literature/.test(
+  const isBangla =
+    /চারুপাঠ|আনন্দপাঠ|সাহিত্য|গদ্য|কবিতা|bangla|বাংলা|charupath|anandapath|prose|poetry|literature|বাংলা ভাষা/.test(
+      sub,
+    );
+  const isEnglish =
+    /english|ইংরেজি|ingreji|grammar|vocabulary|comprehension|english for today/.test(
       sub,
     );
   const isMath = /গণিত|math|সংখ্যা|বীজগণিত|জ্যামিতি/.test(sub);
   const isScience = /বিজ্ঞান|science|পদার্থ|রসায়ন|জীব/.test(sub);
 
+  const vocabBlock = `
+📖 শব্দার্থ / Vocabulary (বাধ্যতামূলক):
+- PDF-এ পাঠের শেষে "শব্দার্থ", "শব্দের অর্থ", "Word meanings", "New words" থাকলে সেখান থেকে অগ্রাধিকার দাও।
+- না থাকলে পাঠের কঠিন/নতুন শব্দ বেছে "শব্দ — সহজ অর্থ" ফরম্যাটে vocabulary অ্যারেতে দাও।
+- শিক্ষার্থী যেন শব্দের সাথে পরিচিত হয় ও অর্থ বুঝে — মুখস্থ তালিকা নয়, পাঠ-সংযুক্ত অর্থ।
+- বাংলা বিষয়ে: বাংলা শব্দ + বাংলা অর্থ (প্রয়োজনে উদাহরণ বাক্য)।
+- ইংরেজি বিষয়ে: English word — বাংলা অর্থ (+ short English gloss যদি দরকার)।`;
+
   if (stage === "primary") {
+    let extra = vocabBlock;
+    if (isBangla) {
+      extra += `
+📚 প্রাথমিক বাংলা:
+- ছোট গল্প/কবিতার মূল ভাব সহজ ভাষায়।
+- শব্দার্থ ৩–৮টি — খুব সহজ অর্থ।`;
+    } else if (isEnglish) {
+      extra += `
+🔤 Primary English:
+- Simple words from the lesson; meaning in easy Bangla.
+- 3–8 vocabulary items.`;
+    }
     return `🎓 Stage: PRIMARY (Class 1–5)
 - খেলার মতো, ছোট বাক্য, ছবি/উদাহরণ কল্পনায় বোঝাও।
 - মুখস্থ চাপ নয় — বুঝে শেখা।
-- কুইজ সহজ ও উৎসাহী।`;
+- কুইজ সহজ ও উৎসাহী।
+${extra}`;
   }
 
-  let subjectExtra = "";
-  if (isLit) {
-    subjectExtra = `
-📚 সাহিত্য/চারুপাঠ স্টাইল (Class 6+):
+  let subjectExtra = vocabBlock;
+  if (isBangla) {
+    subjectExtra += `
+📚 সাহিত্য/চারুপাঠ/বাংলা (Class 6+):
 - লেখক/কবির নাম ও প্রসঙ্গ সংক্ষেপে (যদি পাঠে থাকে)।
 - গদ্য: মূল ভাব, চরিত্র, শিক্ষণীয় বার্তা — ছাত্রের ভাষায়।
 - কবিতা: সহজ অর্থ, ছন্দ/চিত্রকল্প এক লাইনে, অনুভূতি।
-- শব্দার্থ + ২–৩টি বোধগম্যতা প্রশ্ন practice-এ।
+- vocabulary-এ ১০–১৬টি শব্দার্থ (বইয়ের শব্দার্থ তালিকা অগ্রাধিকার)।
+- ২–৩টি বোধগম্যতা প্রশ্ন practice-এ।
 - শিক্ষক-ম্যানুয়াল কপি নয়; ছাত্র নিজে পড়ে বুঝবে এমন লেখা।`;
+  } else if (isEnglish) {
+    subjectExtra += `
+🔤 English (Class 6+):
+- Lesson gist in clear Bangla (or simple English if the book is English-medium).
+- vocabulary: ১০–১৬টি — English word — বাংলা অর্থ; PDF-এর word list থাকলে সেখান থেকে নাও।
+- Comprehension-style practice questions.
+- Grammar points only if they appear in this lesson.`;
   } else if (isMath) {
-    subjectExtra = `
+    subjectExtra += `
 🔢 গণিত (মাধ্যমিক):
 - সংজ্ঞা → উদাহরণ → ধাপে সমাধান → একটা ছোট অনুশীলন।
-- সূত্র থাকলে স্পষ্ট করে লেখো; ভুল ধারণা এড়াও।`;
+- সূত্র থাকলে স্পষ্ট করে লেখো; ভুল ধারণা এড়াও।
+- vocabulary-এ গাণিতিক পদ/সংজ্ঞা ৪–৮টি।`;
   } else if (isScience) {
-    subjectExtra = `
+    subjectExtra += `
 🔬 বিজ্ঞান (মাধ্যমিক):
 - পর্যবেক্ষণ → ধারণা → দৈনন্দিন উদাহরণ।
-- নিরাপদ real_world_mission (ঘরে করা যায়)।`;
+- নিরাপদ real_world_mission (ঘরে করা যায়)।
+- vocabulary-এ বৈজ্ঞানিক পদ ৬–১০টি (সহজ অর্থ)।`;
   }
 
   return `🎓 Stage: SECONDARY / মাধ্যমিক (Class 6+)
 - প্রাথমিকের চেয়ে গভীর, কিন্তু এখনও ছাত্র-facing সহজ বাংলা।
 - NCTB বইয়ের পাঠের সাথে সামঞ্জস্য; মিথ্যা অধ্যায় বানাবে না।
+- বড় PDF (২০MB+): শুধু নির্দেশিত পৃষ্ঠা/এই পাঠে ফোকাস করো — পুরো বই সামারাইজ করো না।
 - ধারণা সংযোগ ও চিন্তার প্রশ্ন রাখো।
 ${subjectExtra}`;
 }
