@@ -102,18 +102,11 @@ export default function LessonContentPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [content, setContent] = useState<LessonContent | null>(null)
   const [loading, setLoading] = useState(true)
-  const [phase, setPhase] = useState<'intro' | 'learn' | 'quiz' | 'result'>('intro')
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [score, setScore] = useState(0)
-  const [hearts, setHearts] = useState(3)
-  const [showExplanation, setShowExplanation] = useState(false)
   const [xpEarned, setXpEarned] = useState(0)
   const [questions, setQuestions] = useState<Question[]>([])
-  const [loadingQuiz, setLoadingQuiz] = useState(false)
-  const [progressSaved, setProgressSaved] = useState(false)
-  const [progressError, setProgressError] = useState<string | null>(null)
+  const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [quizDone, setQuizDone] = useState(false)
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -230,22 +223,6 @@ export default function LessonContentPage() {
 
   const displayTitle = lesson?.title_bn || lesson?.title || 'পাঠ'
 
-  const hasStudyBody = useMemo(() => {
-    if (!content) return false
-    return Boolean(
-      cleanText(content.overview) ||
-        cleanText(content.main_content) ||
-        cleanText(content.ai_explanation) ||
-        cleanText(content.summary) ||
-        (content.objectives && content.objectives.length > 0) ||
-        (content.examples && content.examples.length > 0),
-    )
-  }, [content])
-
-  // Rest of component continues with existing polish (intro/learn/quiz/result)
-  // NOTE: Full UI retained from previous version via remote merge.
-  // If build fails due to missing handlers, this file should be the complete remote+patch.
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#070b14] flex items-center justify-center">
@@ -305,30 +282,153 @@ export default function LessonContentPage() {
             <Paragraphs text={content.main_content} />
           </div>
         )}
-        {content?.summary && (
+        {content?.summary && !quizDone && (
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
             <p className="text-sm font-semibold text-emerald-300 mb-2">সারাংশ</p>
             <Paragraphs text={content.summary} />
           </div>
         )}
-        {questions.length > 0 && (
+
+        {questions.length > 0 && !quizDone && (
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-            <p className="text-sm font-semibold text-amber-300 mb-3">দ্রুত কুইজ</p>
-            {questions.map((q, qi) => (
-              <div key={qi} className="mb-4">
-                <p className="font-bold text-white mb-2">{qi + 1}. {q.question}</p>
-                <div className="grid gap-2">
-                  {q.options.map((opt, oi) => (
-                    <div key={oi} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
-                      {opt}
-                    </div>
-                  ))}
+            <p className="text-sm font-semibold text-amber-300 mb-1">দ্রুত কুইজ</p>
+            <p className="text-xs text-amber-200/70 mb-3">
+              প্রতিটি প্রশ্নের উত্তর বেছে নাও · {Object.keys(answers).length}/{questions.length} সম্পন্ন
+            </p>
+            {questions.map((q, qi) => {
+              const picked = answers[qi]
+              return (
+                <div key={qi} className="mb-5">
+                  <p className="font-bold text-white mb-2">{qi + 1}. {q.question}</p>
+                  <div className="grid gap-2">
+                    {q.options.map((opt, oi) => {
+                      const selected = picked === oi
+                      return (
+                        <button
+                          key={oi}
+                          type="button"
+                          onClick={() =>
+                            setAnswers((prev) => ({ ...prev, [qi]: oi }))
+                          }
+                          className={`rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                            selected
+                              ? 'border-amber-400/60 bg-amber-500/25 text-amber-50 ring-1 ring-amber-400/40'
+                              : 'border-white/10 bg-white/5 text-slate-200 hover:border-amber-400/30 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="mr-2 inline-flex size-5 items-center justify-center rounded-md bg-white/10 text-[10px] font-bold text-slate-400">
+                            {['ক', 'খ', 'গ', 'ঘ'][oi] ?? oi + 1}
+                          </span>
+                          {opt}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
+            <button
+              type="button"
+              disabled={Object.keys(answers).length < questions.length}
+              onClick={() => {
+                let s = 0
+                questions.forEach((q, i) => {
+                  if (answers[i] === q.correct) s += 1
+                })
+                setScore(s)
+                setQuizDone(true)
+                setXpEarned(
+                  Math.round(
+                    ((lesson?.xp_reward ?? 10) * s) / Math.max(questions.length, 1),
+                  ),
+                )
+              }}
+              className="mt-2 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white disabled:opacity-40"
+            >
+              {Object.keys(answers).length < questions.length
+                ? `সব প্রশ্নের উত্তর দাও (${Object.keys(answers).length}/${questions.length})`
+                : '✅ উত্তর জমা দাও'}
+            </button>
           </div>
         )}
-        <p className="text-center text-xs text-slate-600 pt-4">অনন্য · ডেমো পাঠ · DB-তে পূর্ণ কন্টেন্ট যোগ হলে এখানে দেখাবে</p>
+
+        {quizDone && questions.length > 0 && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-5 text-center">
+              <p className="text-3xl mb-2">🎉</p>
+              <p className="text-lg font-black text-emerald-200">পাঠ সম্পন্ন!</p>
+              <p className="mt-2 text-sm text-emerald-100/90">
+                স্কোর: <span className="font-bold">{score}</span> / {questions.length}
+                {' · '}
+                {Math.round((score / Math.max(questions.length, 1)) * 100)}%
+              </p>
+              {xpEarned > 0 && (
+                <p className="mt-1 text-xs text-amber-300">+{xpEarned} XP</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-semibold text-violet-300 mb-2">পাঠের সারাংশ</p>
+              {content?.summary ? (
+                <Paragraphs text={content.summary} />
+              ) : content?.overview ? (
+                <Paragraphs text={content.overview} />
+              ) : (
+                <p className="text-sm text-slate-400">
+                  এই পাঠে মূল ধারণা শিখেছো এবং কুইজে নিজেকে যাচাই করেছো। ভুল উত্তর থাকলে আবার চেষ্টা করো।
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <p className="text-sm font-semibold text-amber-300 mb-3">উত্তর পর্যালোচনা</p>
+              {questions.map((q, qi) => {
+                const picked = answers[qi]
+                const ok = picked === q.correct
+                return (
+                  <div key={qi} className="mb-3 border-b border-white/5 pb-3 last:border-0">
+                    <p className="text-sm font-bold text-white">
+                      {ok ? '✅' : '❌'} {qi + 1}. {q.question}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      তোমার উত্তর: {picked != null ? q.options[picked] : '—'}
+                    </p>
+                    {!ok && (
+                      <p className="text-xs text-emerald-300">
+                        সঠিক: {q.options[q.correct]}
+                      </p>
+                    )}
+                    {q.explanation && (
+                      <p className="mt-1 text-xs text-slate-500">{q.explanation}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAnswers({})
+                setQuizDone(false)
+                setScore(0)
+                setXpEarned(0)
+              }}
+              className="w-full rounded-xl border border-violet-400/40 bg-violet-500/15 py-3 text-sm font-bold text-violet-100 hover:bg-violet-500/25"
+            >
+              🔄 আবার কুইজ দাও
+            </button>
+
+            <Link
+              href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`}
+              className="block w-full rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 py-3 text-center text-sm font-bold"
+            >
+              অধ্যায়ে ফিরে যাও →
+            </Link>
+          </div>
+        )}
+
+        <p className="text-center text-xs text-slate-600 pt-4">অনন্য · শিক্ষার্থী পাঠ</p>
       </div>
     </div>
   )
