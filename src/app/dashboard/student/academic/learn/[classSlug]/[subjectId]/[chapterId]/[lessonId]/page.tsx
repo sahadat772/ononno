@@ -25,6 +25,8 @@ interface LessonContent {
   overview?: string | null
   main_content?: string | null
   summary?: string | null
+  examples?: string[] | null
+  extra_notes?: string | null
   quiz_questions?: Question[] | null
 }
 
@@ -85,6 +87,36 @@ function normalizeQuestions(raw: unknown): Question[] {
   return out
 }
 
+function extractVocabulary(content: LessonContent | null): string[] {
+  if (!content) return []
+  const fromNotes: string[] = []
+  const notes = content.extra_notes || ''
+  if (notes.includes('শব্দার্থ') || /vocabulary/i.test(notes)) {
+    for (const line of notes.split(/\n+/)) {
+      const s = line.trim()
+      if (!s) continue
+      if (/^📚/.test(s) || /শব্দার্থ|vocabulary/i.test(s)) continue
+      const cleaned = s.replace(/^\d+[.)]\s*/, '').trim()
+      if (cleaned.includes('—') || cleaned.includes('-') || cleaned.includes(':')) {
+        fromNotes.push(cleaned)
+      }
+    }
+  }
+  const fromExamples = (content.examples || [])
+    .map((e) => String(e).trim())
+    .filter((e) => /^শব্দ\s*:/i.test(e) || e.includes('—'))
+    .map((e) => e.replace(/^শব্দ\s*:\s*/i, '').trim())
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const v of [...fromNotes, ...fromExamples]) {
+    const k = v.toLowerCase()
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(v)
+  }
+  return out.slice(0, 24)
+}
+
 function buildQuizSummary(opts: {
   correct: number
   total: number
@@ -111,9 +143,7 @@ async function saveLessonProgress(opts: {
 }) {
   if (isFallbackId(opts.lessonId)) return { ok: true as const, skipped: true }
   const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false as const, error: 'লগইন নেই' }
   const status = opts.status ?? 'completed'
   const payload: Record<string, unknown> = {
@@ -140,10 +170,7 @@ async function loadNextTargetAndProgress(opts: {
   subjectId: string
   chapterId: string
   lessonId: string
-}): Promise<{
-  target: NextTarget
-  chapterProg: { done: number; total: number; pct: number }
-}> {
+}): Promise<{ target: NextTarget; chapterProg: { done: number; total: number; pct: number } }> {
   const supabase = createClient()
   const { data: lessons } = await supabase
     .from('curriculum_lessons')
@@ -151,27 +178,18 @@ async function loadNextTargetAndProgress(opts: {
     .eq('chapter_id', opts.chapterId)
     .eq('is_published', true)
     .order('order_index', { ascending: true })
-
   const orderedLessons = [...(lessons ?? [])].sort(
-    (a, b) =>
-      (a.order_index ?? a.lesson_number ?? 0) - (b.order_index ?? b.lesson_number ?? 0),
+    (a, b) => (a.order_index ?? a.lesson_number ?? 0) - (b.order_index ?? b.lesson_number ?? 0),
   )
-
   const { data: chapters } = await supabase
     .from('curriculum_chapters')
     .select('id, title, title_bn, order_index, chapter_number')
     .eq('subject_id', opts.subjectId)
     .order('order_index', { ascending: true })
-
   const orderedChapters = [...(chapters ?? [])].sort(
-    (a, b) =>
-      (a.order_index ?? a.chapter_number ?? 0) -
-      (b.order_index ?? b.chapter_number ?? 0),
+    (a, b) => (a.order_index ?? a.chapter_number ?? 0) - (b.order_index ?? b.chapter_number ?? 0),
   )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   let done = 0
   if (user) {
     const ids = orderedLessons.map((l) => String(l.id))
@@ -186,13 +204,9 @@ async function loadNextTargetAndProgress(opts: {
       set.add(opts.lessonId)
       done = set.size
     }
-  } else {
-    done = 1
-  }
-
+  } else done = 1
   const total = Math.max(orderedLessons.length, 1)
   const pct = Math.round((done / total) * 100)
-
   const target = resolveNextTarget({
     currentChapterId: opts.chapterId,
     currentLessonId: opts.lessonId,
@@ -205,7 +219,6 @@ async function loadNextTargetAndProgress(opts: {
       title: (c.title_bn as string) || (c.title as string),
     })),
   })
-
   return { target, chapterProg: { done, total, pct } }
 }
 
@@ -236,11 +249,7 @@ export default function LessonContentPage() {
   const [aiError, setAiError] = useState<string | null>(null)
   const [nextUnlocked, setNextUnlocked] = useState(false)
   const [nextTarget, setNextTarget] = useState<NextTarget | null>(null)
-  const [chapterProg, setChapterProg] = useState<{
-    done: number
-    total: number
-    pct: number
-  } | null>(null)
+  const [chapterProg, setChapterProg] = useState<{ done: number; total: number; pct: number } | null>(null)
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -267,12 +276,6 @@ export default function LessonContentPage() {
               correct: 0,
               explanation: 'পাঠ পড়ে অনুশীলন করলে শেখা মজবুত হয়।',
             },
-            {
-              question: 'পরের ধাপে কী করবে?',
-              options: ['কুইজ দেবে', 'বন্ধ করবে', 'মুছে ফেলবে', 'কিছু না'],
-              correct: 0,
-              explanation: 'শেখার পর কুইজ দিয়ে নিজেকে যাচাই করো।',
-            },
           ])
         }
         setLoading(false)
@@ -285,7 +288,7 @@ export default function LessonContentPage() {
         .select(
           `id, title, title_bn, duration_minutes, xp_reward,
            lesson_contents (
-             overview, main_content, summary, quiz_questions
+             overview, main_content, summary, examples, extra_notes, quiz_questions
            )`,
         )
         .eq('id', lessonId)
@@ -322,11 +325,7 @@ export default function LessonContentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ count: 4 }),
       })
-      const json = (await res.json()) as {
-        questions?: Question[]
-        message?: string
-        error?: string
-      }
+      const json = (await res.json()) as { questions?: Question[]; message?: string; error?: string }
       if (!res.ok || !json.questions?.length) {
         setAiError(json.message || json.error || 'পরীক্ষা তৈরি হয়নি')
         return
@@ -353,13 +352,7 @@ export default function LessonContentPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#070b14]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1 }}
-          className="text-5xl"
-        >
-          ⚙️
-        </motion.div>
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="text-5xl">⚙️</motion.div>
       </div>
     )
   }
@@ -369,15 +362,12 @@ export default function LessonContentPage() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#070b14] p-6 text-white">
         <p className="mb-3 text-4xl">📭</p>
         <p className="font-semibold">পাঠ পাওয়া যায়নি বা এখনো প্রকাশ হয়নি</p>
-        <Link
-          href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`}
-          className="mt-4 text-blue-400"
-        >
-          ← ফিরে যাও
-        </Link>
+        <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`} className="mt-4 text-blue-400">← ফিরে যাও</Link>
       </div>
     )
   }
+
+  const vocab = extractVocabulary(content)
 
   return (
     <div className="min-h-screen bg-[#070b14] text-white">
@@ -386,15 +376,10 @@ export default function LessonContentPage() {
 
       <div className="sticky top-0 z-40 border-b border-white/10 bg-[#070b14]/90 px-4 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <Link
-            href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`}
-            className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg"
-          >
-            ←
-          </Link>
+          <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`} className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg">←</Link>
           <div className="min-w-0 flex-1 text-center">
             <p className="truncate text-sm font-bold">{displayTitle}</p>
-            <p className="text-[10px] text-violet-300">পাঠ · পরীক্ষা ≥৬০% = unlock</p>
+            <p className="text-[10px] text-violet-300">পাঠ · শব্দার্থ · পরীক্ষা ≥৬০%</p>
           </div>
         </div>
       </div>
@@ -413,6 +398,22 @@ export default function LessonContentPage() {
             <Paragraphs text={content.main_content} />
           </div>
         )}
+
+        {vocab.length > 0 && (
+          <div className="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/10 p-4">
+            <p className="mb-2 text-sm font-semibold text-fuchsia-300">📚 শব্দার্থ / Vocabulary</p>
+            <p className="mb-3 text-xs text-fuchsia-200/70">পাঠের শব্দের সাথে পরিচিত হও — অর্থ মনে রাখো</p>
+            <ul className="space-y-2">
+              {vocab.map((v, i) => (
+                <li key={i} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+                  <span className="mr-2 text-xs font-bold text-fuchsia-400/80">{i + 1}.</span>
+                  {v}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {content?.summary && !quizDone && (
           <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
             <p className="mb-2 text-sm font-semibold text-emerald-300">সারাংশ</p>
@@ -431,9 +432,7 @@ export default function LessonContentPage() {
             </p>
             {questions.map((q, qi) => (
               <div key={qi} className="mb-5">
-                <p className="mb-2 font-bold text-white">
-                  {qi + 1}. {q.question}
-                </p>
+                <p className="mb-2 font-bold text-white">{qi + 1}. {q.question}</p>
                 <div className="grid gap-2">
                   {q.options.map((opt, oi) => (
                     <button
@@ -473,29 +472,16 @@ export default function LessonContentPage() {
                   setScore(correct)
                   setScorePercent(percent)
                   setBand(nextBand)
-                  setQuizSummary(
-                    buildQuizSummary({
-                      correct,
-                      total: questions.length,
-                      percent,
-                      band: nextBand,
-                      wrongTopics,
-                    }),
-                  )
+                  setQuizSummary(buildQuizSummary({ correct, total: questions.length, percent, band: nextBand, wrongTopics }))
                   setXpEarned(xp)
                   setQuizDone(true)
                   setProgressMsg(null)
-
                   const isFinal = quizPhase === 'ai' && isLessonExamPassed(percent)
                   if (isFinal) setNextUnlocked(true)
                   setSavingProgress(true)
                   try {
                     const res = await saveLessonProgress({
-                      lessonId,
-                      subjectId,
-                      chapterId,
-                      scorePercent: percent,
-                      xp,
+                      lessonId, subjectId, chapterId, scorePercent: percent, xp,
                       status: isFinal ? 'completed' : 'in_progress',
                     })
                     if (!res.ok) setProgressMsg(`সেভ হয়নি: ${res.error}`)
@@ -503,19 +489,11 @@ export default function LessonContentPage() {
                       if (isFinal) {
                         setProgressMsg('পাঠ পরীক্ষা পাস · unlock ✓')
                         try {
-                          const nav = await loadNextTargetAndProgress({
-                            subjectId,
-                            chapterId,
-                            lessonId,
-                          })
+                          const nav = await loadNextTargetAndProgress({ subjectId, chapterId, lessonId })
                           setNextTarget(nav.target)
                           setChapterProg(nav.chapterProg)
-                        } catch {
-                          /* ignore */
-                        }
-                      } else {
-                        setProgressMsg('প্রোগ্রেস সেভ ✓')
-                      }
+                        } catch { /* ignore */ }
+                      } else setProgressMsg('প্রোগ্রেস সেভ ✓')
                     }
                   } catch (e) {
                     setProgressMsg(e instanceof Error ? e.message : 'সেভ ব্যর্থ')
@@ -536,35 +514,18 @@ export default function LessonContentPage() {
         {quizDone && questions.length > 0 && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-5 text-center">
-              <p className="mb-2 text-3xl">
-                {scorePercent >= 80 ? '🏆' : scorePercent >= 50 ? '🎉' : '💪'}
-              </p>
+              <p className="mb-2 text-3xl">{scorePercent >= 80 ? '🏆' : scorePercent >= 50 ? '🎉' : '💪'}</p>
               <p className="text-lg font-black text-emerald-200">
                 {quizPhase === 'ai' ? 'পাঠ পরীক্ষা সম্পন্ন!' : 'কুইজ সম্পন্ন!'}
               </p>
               <p className="mt-2 text-sm text-emerald-100/90">
-                স্কোর: <span className="font-bold">{score}</span> / {questions.length} ·{' '}
-                {scorePercent}%
+                স্কোর: <span className="font-bold">{score}</span> / {questions.length} · {scorePercent}%
               </p>
-              <p
-                className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${bandColor(band)}`}
-              >
+              <p className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${bandColor(band)}`}>
                 {bandLabelBn(band)}
               </p>
-              {xpEarned > 0 && (
-                <p className="mt-2 text-xs text-amber-300">+{xpEarned} XP</p>
-              )}
-              {savingProgress && (
-                <p className="mt-2 text-xs text-slate-400">সেভ হচ্ছে…</p>
-              )}
-              {progressMsg && (
-                <p className="mt-1 text-xs text-slate-400">{progressMsg}</p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-violet-500/25 bg-violet-500/10 p-4">
-              <p className="mb-2 text-sm font-semibold text-violet-300">সারাংশ</p>
-              <Paragraphs text={quizSummary || 'সম্পন্ন।'} />
+              {xpEarned > 0 && <p className="mt-2 text-xs text-amber-300">+{xpEarned} XP</p>}
+              {progressMsg && <p className="mt-1 text-xs text-slate-400">{progressMsg}</p>}
             </div>
 
             {quizPhase === 'base' && (
@@ -572,19 +533,11 @@ export default function LessonContentPage() {
                 <p className="text-center text-xs text-slate-400">
                   মূল পাঠ পরীক্ষা · {CURRICULUM_UNLOCK_THRESHOLD_PCT}%+ পেলে পরের পাঠ/অধ্যায় unlock
                 </p>
-                <button
-                  type="button"
-                  disabled={aiLoading}
-                  onClick={() => void runGenerateAiQuiz()}
-                  className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  {aiLoading
-                    ? '⏳ পরীক্ষার প্রশ্ন তৈরি হচ্ছে…'
-                    : '📝 পাঠ পরীক্ষা শুরু করো (AI)'}
+                <button type="button" disabled={aiLoading} onClick={() => void runGenerateAiQuiz()}
+                  className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-bold text-white disabled:opacity-50">
+                  {aiLoading ? '⏳ পরীক্ষার প্রশ্ন তৈরি হচ্ছে…' : '📝 পাঠ পরীক্ষা শুরু করো (AI)'}
                 </button>
-                {aiError && (
-                  <p className="text-center text-xs text-rose-300">{aiError}</p>
-                )}
+                {aiError && <p className="text-center text-xs text-rose-300">{aiError}</p>}
               </div>
             )}
 
@@ -594,65 +547,30 @@ export default function LessonContentPage() {
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="mb-1 flex justify-between text-xs text-slate-400">
                       <span>অধ্যায় প্রোগ্রেস</span>
-                      <span>
-                        {chapterProg.done}/{chapterProg.total} পাঠ · {chapterProg.pct}%
-                      </span>
+                      <span>{chapterProg.done}/{chapterProg.total} · {chapterProg.pct}%</span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
-                        style={{ width: `${chapterProg.pct}%` }}
-                      />
+                      <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${chapterProg.pct}%` }} />
                     </div>
                   </div>
                 )}
-
                 {nextUnlocked || isLessonExamPassed(scorePercent) ? (
                   <>
-                    <p className="text-center text-sm font-semibold text-emerald-300">
-                      ✅ পাঠ পরীক্ষা পাস ({scorePercent}%)
-                    </p>
+                    <p className="text-center text-sm font-semibold text-emerald-300">✅ পাঠ পরীক্ষা পাস ({scorePercent}%)</p>
                     {nextTarget?.kind === 'lesson' && (
-                      <Link
-                        href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${nextTarget.chapterId}/${nextTarget.lessonId}`}
-                        className="block w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-center text-sm font-bold"
-                      >
-                        পরের পাঠ: {nextTarget.label} →
-                      </Link>
+                      <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${nextTarget.chapterId}/${nextTarget.lessonId}`} className="block w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-center text-sm font-bold">পরের পাঠ: {nextTarget.label} →</Link>
                     )}
                     {nextTarget?.kind === 'chapter' && (
-                      <Link
-                        href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${nextTarget.chapterId}`}
-                        className="block w-full rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 py-3 text-center text-sm font-bold"
-                      >
-                        অধ্যায় শেষ · পরের অধ্যায়: {nextTarget.label} →
-                      </Link>
+                      <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${nextTarget.chapterId}`} className="block w-full rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 py-3 text-center text-sm font-bold">অধ্যায় শেষ · পরের অধ্যায়: {nextTarget.label} →</Link>
                     )}
                     {nextTarget?.kind === 'subject_complete' && (
-                      <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-center text-sm text-amber-100">
-                        🏆 {nextTarget.label}
-                      </div>
-                    )}
-                    {!nextTarget && (
-                      <Link
-                        href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`}
-                        className="block w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-center text-sm font-bold"
-                      >
-                        অধ্যায়ে ফিরে যাও →
-                      </Link>
+                      <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-center text-sm text-amber-100">🏆 {nextTarget.label}</div>
                     )}
                   </>
                 ) : (
                   <>
-                    <p className="text-center text-sm text-amber-200">
-                      পাস মার্ক {CURRICULUM_UNLOCK_THRESHOLD_PCT}% (এখন {scorePercent}%)
-                    </p>
-                    <button
-                      type="button"
-                      disabled={aiLoading}
-                      onClick={() => void runGenerateAiQuiz()}
-                      className="w-full rounded-xl border border-violet-400/40 bg-violet-500/15 py-3 text-sm font-bold text-violet-100"
-                    >
+                    <p className="text-center text-sm text-amber-200">পাস মার্ক {CURRICULUM_UNLOCK_THRESHOLD_PCT}% (এখন {scorePercent}%)</p>
+                    <button type="button" disabled={aiLoading} onClick={() => void runGenerateAiQuiz()} className="w-full rounded-xl border border-violet-400/40 bg-violet-500/15 py-3 text-sm font-bold text-violet-100">
                       {aiLoading ? '⏳…' : '✨ নতুন পরীক্ষার প্রশ্ন নাও'}
                     </button>
                   </>
@@ -660,10 +578,7 @@ export default function LessonContentPage() {
               </div>
             )}
 
-            <Link
-              href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`}
-              className="block w-full rounded-xl border border-white/10 bg-white/5 py-3 text-center text-sm font-semibold text-slate-300"
-            >
+            <Link href={`/dashboard/student/academic/learn/${classSlug}/${subjectId}/${chapterId}`} className="block w-full rounded-xl border border-white/10 bg-white/5 py-3 text-center text-sm font-semibold text-slate-300">
               অধ্যায়ে ফিরে যাও
             </Link>
           </div>
