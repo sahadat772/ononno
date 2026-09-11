@@ -9,6 +9,26 @@ export default function AdminPushTestPanel() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
 
+  const runPhase3 = async (url: string, body: Record<string, unknown>) => {
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const j = await res.json()
+      if (!res.ok) setResult(`❌ ${j.error || res.statusText}`)
+      else if (j.skipped) setResult(`⏭ skipped: ${j.reason}`)
+      else setResult(`✅ ${JSON.stringify(j)}`)
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : 'Failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const send = async () => {
     setLoading(true)
     setResult(null)
@@ -36,9 +56,9 @@ export default function AdminPushTestPanel() {
 
   return (
     <div className="rounded-2xl border border-violet-500/25 bg-[#12122a] p-4 md:p-5">
-      <h3 className="text-sm font-bold text-white">🔔 Push · Phase 1</h3>
+      <h3 className="text-sm font-bold text-white">🔔 Push · Phase 1–3</h3>
       <p className="mt-1 text-xs text-slate-400">
-        আগে Allow করুন, তারপর নিজের ডিভাইসে test push পাঠান (Firebase Admin env লাগবে)।
+        Allow → test push · Phase 3 digest/inactive (Firebase Admin env লাগবে)।
       </p>
 
       <div className="mt-3">
@@ -67,6 +87,28 @@ export default function AdminPushTestPanel() {
           {loading ? 'পাঠানো হচ্ছে…' : 'Test push পাঠাও'}
         </button>
         {result && <p className="text-xs text-slate-300">{result}</p>}
+      </div>
+
+      <div className="mt-4 border-t border-white/10 pt-4">
+        <p className="mb-2 text-xs font-semibold text-slate-400">Phase 3 · Digest / Inactive</p>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void runPhase3('/api/push/weekly-digest', { force: true })}
+            className="rounded-xl border border-sky-500/30 bg-sky-500/10 py-2 text-xs font-semibold text-sky-200 disabled:opacity-50"
+          >
+            সাপ্তাহিক digest পাঠাও (parents)
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void runPhase3('/api/push/inactive-reminder', { force: true, days: 5 })}
+            className="rounded-xl border border-amber-500/30 bg-amber-500/10 py-2 text-xs font-semibold text-amber-200 disabled:opacity-50"
+          >
+            Inactive reminder (৫ দিন+)
+          </button>
+        </div>
       </div>
     </div>
   )
