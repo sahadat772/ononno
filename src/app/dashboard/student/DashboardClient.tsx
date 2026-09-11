@@ -76,6 +76,12 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
               📚 একাডেমিক
             </Link>
             <Link
+              href="/dashboard/student/tools/spell-check"
+              className="hidden items-center gap-1 rounded-xl border border-pink-500/30 bg-pink-600/20 px-2.5 py-1.5 text-xs font-semibold text-pink-300 transition hover:bg-pink-600/30 sm:inline-flex"
+            >
+              ✍️ বানান
+            </Link>
+            <Link
               href="/dashboard/student/profile"
               className="size-8 shrink-0 overflow-hidden rounded-full border-2 border-white/20 transition hover:border-emerald-400/50"
             >
