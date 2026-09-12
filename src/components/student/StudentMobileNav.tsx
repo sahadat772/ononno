@@ -18,7 +18,8 @@ const tabs = [
     match: (p: string) =>
       p.includes('/academic') ||
       p.includes('/learning-path') ||
-      p.includes('/kids-zone'),
+      p.includes('/kids-zone') ||
+      p.includes('/levels'),
   },
   {
     href: '/dashboard/student/islamic',
@@ -43,44 +44,41 @@ const tabs = [
   },
 ] as const
 
-/**
- * Fixed bottom tab bar — phone only (md+ uses top nav).
- * Touch targets ≥44px, safe-area aware.
- */
 export default function StudentMobileNav() {
   const pathname = usePathname() || ''
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0a1a]/95 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-500/20 bg-[#0b0b1a]/98 shadow-[0_-8px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl md:hidden"
       style={{
-        paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))',
+        paddingBottom: 'max(0.4rem, env(safe-area-inset-bottom))',
       }}
       aria-label="Student mobile navigation"
     >
-      <div className="mx-auto flex h-14 max-w-lg items-stretch justify-around px-1">
+      <div className="mx-auto flex h-[3.6rem] max-w-lg items-stretch justify-around px-1">
         {tabs.map((tab) => {
           const active = tab.match(pathname)
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 transition active:scale-95 ${
-                active ? 'text-violet-300' : 'text-slate-500'
+              aria-current={active ? 'page' : undefined}
+              className={`flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 transition active:scale-95 ${
+                active ? 'text-violet-200' : 'text-slate-500'
               }`}
             >
               <span
                 className={`grid size-9 place-items-center rounded-xl text-base transition ${
                   active
-                    ? 'bg-gradient-to-br from-violet-600/50 to-fuchsia-600/40 shadow-[0_0_12px_rgba(139,92,246,0.35)]'
-                    : 'bg-transparent'
+                    ? 'bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/40'
+                    : 'bg-white/5'
                 }`}
               >
                 {tab.icon}
               </span>
               <span
                 className={`max-w-full truncate text-[10px] leading-none ${
-                  active ? 'font-bold' : 'font-semibold'
+                  active ? 'font-bold text-violet-200' : 'font-semibold'
                 }`}
               >
                 {tab.label}

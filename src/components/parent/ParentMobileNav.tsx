@@ -8,13 +8,15 @@ const tabs = [
     href: '/dashboard/parent',
     label: 'হোম',
     icon: '🏠',
-    match: (p: string) => p === '/dashboard/parent',
+    match: (p: string) =>
+      p === '/dashboard/parent' || p === '/dashboard/parent/',
   },
   {
-    href: '/dashboard/parent#children',
+    href: '/dashboard/parent/create-child',
     label: 'সন্তান',
-    icon: '👨‍👩‍👧',
-    match: (p: string) => p.includes('/child'),
+    icon: '👶',
+    match: (p: string) =>
+      p.includes('/create-child') || p.includes('/child'),
   },
   {
     href: '/dashboard/parent/notifications',
@@ -24,48 +26,47 @@ const tabs = [
   },
   {
     href: '/dashboard/parent/profile',
-    label: 'আমি',
+    label: 'প্রোফাইল',
     icon: '👤',
-    match: (p: string) => p.includes('/profile') || p.includes('/create-child'),
+    match: (p: string) => p.includes('/profile'),
   },
 ] as const
 
-/**
- * Mobile bottom tab bar for Parent Hub (app-like).
- * Hidden on md+ where top nav is enough.
- */
 export default function ParentMobileNav() {
   const pathname = usePathname() || ''
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0a0a1a]/95 backdrop-blur-xl md:hidden"
-      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-500/20 bg-[#0b0b1a]/98 shadow-[0_-8px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl md:hidden"
+      style={{ paddingBottom: 'max(0.45rem, env(safe-area-inset-bottom))' }}
       aria-label="Parent mobile navigation"
     >
-      <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1.5">
+      <div className="mx-auto flex h-[3.6rem] max-w-lg items-stretch justify-around px-1">
         {tabs.map((tab) => {
           const active = tab.match(pathname)
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-2 py-2 text-center transition ${
-                active
-                  ? 'text-violet-300'
-                  : 'text-slate-500 active:text-slate-300'
+              aria-current={active ? 'page' : undefined}
+              className={`flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 transition active:scale-95 ${
+                active ? 'text-violet-200' : 'text-slate-500'
               }`}
             >
               <span
-                className={`flex size-9 items-center justify-center rounded-xl text-lg ${
+                className={`grid size-9 place-items-center rounded-xl text-base transition ${
                   active
-                    ? 'bg-violet-500/20 ring-1 ring-violet-500/40'
-                    : 'bg-transparent'
+                    ? 'bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/40'
+                    : 'bg-white/5'
                 }`}
               >
                 {tab.icon}
               </span>
-              <span className={`text-[10px] font-semibold ${active ? 'text-violet-200' : ''}`}>
+              <span
+                className={`max-w-full truncate text-[10px] leading-none ${
+                  active ? 'font-bold text-violet-200' : 'font-semibold'
+                }`}
+              >
                 {tab.label}
               </span>
             </Link>
