@@ -35,6 +35,7 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [backfillMsg, setBackfillMsg] = useState<string | null>(null)
+  const [grantMsg, setGrantMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
@@ -64,13 +65,10 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
     setBusy(true)
     setBackfillMsg(null)
     try {
-      const res = await fetch('/api/admin/curriculum/backfill-contents', {
-        method: 'POST',
-      })
+      const res = await fetch('/api/admin/curriculum/backfill-contents', { method: 'POST' })
       const json = await res.json()
-      if (!res.ok) {
-        setBackfillMsg(json.error || 'Backfill failed')
-      } else {
+      if (!res.ok) setBackfillMsg(json.error || 'Backfill failed')
+      else {
         const s = json.summary
         setBackfillMsg(
           `✅ Filled ${s?.filled ?? 0} · skipped ${s?.skipped ?? 0} · failed ${s?.failed ?? 0}`,
@@ -90,9 +88,8 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
     try {
       const res = await fetch('/api/admin/curriculum/expand-nctb', { method: 'POST' })
       const json = await res.json()
-      if (!res.ok) {
-        setBackfillMsg(json.error || 'NCTB expand failed')
-      } else {
+      if (!res.ok) setBackfillMsg(json.error || 'NCTB expand failed')
+      else {
         const s = json.summary
         setBackfillMsg(
           `✅ NCTB Expand · +Class ${s?.classesCreated ?? 0} · +Subject ${s?.subjectsAdded ?? 0} · +Chapter ${s?.chaptersAdded ?? 0} · +Lesson ${s?.lessonsAdded ?? 0}`,
@@ -101,6 +98,25 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
       }
     } catch {
       setBackfillMsg('Server error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runGrantFull = async () => {
+    setBusy(true)
+    setGrantMsg(null)
+    try {
+      const res = await fetch('/api/admin/grant-full-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const j = await res.json()
+      if (!res.ok) setGrantMsg(`❌ ${j.error || res.statusText}`)
+      else setGrantMsg(`✅ ${j.message || 'Full access granted'}`)
+    } catch (e) {
+      setGrantMsg(e instanceof Error ? e.message : 'Failed')
     } finally {
       setBusy(false)
     }
@@ -164,9 +180,7 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    {data.phase}
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{data.phase}</p>
                   <h1 className="mt-1 text-2xl font-black md:text-3xl">
                     {data.ready ? 'Ready for soft launch' : 'Action needed before soft launch'}
                   </h1>
@@ -174,9 +188,6 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
                     {data.ready
                       ? 'Core checks passed. Limited beta users চালু রাখতে পারো।'
                       : `${data.blocking.length} check(s) still blocking — নিচের list দেখো।`}
-                  </p>
-                  <p className="mt-1 text-[11px] text-gray-600">
-                    Updated {new Date(data.time).toLocaleString('bn-BD')}
                   </p>
                 </div>
                 <div
@@ -194,138 +205,54 @@ export default function ReadinessClient({ adminName }: { adminName: string }) {
               </div>
             </motion.div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: 'Published lessons', value: data.counts.published_lessons, color: 'text-violet-300' },
-                { label: 'Subjects', value: data.counts.subjects, color: 'text-sky-300' },
-                { label: 'Students', value: data.counts.students, color: 'text-emerald-300' },
-                {
-                  label: 'Ops pending',
-                  value: (data.counts.free_pending || 0) + (data.counts.payment_pending || 0),
-                  color: 'text-amber-300',
-                },
-              ].map((s) => (
-                <div
-                  key={s.label}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3"
-                >
-                  <p className="text-[11px] text-gray-500">{s.label}</p>
-                  <p className={`mt-1 text-2xl font-black ${s.color}`}>
-                    {(s.value ?? 0).toLocaleString('bn-BD')}
-                  </p>
-                </div>
-              ))}
-            </div>
-
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
-              <h2 className="mb-4 text-sm font-bold">Checklist</h2>
-              <ul className="space-y-2">
-                {data.checks.map((c) => (
-                  <li
-                    key={c.id}
-                    className={`flex items-start gap-3 rounded-xl border px-3 py-3 ${
-                      c.ok
-                        ? 'border-white/6 bg-white/[0.03]'
-                        : 'border-amber-500/25 bg-amber-500/[0.06]'
-                    }`}
-                  >
-                    <span className="text-lg leading-none">{c.ok ? '✅' : '❌'}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{c.label}</p>
-                      <p className="text-xs text-gray-500">{c.detail}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
-                <h2 className="mb-3 text-sm font-bold">Quick actions</h2>
-                <div className="flex flex-col gap-2">
-                  <Link
-                    href="/dashboard/admin/curriculum"
-                    className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-500/20"
-                  >
-                    📚 Curriculum · Seed Baseline
-                  </Link>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void runExpandNctb()}
-                    className="rounded-xl border border-lime-500/30 bg-lime-500/10 px-4 py-2.5 text-left text-sm font-semibold text-lime-200 hover:bg-lime-500/20 disabled:opacity-50"
-                  >
-                    {busy ? 'Expanding…' : '📚 Expand NCTB · Class 1–8'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void runBackfill()}
-                    className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-left text-sm font-semibold text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
-                  >
-                    {busy ? 'Backfilling…' : '📝 Backfill empty lesson bodies'}
-                  </button>
-                  <Link
-                    href="/dashboard/admin/free-access"
-                    className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
-                  >
-                    🤲 Free access queue ({data.counts.free_pending})
-                  </Link>
-                  <Link
-                    href="/dashboard/admin/subscriptions"
-                    className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-500/20"
-                  >
-                    💳 Pending payments ({data.counts.payment_pending})
-                  </Link>
-                  <a
-                    href="/api/health"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/10"
-                  >
-                    ❤️ Public health JSON ↗
-                  </a>
-                </div>
-                {backfillMsg && <p className="mt-3 text-xs text-gray-400">{backfillMsg}</p>}
+              <h2 className="mb-3 text-sm font-bold">Quick actions</h2>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href="/dashboard/admin/curriculum"
+                  className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-500/20"
+                >
+                  📚 Curriculum · Seed Baseline
+                </Link>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void runGrantFull()}
+                  className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-2.5 text-left text-sm font-semibold text-fuchsia-200 hover:bg-fuchsia-500/20 disabled:opacity-50"
+                >
+                  {busy ? 'Granting…' : '🔓 Admin · Full free access (seed)'}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void runExpandNctb()}
+                  className="rounded-xl border border-lime-500/30 bg-lime-500/10 px-4 py-2.5 text-left text-sm font-semibold text-lime-200 hover:bg-lime-500/20 disabled:opacity-50"
+                >
+                  {busy ? 'Expanding…' : '📚 Expand NCTB · Class 1–8'}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void runBackfill()}
+                  className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2.5 text-left text-sm font-semibold text-sky-200 hover:bg-sky-500/20 disabled:opacity-50"
+                >
+                  {busy ? 'Backfilling…' : '📝 Backfill empty lesson bodies'}
+                </button>
+                <Link
+                  href="/dashboard/admin/free-access"
+                  className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
+                >
+                  🤲 Free access queue ({data.counts.free_pending})
+                </Link>
+                <Link
+                  href="/dashboard/admin/subscriptions"
+                  className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-500/20"
+                >
+                  💳 Pending payments ({data.counts.payment_pending})
+                </Link>
               </div>
-
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
-                <h2 className="mb-3 text-sm font-bold">Environment snapshot</h2>
-                <ul className="space-y-2 text-xs text-gray-400">
-                  <li className="flex justify-between gap-2">
-                    <span>AI</span>
-                    <span className="font-semibold text-gray-200">{data.env.ai}</span>
-                  </li>
-                  <li className="flex justify-between gap-2">
-                    <span>App URL</span>
-                    <span className="truncate font-semibold text-gray-200">
-                      {data.env.app_url || '—'}
-                    </span>
-                  </li>
-                  <li className="flex justify-between gap-2">
-                    <span>Sentry</span>
-                    <span className="font-semibold text-gray-200">
-                      {data.env.sentry ? 'DSN set' : 'Logs only'}
-                    </span>
-                  </li>
-                  <li className="flex justify-between gap-2">
-                    <span>Payment</span>
-                    <span className="font-semibold text-gray-200">{data.env.payment_mode}</span>
-                  </li>
-                  <li className="flex justify-between gap-2">
-                    <span>Service role</span>
-                    <span className="font-semibold text-gray-200">
-                      {data.env.service_role ? 'yes' : 'missing'}
-                    </span>
-                  </li>
-                  <li className="flex justify-between gap-2">
-                    <span>Content sample</span>
-                    <span className="font-semibold text-gray-200">
-                      {data.counts.content_with_body}/{data.counts.content_sampled} with body
-                    </span>
-                  </li>
-                </ul>
-              </div>
+              {backfillMsg && <p className="mt-3 text-xs text-gray-400">{backfillMsg}</p>}
+              {grantMsg && <p className="mt-2 text-xs text-fuchsia-300">{grantMsg}</p>}
             </div>
           </div>
         ) : null}
