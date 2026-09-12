@@ -8,7 +8,6 @@ import { sendPushNotification, sendPushToMultiple } from '@/lib/firebase-admin'
 export type PushPayload = {
   title: string
   body: string
-  /** Deep link path, e.g. /dashboard/parent/child/xyz */
   url?: string
   tag?: string
 }
@@ -74,16 +73,20 @@ async function sendToTokens(tokens: string[], payload: PushPayload) {
   }
 }
 
-/** Push to a single user (all active web tokens). */
 export async function notifyUser(userId: string, payload: PushPayload) {
   const tokens = await tokensForUser(userId)
   return sendToTokens(tokens, payload)
 }
 
-/** Push to all parents linked to this student. */
 export async function notifyParentsOfStudent(
   studentId: string,
   payload: PushPayload,
+  category:
+    | 'lesson_done'
+    | 'quiz_fail'
+    | 'inactive_reminder'
+    | 'weekly_digest'
+    | 'general' = 'general',
 ) {
   try {
     const db = createServiceRoleClient()
@@ -100,8 +103,13 @@ export async function notifyParentsOfStudent(
     }
 
     let sent = 0
-    const results = []
+    const results: Array<Record<string, unknown>> = []
     for (const pid of parentIds) {
+      const allowed = await parentAllowsPush(pid, category)
+      if (!allowed) {
+        results.push({ parentId: pid, ok: false, reason: 'prefs_or_quiet', sent: 0 })
+        continue
+      }
       const tokens = await tokensForUser(pid)
       const r = await sendToTokens(tokens, payload)
       sent += r.sent
@@ -125,7 +133,6 @@ export async function notifyParentsOfStudent(
   }
 }
 
-/** Bangladesh local hour 0–23 */
 export function dhakaHourNow(): number {
   try {
     const fmt = new Intl.DateTimeFormat('en-GB', {
@@ -139,8 +146,43 @@ export function dhakaHourNow(): number {
   }
 }
 
-/** Quiet hours: 22:00–07:00 Asia/Dhaka — skip non-critical digests */
 export function isQuietHours(): boolean {
   const h = dhakaHourNow()
   return h >= 22 || h < 7
+}
+
+async function parentAllowsPush(
+  parentId: string,
+  category:
+    | 'lesson_done'
+    | 'quiz_fail'
+    | 'inactive_reminder'
+    | 'weekly_digest'
+    | 'general',
+): Promise<boolean> {
+  try {
+    const db = createServiceRoleClient()
+    const { data } = await db
+      .from('parent_profiles')
+      .select('notification_prefs')
+      .eq('user_id', parentId)
+      .maybeSingle()
+    const prefs = (data as { notification_prefs?: Record<string, boolean> } | null)
+      ?.notification_prefs
+    if (!prefs) return true
+    if (prefs.quiet_hours !== false && isQuietHours() && category !== 'quiz_fail') {
+      if (
+        category === 'lesson_done' ||
+        category === 'weekly_digest' ||
+        category === 'inactive_reminder'
+      ) {
+        return false
+      }
+    }
+    if (category === 'general') return true
+    if (category in prefs && prefs[category] === false) return false
+    return true
+  } catch {
+    return true
+  }
 }
