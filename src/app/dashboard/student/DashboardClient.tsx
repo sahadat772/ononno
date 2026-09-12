@@ -9,6 +9,7 @@ import NurseryDashboard from './levels/NurseryDashboard'
 import GeneralDashboard from './levels/GeneralDashboard'
 import PushPermission from '@/components/notification/PushPermission'
 import PWAInstallBanner from '@/components/notification/PWAInstallBanner'
+import CompleteProfileBanner from '@/components/shared/CompleteProfileBanner'
 import SoftLaunchBanner from '@/components/student/SoftLaunchBanner'
 import ContinueLearningCard from '@/components/student/ContinueLearningCard'
 
@@ -49,9 +50,7 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
             />
             <div className="min-w-0">
               <p className="truncate text-sm font-black leading-tight">অনন্য</p>
-              <p className="hidden text-[10px] font-semibold text-emerald-400 sm:block">
-                Student Hub
-              </p>
+              <p className="hidden text-[10px] font-semibold text-emerald-400 sm:block">Student Hub</p>
             </div>
             {isNurseryLevel && (
               <span className="hidden rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300 sm:inline">
@@ -107,6 +106,11 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 pb-2">
         <PWAInstallBanner />
+        <CompleteProfileBanner
+          profile={profile}
+          studentExtra={studentProfile as { class_level?: string; gender?: string } | null}
+          href="/dashboard/student/profile"
+        />
         <PushPermission variant="student" showWhenGranted />
         <SoftLaunchBanner />
         <ContinueLearningCard />
