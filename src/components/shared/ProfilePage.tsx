@@ -4,10 +4,13 @@ import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { StudentExtra } from '@/lib/profile-health'
 
 interface Props {
     profile: Record<string, string> | null
     role: 'student' | 'parent' | 'admin' | 'teacher' | 'adult'
+    /** Optional — used for profile health / class display */
+    studentExtra?: StudentExtra | null
 }
 
 const roleConfig = {
@@ -53,10 +56,12 @@ const roleConfig = {
     },
 }
 
-export default function ProfilePage({ profile, role }: Props) {
+export default function ProfilePage({ profile, role, studentExtra }: Props) {
     const config = roleConfig[role]
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    // reserved for future profile-health / class chip
+    void studentExtra
 
     const [editing, setEditing] = useState(false)
     const [uploading, setUploading] = useState(false)
@@ -77,7 +82,6 @@ export default function ProfilePage({ profile, role }: Props) {
         const file = e.target.files?.[0]
         if (!file) return
 
-        // File size check (2MB max)
         if (file.size > 2 * 1024 * 1024) {
             setError('ছবির size ২MB এর বেশি হবে না।')
             return
@@ -94,19 +98,16 @@ export default function ProfilePage({ profile, role }: Props) {
             const fileExt = file.name.split('.').pop()
             const filePath = `${user.id}/avatar.${fileExt}`
 
-            // Upload to storage
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(filePath, file, { upsert: true })
 
             if (uploadError) throw uploadError
 
-            // Get public URL
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath)
 
-            // Update profile
             await supabase
                 .from('profiles')
                 .update({ avatar_url: publicUrl })
@@ -158,7 +159,6 @@ export default function ProfilePage({ profile, role }: Props) {
 
     return (
         <div className="min-h-screen bg-[#0a0a1a] text-white p-4 md:p-8">
-            {/* Header */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -180,11 +180,15 @@ export default function ProfilePage({ profile, role }: Props) {
                             আমার প্রোফাইল
                         </h1>
                         <p className="text-gray-400 mt-1">{config.label}</p>
+                        {studentExtra?.class_level && (
+                            <p className="mt-1 text-xs text-violet-300">
+                                শ্রেণি: {String(studentExtra.class_level).replace(/_/g, ' ')}
+                            </p>
+                        )}
                     </div>
                 </div>
             </motion.div>
 
-            {/* Success/Error */}
             <AnimatePresence>
                 {success && (
                     <motion.div
@@ -210,14 +214,12 @@ export default function ProfilePage({ profile, role }: Props) {
             </AnimatePresence>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Left — Avatar */}
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="md:col-span-1"
                 >
                     <div className={`rounded-2xl border ${config.border} ${config.bg} p-6 text-center`}>
-                        {/* Avatar */}
                         <div className="relative inline-block mb-4">
                             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white/20 mx-auto shadow-xl">
                                 {avatarUrl ? (
@@ -233,7 +235,6 @@ export default function ProfilePage({ profile, role }: Props) {
                                 )}
                             </div>
 
-                            {/* Upload button */}
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={uploading}
@@ -270,7 +271,6 @@ export default function ProfilePage({ profile, role }: Props) {
                             সর্বোচ্চ ২MB, JPG/PNG
                         </p>
 
-                        {/* Quick Info */}
                         <div className="mt-6 space-y-3 text-left">
                             {[
                                 { label: 'যোগ দিয়েছেন', value: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('bn-BD') : 'N/A', icon: '📅' },
@@ -289,13 +289,11 @@ export default function ProfilePage({ profile, role }: Props) {
                     </div>
                 </motion.div>
 
-                {/* Right — Profile Details */}
                 <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="md:col-span-2 space-y-4"
                 >
-                    {/* Edit Form */}
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="font-bold text-white text-lg">ব্যক্তিগত তথ্য</h3>
@@ -312,7 +310,6 @@ export default function ProfilePage({ profile, role }: Props) {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Full Name */}
                             <div>
                                 <label className="text-xs text-gray-400 mb-1 block">পূর্ণ নাম</label>
                                 {editing ? (
@@ -327,13 +324,11 @@ export default function ProfilePage({ profile, role }: Props) {
                                 )}
                             </div>
 
-                            {/* Email — readonly */}
                             <div>
                                 <label className="text-xs text-gray-400 mb-1 block">ইমেইল</label>
                                 <p className="bg-white/5 rounded-xl px-4 py-3 text-gray-400">{profile?.email}</p>
                             </div>
 
-                            {/* Phone */}
                             <div>
                                 <label className="text-xs text-gray-400 mb-1 block">ফোন নম্বর</label>
                                 {editing ? (
@@ -349,7 +344,6 @@ export default function ProfilePage({ profile, role }: Props) {
                                 )}
                             </div>
 
-                            {/* Date of Birth */}
                             <div>
                                 <label className="text-xs text-gray-400 mb-1 block">জন্ম তারিখ</label>
                                 {editing ? (
@@ -366,7 +360,6 @@ export default function ProfilePage({ profile, role }: Props) {
                                 )}
                             </div>
 
-                            {/* Address */}
                             <div className="md:col-span-2">
                                 <label className="text-xs text-gray-400 mb-1 block">ঠিকানা</label>
                                 {editing ? (
@@ -382,7 +375,6 @@ export default function ProfilePage({ profile, role }: Props) {
                                 )}
                             </div>
 
-                            {/* Bio */}
                             <div className="md:col-span-2">
                                 <label className="text-xs text-gray-400 mb-1 block">নিজের সম্পর্কে</label>
                                 {editing ? (
@@ -394,25 +386,25 @@ export default function ProfilePage({ profile, role }: Props) {
                                         className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/40 transition-colors placeholder-gray-600 resize-none"
                                     />
                                 ) : (
-                                    <p className="bg-white/5 rounded-xl px-4 py-3 text-white min-h-[80px]">
-                                        {formData.bio || 'কিছু লেখা হয়নি'}
-                                    </p>
+                                    <p className="bg-white/5 rounded-xl px-4 py-3 text-white min-h-[80px]">{formData.bio || 'যোগ করা হয়নি'}</p>
                                 )}
                             </div>
                         </div>
 
                         {editing && (
-                            <div className="flex gap-3 mt-4">
+                            <div className="mt-4 flex justify-end gap-2">
                                 <button
-                                    onClick={() => { setEditing(false); setError('') }}
-                                    className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-all text-sm"
+                                    type="button"
+                                    onClick={() => setEditing(false)}
+                                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300"
                                 >
                                     বাতিল
                                 </button>
                                 <button
-                                    onClick={handleSave}
+                                    type="button"
+                                    onClick={() => void handleSave()}
                                     disabled={saving}
-                                    className={`flex-1 py-3 rounded-xl bg-gradient-to-r ${config.color} text-white font-semibold transition-all text-sm disabled:opacity-50`}
+                                    className={`px-4 py-2 rounded-xl bg-gradient-to-r ${config.color} text-white font-semibold text-sm disabled:opacity-50`}
                                 >
                                     {saving ? '⏳ সংরক্ষণ হচ্ছে...' : '✅ সংরক্ষণ করো'}
                                 </button>
@@ -420,16 +412,14 @@ export default function ProfilePage({ profile, role }: Props) {
                         )}
                     </div>
 
-                    {/* Account Info */}
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                         <h3 className="font-bold text-white text-lg mb-4">অ্যাকাউন্ট তথ্য</h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {[
-                                { label: 'User ID', value: profile?.id?.slice(0, 8) + '...', icon: '🔑' },
+                                { label: 'User ID', value: profile?.id ? profile.id.slice(0, 8) + '...' : '—', icon: '🔑' },
                                 { label: 'Role', value: config.label, icon: '👤' },
                                 { label: 'Status', value: '🟢 সক্রিয়', icon: '📊' },
                                 { label: 'যোগ দিয়েছেন', value: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('bn-BD') : 'N/A', icon: '📅' },
-                                { label: 'শেষ login', value: 'আজ', icon: '🕐' },
                                 { label: 'Platform', value: 'Ononno v1.0', icon: '🚀' },
                             ].map((item, i) => (
                                 <div key={i} className="bg-white/5 rounded-xl p-3">
@@ -438,17 +428,6 @@ export default function ProfilePage({ profile, role }: Props) {
                                 </div>
                             ))}
                         </div>
-                    </div>
-
-                    {/* Danger Zone */}
-                    <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6">
-                        <h3 className="font-bold text-red-400 text-lg mb-3">⚠️ বিপদজনক অঞ্চল</h3>
-                        <p className="text-gray-400 text-sm mb-4">
-                            এই কাজগুলো পূর্বাবস্থায় ফেরানো যাবে না।
-                        </p>
-                        <button className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all text-sm font-semibold">
-                            🗑️ অ্যাকাউন্ট মুছে ফেলো
-                        </button>
                     </div>
                 </motion.div>
             </div>
