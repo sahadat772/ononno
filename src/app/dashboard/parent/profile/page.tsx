@@ -1,17 +1,19 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import ProfilePage from '@/components/shared/ProfilePage'
+import ParentProfileHub from '@/components/profile/ParentProfileHub'
 
 export default async function ParentProfile() {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/login')
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
-    return <ProfilePage profile={profile} role="parent" />
+  return <ParentProfileHub profile={profile} />
 }

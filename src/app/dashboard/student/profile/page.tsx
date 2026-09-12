@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import ProfilePage from '@/components/shared/ProfilePage'
+import StudentProfileHub from '@/components/profile/StudentProfileHub'
 
 export default async function StudentProfile() {
   const supabase = await createServerSupabaseClient()
@@ -22,10 +22,6 @@ export default async function StudentProfile() {
     .maybeSingle()
 
   return (
-    <ProfilePage
-      profile={profile}
-      role="student"
-      studentExtra={studentProfile}
-    />
+    <StudentProfileHub profile={profile} studentExtra={studentProfile} />
   )
 }
