@@ -8,6 +8,7 @@ import LogoutButton from '@/components/shared/LogoutButton'
 import ParentSoftLaunchCard from '@/components/parent/ParentSoftLaunchCard'
 import ParentPriorityPanel from '@/components/parent/ParentPriorityPanel'
 import ParentEngagementPanel from '@/components/parent/ParentEngagementPanel'
+import ParentTrustPanel from '@/components/parent/ParentTrustPanel'
 import RelatedChildrenSuggestions from '@/components/parent/RelatedChildrenSuggestions'
 import { createClient } from '@/lib/supabase'
 
@@ -36,12 +37,6 @@ function formatClass(level: string) {
   }
   if (!level || level === 'Unknown') return 'ক্লাস সেট নেই'
   return map[level] || level.replace(/_/g, ' ')
-}
-
-function formatTime(iso: string) {
-  try {
-    return new Date(iso).toLocaleString('bn-BD', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-  } catch { return iso }
 }
 
 export default function ParentClient({ profile, childrenData }: Props) {
@@ -145,6 +140,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
         <ParentSoftLaunchCard />
         <ParentPriorityPanel />
         <ParentEngagementPanel />
+        <ParentTrustPanel />
         <RelatedChildrenSuggestions />
 
         <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
