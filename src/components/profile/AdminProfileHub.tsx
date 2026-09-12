@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { usePathname } from 'next/navigation'
+import AdminEditProfilePanel from '@/components/profile/AdminEditProfilePanel'
 
 type Profile = Record<string, string> | null
 
@@ -40,6 +41,7 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
   const name = profile?.full_name || 'Admin'
   const email = profile?.email || ''
   const first = name.split(' ')[0] || 'Admin'
+  const [editing, setEditing] = useState(false)
   const [counts, setCounts] = useState<Counts>({
     classes: 0,
     subjects: 0,
@@ -76,7 +78,7 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
 
         const { data: recent } = await supabase
           .from('curriculum_lessons')
-          .select('id, title, title_bn, is_published, updated_at, workflow_status')
+          .select('id, title, title_bn, is_published, updated_at')
           .order('updated_at', { ascending: false })
           .limit(4)
 
@@ -111,13 +113,6 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
               text: 'New curriculum ready to import',
               time: '—',
               color: 'bg-sky-100 text-sky-700',
-            },
-            {
-              id: '2',
-              icon: '🤖',
-              text: 'Generate lessons from PDF',
-              time: '—',
-              color: 'bg-violet-100 text-violet-700',
             },
           ])
         }
@@ -170,6 +165,12 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
 
   return (
     <div className="min-h-dvh bg-[#eef2ff] text-slate-800">
+      <AdminEditProfilePanel
+        profile={profile}
+        open={editing}
+        onClose={() => setEditing(false)}
+      />
+
       <div className="mx-auto flex max-w-7xl">
         <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col bg-gradient-to-b from-[#1e3a8a] to-[#1e293b] text-white lg:flex">
           <div className="flex items-center gap-2 border-b border-white/10 px-4 py-5">
@@ -260,12 +261,13 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
                   <p className="text-xs text-slate-500">{email}</p>
                 </div>
               </div>
-              <Link
-                href="/dashboard/admin/profile"
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-xl border border-sky-200 bg-sky-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-sky-500"
               >
                 Edit Profile
-              </Link>
+              </button>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -340,15 +342,11 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
               <h2 className="mb-3 text-sm font-black text-slate-800">Overview</h2>
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start lg:flex-col">
+              <div className="flex flex-col items-center gap-4">
                 <div
                   className="relative size-32 shrink-0 rounded-full shadow-inner"
                   style={{
-                    background: `conic-gradient(
-                      #22c55e 0% ${pubPct}%,
-                      #f59e0b ${pubPct}% ${Math.min(100, pubPct + Math.round(otherPct * 0.5))}%,
-                      #94a3b8 ${Math.min(100, pubPct + Math.round(otherPct * 0.5))}% 100%
-                    )`,
+                    background: `conic-gradient(#22c55e 0% ${pubPct}%, #f59e0b ${pubPct}% ${Math.min(100, pubPct + Math.round(otherPct * 0.5))}%, #94a3b8 ${Math.min(100, pubPct + Math.round(otherPct * 0.5))}% 100%)`,
                   }}
                 >
                   <div className="absolute inset-4 flex flex-col items-center justify-center rounded-full bg-white text-center shadow-sm">
@@ -386,13 +384,9 @@ export default function AdminProfileHub({ profile }: { profile: Profile }) {
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-3xl">
-                💻
-              </div>
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-3xl">💻</div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-black text-slate-800 sm:text-base">
-                  Build a Better Learning Future
-                </p>
+                <p className="text-sm font-black text-slate-800 sm:text-base">Build a Better Learning Future</p>
                 <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
                   Your work helps thousands of students learn, explore and grow.
                 </p>
