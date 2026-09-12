@@ -6,6 +6,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import LogoutButton from '@/components/shared/LogoutButton'
 import ParentSoftLaunchCard from '@/components/parent/ParentSoftLaunchCard'
+import ParentPriorityPanel from '@/components/parent/ParentPriorityPanel'
+import RelatedChildrenSuggestions from '@/components/parent/RelatedChildrenSuggestions'
 import { createClient } from '@/lib/supabase'
 
 interface ChildData {
@@ -145,6 +147,8 @@ export default function ParentClient({ profile, childrenData }: Props) {
         </motion.div>
 
         <ParentSoftLaunchCard />
+        <ParentPriorityPanel />
+        <RelatedChildrenSuggestions />
 
         <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
@@ -162,7 +166,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
-          <Link href="/dashboard/parent/create-child" className="rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2.5 text-xs font-semibold text-violet-200 active:scale-[0.98]">➕ নতুন child</Link>
+          <Link href="/dashboard/parent/create-child" className="rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2.5 text-xs font-semibold text-violet-200">➕ নতুন child</Link>
           <button type="button" onClick={() => setShowAddChild(true)} className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔗 ইমেইল লিংক</button>
           <Link href="/dashboard/parent/notifications" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔔 নোটিশ</Link>
           <Link href="/dashboard/parent/profile" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">👤 প্রোফাইল</Link>
@@ -204,7 +208,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
                   </div>
                   {child.lastSession && <p className="mb-3 text-[11px] text-slate-500">শেষ সেশন: {formatTime(child.lastSession.login_at)}{child.lastSession.duration_minutes != null ? ` · ${child.lastSession.duration_minutes} মি.` : ''}</p>}
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/parent/child/${child.child_id}`} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold active:opacity-90">বিস্তারিত</Link>
+                    <Link href={`/dashboard/parent/child/${child.child_id}`} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold">বিস্তারিত</Link>
                     <Link href={`/dashboard/parent/child/${child.child_id}/progress`} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300">অগ্রগতি</Link>
                     <Link href={`/dashboard/parent/child/${child.child_id}/sessions`} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300">সেশন</Link>
                   </div>
@@ -214,19 +218,6 @@ export default function ParentClient({ profile, childrenData }: Props) {
           </div>
         )}
 
-        <div className="mt-8 grid gap-3 md:grid-cols-3">
-          {[
-            { icon: '📚', title: 'একাডেমিক', text: 'কুইজে ≥৬০% হলে পরের পাঠ আনলক — নিয়মিত অনুশীলন দেখুন।' },
-            { icon: '🕌', title: 'ইসলামিক', text: 'কুরআন ও ইসলামিক হাবের অভ্যাস গড়তে উৎসাহ দিন।' },
-            { icon: '⏱️', title: 'সময়', text: 'সেশন দেখে স্ক্রিন ব্যালান্স রাখুন।' },
-          ].map((c) => (
-            <div key={c.title} className="rounded-2xl border border-white/8 bg-[#12122a]/60 p-4">
-              <p className="text-xl">{c.icon}</p>
-              <p className="mt-2 text-sm font-bold">{c.title}</p>
-              <p className="mt-1 text-xs text-slate-500">{c.text}</p>
-            </div>
-          ))}
-        </div>
         <p className="mt-10 text-center text-[11px] text-slate-600">© {new Date().getFullYear()} অনন্য · Parent Hub</p>
       </div>
     </main>
