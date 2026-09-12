@@ -9,271 +9,292 @@ import WeakAreaCard from '@/components/student/WeakAreaCard'
 import LearningInsightsCard from '@/components/student/LearningInsightsCard'
 
 interface Props {
-    profile: Record<string, string> | null
-    studentProfile: Record<string, string> | null
+  profile: Record<string, string> | null
+  studentProfile: Record<string, string> | null
 }
 
 const classNames: Record<string, string> = {
-    class_3: 'তৃতীয় শ্রেণী',
-    class_4: 'চতুর্থ শ্রেণী',
-    class_5: 'পঞ্চম শ্রেণী',
-    class_6: 'ষষ্ঠ শ্রেণী',
-    class_7: 'সপ্তম শ্রেণী',
-    class_8: 'অষ্টম শ্রেণী',
-    class_9: 'নবম শ্রেণী',
-    class_10: 'দশম শ্রেণী',
-    class_11: 'একাদশ শ্রেণী',
-    class_12: 'দ্বাদশ শ্রেণী',
-    university: 'বিশ্ববিদ্যালয়',
-    masters: 'মাস্টার্স',
-    general: 'সাধারণ',
+  class_3: 'তৃতীয় শ্রেণী',
+  class_4: 'চতুর্থ শ্রেণী',
+  class_5: 'পঞ্চম শ্রেণী',
+  class_6: 'ষষ্ঠ শ্রেণী',
+  class_7: 'সপ্তম শ্রেণী',
+  class_8: 'অষ্টম শ্রেণী',
+  class_9: 'নবম শ্রেণী',
+  class_10: 'দশম শ্রেণী',
+  class_11: 'একাদশ শ্রেণী',
+  class_12: 'দ্বাদশ শ্রেণী',
+  university: 'বিশ্ববিদ্যালয়',
+  masters: 'মাস্টার্স',
+  general: 'সাধারণ',
 }
 
 export default function GeneralDashboard({ profile, studentProfile }: Props) {
-    const [realStats, setRealStats] = useState({ lessons: 0, quizScore: 0 })
+  const [realStats, setRealStats] = useState({ lessons: 0, quizScore: 0 })
 
-    useEffect(() => {
-        async function loadStats() {
-            try {
-                const supabase = createClient()
-                const { data: { user } } = await supabase.auth.getUser()
-                if (!user) return
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return
 
-                const { data } = await supabase
-                    .from('learning_progress')
-                    .select('status, score')
-                    .eq('user_id', user.id)
+        const { data } = await supabase
+          .from('learning_progress')
+          .select('status, score')
+          .eq('user_id', user.id)
 
-                if (data) {
-                    const completedLessons = data.filter(
-                        (r) => r.status === 'completed' || (r.score != null && Number(r.score) >= 0),
-                    ).length
-                    const avgScore = data.length > 0
-                        ? Math.round(data.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / data.length)
-                        : 0
-                    setRealStats({ lessons: completedLessons, quizScore: avgScore })
-                }
-            } catch (e) {
-                console.error('Stats load failed:', e)
-            }
+        if (data) {
+          const completedLessons = data.filter(
+            (r) => r.status === 'completed' || (r.score != null && Number(r.score) >= 0),
+          ).length
+          const avgScore =
+            data.length > 0
+              ? Math.round(
+                  data.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / data.length,
+                )
+              : 0
+          setRealStats({ lessons: completedLessons, quizScore: avgScore })
         }
-        void loadStats()
-    }, [])
+      } catch (e) {
+        console.error('Stats load failed:', e)
+      }
+    }
+    void loadStats()
+  }, [])
 
-    const classLevel = studentProfile?.class_level || 'general'
-    const className = classNames[classLevel] || classLevel
-    const firstName = profile?.full_name?.split(' ')[0] || 'বন্ধু'
+  const classLevel = studentProfile?.class_level || 'general'
+  const className = classNames[classLevel] || classLevel
+  void profile
 
-    const isCareerAvailable = ['class_9', 'class_10', 'class_11', 'class_12', 'university', 'masters'].includes(classLevel)
-    const isTrainingAvailable = ['class_11', 'class_12', 'university', 'masters'].includes(classLevel)
+  const isCareerAvailable = [
+    'class_9',
+    'class_10',
+    'class_11',
+    'class_12',
+    'university',
+    'masters',
+  ].includes(classLevel)
+  const isTrainingAvailable = ['class_11', 'class_12', 'university', 'masters'].includes(
+    classLevel,
+  )
 
-    const modules = [
-        {
-            title: 'ইসলামিক শিক্ষা',
-            desc: 'কুরআন, হাদিস, ফিকহ, দোয়া',
-            icon: '🕌',
-            color: 'from-emerald-500 to-teal-500',
-            border: 'border-emerald-500/20',
-            href: '/dashboard/student/islamic',
-            badge: 'বাধ্যতামূলক',
-            badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-            items: ['কুরআন তিলাওয়াত', 'Tajweed AI', 'হিফজ Tracker', 'উস্তাদ AI Chat'],
-        },
-        {
-            title: 'একাডেমিক',
-            desc: className + ' এর পাঠ্যক্রম',
+  const modules = [
+    {
+      title: 'ইসলামিক শিক্ষা',
+      desc: 'কুরআন, হাদিস, ফিকহ, দোয়া',
+      icon: '🕌',
+      color: 'from-emerald-500 to-teal-500',
+      border: 'border-emerald-500/25',
+      href: '/dashboard/student/islamic',
+      badge: 'বাধ্যতামূলক',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      items: ['কুরআন তিলাওয়াত', 'Tajweed AI', 'হিফজ Tracker', 'উস্তাদ AI Chat'],
+    },
+    {
+      title: 'একাডেমিক',
+      desc: className + ' এর NCTB পাঠ্যক্রম',
+      icon: '📚',
+      color: 'from-violet-500 to-fuchsia-500',
+      border: 'border-violet-500/25',
+      href: '/dashboard/student/academic',
+      badge: className,
+      badgeColor: 'bg-violet-500/20 text-violet-200 border-violet-500/30',
+      items: ['বাংলা', 'ইংরেজি', 'গণিত', 'বিজ্ঞান'],
+    },
+    {
+      title: 'AI শিক্ষক',
+      desc: 'যেকোনো প্রশ্নের উত্তর পাও',
+      icon: '🤖',
+      color: 'from-sky-500 to-indigo-500',
+      border: 'border-sky-500/25',
+      href: '/dashboard/student/ai-tutor',
+      badge: 'Groq AI',
+      badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+      items: ['বাংলায় উত্তর', 'যেকোনো বিষয়', '২৪/৭ সাহায্য'],
+    },
+  ]
+
+  return (
+    <div className="space-y-4 pb-2">
+      <AdWrapper position="top" className="mb-2" />
+
+      {/* Stats strip */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+        {[
+          {
+            label: 'সম্পন্ন লেসন',
+            value: `${realStats.lessons}`,
             icon: '📚',
-            color: 'from-blue-500 to-cyan-500',
-            border: 'border-blue-500/20',
-            href: '/dashboard/student/academic',
-            badge: className,
-            badgeColor: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-            items: ['বাংলা', 'ইংরেজি', 'গণিত', 'বিজ্ঞান'],
-        },
-        {
-            title: 'AI শিক্ষক',
-            desc: 'যেকোনো প্রশ্নের উত্তর পাও',
-            icon: '🤖',
-            color: 'from-violet-500 to-purple-500',
-            border: 'border-violet-500/20',
-            href: '/dashboard/student/ai-tutor',
-            badge: 'Groq AI',
-            badgeColor: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
-            items: ['বাংলায় উত্তর', 'যেকোনো বিষয়', '২৪/৭ সাহায্য'],
-        },
-    ]
+            color: 'text-violet-300',
+          },
+          {
+            label: 'Quiz score',
+            value: `${realStats.quizScore}%`,
+            icon: '✅',
+            color: 'text-emerald-300',
+          },
+          {
+            label: 'ইসলামিক',
+            value: '—',
+            icon: '🕌',
+            color: 'text-teal-300',
+          },
+          {
+            label: 'Streak',
+            value: '—',
+            icon: '🔥',
+            color: 'text-amber-300',
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-2xl border border-white/10 bg-[#12122a]/80 p-3 text-center"
+          >
+            <div className="text-lg">{stat.icon}</div>
+            <div className={`text-lg font-black ${stat.color}`}>{stat.value}</div>
+            <div className="text-[10px] text-slate-500">{stat.label}</div>
+          </div>
+        ))}
+      </div>
 
-    return (
-        <div className="min-h-screen bg-[#0a0a1a] p-4 md:p-8">
-            <AdWrapper position="top" className="mb-4" />
+      <LearningInsightsCard />
+      <WeakAreaCard />
 
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6"
-            >
-                <div className="rounded-3xl bg-gradient-to-r from-blue-500/10 via-violet-500/10 to-purple-500/10 border border-blue-500/20 p-4 md:p-6">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                            <h1 className="text-xl md:text-3xl font-bold text-white leading-tight">
-                                আস-সালামু আলাইকুম, {firstName}! 👋
-                            </h1>
-                            <p className="text-gray-400 mt-1 text-sm">আজকের পড়াশোনা শুরু করো</p>
-                            <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs px-2 py-1 rounded-full">
-                                    🏫 {className}
-                                </span>
-                                <Link
-                                    href="/dashboard/student/learning-path"
-                                    className="bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs px-2 py-1 rounded-full hover:bg-violet-500/30"
-                                >
-                                    📚 আজকের Plan
-                                </Link>
-                            </div>
-                        </div>
-                        <div className="text-5xl md:text-6xl shrink-0">
-                            {classLevel.startsWith('university') || classLevel === 'masters' ? '🎓' : '📖'}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-4">
-                        {[
-                            { label: 'সম্পন্ন লেসন', value: `${realStats.lessons}`, icon: '📚', color: 'from-blue-500 to-cyan-500' },
-                            { label: 'ইসলামিক', value: '০%', icon: '🕌', color: 'from-emerald-500 to-teal-500' },
-                            { label: 'Quiz score', value: `${realStats.quizScore}%`, icon: '✅', color: 'from-violet-500 to-purple-500' },
-                            { label: 'Streak', value: '—', icon: '🔥', color: 'from-amber-500 to-orange-500' },
-                        ].map((stat, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: i * 0.1 }}
-                                className="bg-white/5 rounded-2xl p-3 text-center"
-                            >
-                                <div className="text-xl mb-1">{stat.icon}</div>
-                                <div className={`text-base md:text-lg font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
-                                    {stat.value}
-                                </div>
-                                <div className="text-xs text-gray-500 leading-tight">{stat.label}</div>
-                            </motion.div>
-                        ))}
-                    </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+        {modules.map((module, i) => (
+          <motion.div
+            key={module.title}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            whileHover={{ y: -3 }}
+          >
+            <Link href={module.href}>
+              <div
+                className={`h-full cursor-pointer rounded-2xl border ${module.border} bg-white/[0.04] p-4 transition-all hover:bg-white/[0.07] md:p-5`}
+              >
+                <div className="mb-3 flex items-start justify-between">
+                  <div
+                    className={`flex size-12 items-center justify-center rounded-xl bg-gradient-to-br ${module.color} text-2xl shadow-md`}
+                  >
+                    {module.icon}
+                  </div>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${module.badgeColor}`}
+                  >
+                    {module.badge}
+                  </span>
                 </div>
-            </motion.div>
-
-            <div className="mb-4">
-                <LearningInsightsCard />
-            </div>
-
-            <div className="mb-4">
-                <WeakAreaCard />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4">
-                {modules.map((module, i) => (
-                    <motion.div
-                        key={module.title}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        whileHover={{ y: -4 }}
-                    >
-                        <Link href={module.href}>
-                            <div className={`rounded-2xl border ${module.border} bg-white/5 hover:bg-white/10 p-4 md:p-5 transition-all h-full cursor-pointer`}>
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className={`w-11 h-11 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${module.color} flex items-center justify-center text-2xl shadow-md`}>
-                                        {module.icon}
-                                    </div>
-                                    <span className={`text-xs px-2 py-1 rounded-full border ${module.badgeColor}`}>
-                                        {module.badge}
-                                    </span>
-                                </div>
-                                <h3 className="font-bold text-white text-base md:text-lg mb-1">{module.title}</h3>
-                                <p className="text-gray-400 text-sm mb-3">{module.desc}</p>
-                                <div className="space-y-1">
-                                    {module.items.map((item, j) => (
-                                        <div key={j} className="flex items-center gap-2 text-gray-400 text-sm">
-                                            <span className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${module.color} shrink-0`} />
-                                            {item}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className={`mt-3 text-sm font-semibold bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}>
-                                    শুরু করো →
-                                </div>
-                            </div>
-                        </Link>
-                    </motion.div>
-                ))}
-            </div>
-
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-                className="mb-4"
-            >
-                <p className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider">
-                    🕌 Islamic — নতুন features
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                    {[
-                        { href: '/dashboard/student/islamic/tajweed', icon: '🎵', label: 'Tajweed AI', color: 'from-blue-500 to-indigo-600' },
-                        { href: '/dashboard/student/islamic/memorization', icon: '📚', label: 'হিফজ Tracker', color: 'from-violet-500 to-purple-600' },
-                        { href: '/dashboard/student/islamic/chat', icon: '🤖', label: 'উস্তাদ AI', color: 'from-emerald-500 to-teal-600' },
-                        { href: '/dashboard/student/islamic/progress', icon: '📊', label: 'Weekly Report', color: 'from-amber-500 to-orange-600' },
-                    ].map((item, i) => (
-                        <Link key={i} href={item.href}>
-                            <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 p-3 flex items-center gap-3 transition-all"
-                            >
-                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-lg flex-shrink-0`}>
-                                    {item.icon}
-                                </div>
-                                <p className="text-white text-sm font-semibold">{item.label}</p>
-                            </motion.div>
-                        </Link>
-                    ))}
+                <h3 className="mb-1 text-base font-bold text-white md:text-lg">{module.title}</h3>
+                <p className="mb-3 text-sm text-slate-400">{module.desc}</p>
+                <div className="space-y-1">
+                  {module.items.map((item) => (
+                    <div key={item} className="flex items-center gap-2 text-sm text-slate-400">
+                      <span
+                        className={`size-1.5 shrink-0 rounded-full bg-gradient-to-r ${module.color}`}
+                      />
+                      {item}
+                    </div>
+                  ))}
                 </div>
-            </motion.div>
+                <div
+                  className={`mt-3 text-sm font-semibold bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}
+                >
+                  শুরু করো →
+                </div>
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
 
-            {isCareerAvailable && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mb-3">
-                    <Link href="/dashboard/student/career">
-                        <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 md:p-5 hover:bg-amber-500/20 transition-all cursor-pointer">
-                            <div className="flex items-center gap-3 md:gap-4">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">🧭</div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-white text-base md:text-lg">ক্যারিয়ার পাথ AI</h3>
-                                    <p className="text-gray-400 text-sm truncate">তোমার আগ্রহ অনুযায়ী সেরা ক্যারিয়ার খুঁজে নাও</p>
-                                </div>
-                                <span className="bg-amber-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">শুরু →</span>
-                            </div>
-                        </div>
-                    </Link>
-                </motion.div>
-            )}
-
-            {isTrainingAvailable && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-                    <Link href="/dashboard/student/training">
-                        <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 p-4 md:p-5 hover:bg-cyan-500/20 transition-all cursor-pointer">
-                            <div className="flex items-center gap-3 md:gap-4">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-2xl md:text-3xl shadow-md shrink-0">💡</div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-white text-base md:text-lg">Skill Training</h3>
-                                    <p className="text-gray-400 text-sm truncate">Tech, Business, Finance — হালাল স্কিল ট্র্যাক</p>
-                                </div>
-                                <span className="bg-cyan-500 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-sm shrink-0">শুরু →</span>
-                            </div>
-                        </div>
-                    </Link>
-                </motion.div>
-            )}
-
-            <AdWrapper position="bottom" className="mt-6" />
+      <div>
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          🕌 Islamic shortcuts
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            {
+              href: '/dashboard/student/islamic/tajweed',
+              icon: '🎵',
+              label: 'Tajweed AI',
+              color: 'from-blue-500 to-indigo-600',
+            },
+            {
+              href: '/dashboard/student/islamic/memorization',
+              icon: '📚',
+              label: 'হিফজ Tracker',
+              color: 'from-violet-500 to-purple-600',
+            },
+            {
+              href: '/dashboard/student/islamic/chat',
+              icon: '🤖',
+              label: 'উস্তাদ AI',
+              color: 'from-emerald-500 to-teal-600',
+            },
+            {
+              href: '/dashboard/student/islamic/progress',
+              icon: '📊',
+              label: 'Weekly Report',
+              color: 'from-amber-500 to-orange-600',
+            },
+          ].map((item) => (
+            <Link key={item.href} href={item.href}>
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.08]">
+                <div
+                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-lg`}
+                >
+                  {item.icon}
+                </div>
+                <p className="text-sm font-semibold text-white">{item.label}</p>
+              </div>
+            </Link>
+          ))}
         </div>
-    )
+      </div>
+
+      {isCareerAvailable && (
+        <Link href="/dashboard/student/career">
+          <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 transition hover:bg-amber-500/15 md:p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-2xl">
+                🧭
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-white">ক্যারিয়ার পাথ AI</h3>
+                <p className="truncate text-sm text-slate-400">আগ্রহ অনুযায়ী ক্যারিয়ার গাইড</p>
+              </div>
+              <span className="shrink-0 rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white">
+                শুরু →
+              </span>
+            </div>
+          </div>
+        </Link>
+      )}
+
+      {isTrainingAvailable && (
+        <Link href="/dashboard/student/training">
+          <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 p-4 transition hover:bg-cyan-500/15 md:p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 text-2xl">
+                💡
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-white">Skill Training</h3>
+                <p className="truncate text-sm text-slate-400">Tech · Business · Finance</p>
+              </div>
+              <span className="shrink-0 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-semibold text-white">
+                শুরু →
+              </span>
+            </div>
+          </div>
+        </Link>
+      )}
+
+      <AdWrapper position="bottom" className="mt-4" />
+    </div>
+  )
 }
