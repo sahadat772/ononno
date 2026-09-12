@@ -64,6 +64,35 @@ export default async function ParentChildHubPage({
       ? Math.round(scored.reduce((s, p) => s + Number(p.score), 0) / scored.length)
       : null
 
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  const weekCompleted = (progress ?? []).filter((p) => {
+    if (p.status !== 'completed') return false
+    const tm = p.completed_at || p.updated_at
+    return tm && new Date(tm) >= weekAgo
+  }).length
+  const quizFails = scored.filter((p) => Number(p.score) < 60).length
+  const streakDays = (() => {
+    const days = new Set<string>()
+    for (const p of progress ?? []) {
+      const tm = p.completed_at || p.updated_at
+      if (tm) days.add(new Date(tm).toISOString().slice(0, 10))
+    }
+    let s = 0
+    const d = new Date()
+    for (let i = 0; i < 30; i++) {
+      const key = d.toISOString().slice(0, 10)
+      if (days.has(key)) {
+        s++
+        d.setDate(d.getDate() - 1)
+      } else if (i === 0) {
+        d.setDate(d.getDate() - 1)
+        continue
+      } else break
+    }
+    return s
+  })()
+
   const name = child?.full_name || 'সন্তান'
   const classLabel = student?.class_level?.replace(/_/g, ' ') || '—'
 
@@ -90,14 +119,14 @@ export default async function ParentChildHubPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
             <p className="text-2xl font-black text-emerald-400">{completed}</p>
             <p className="text-[11px] text-slate-500">সম্পন্ন পাঠ</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
-            <p className="text-2xl font-black text-sky-400">{tracked}</p>
-            <p className="text-[11px] text-slate-500">ট্র্যাকড</p>
+            <p className="text-2xl font-black text-sky-400">{weekCompleted}</p>
+            <p className="text-[11px] text-slate-500">এই সপ্তাহে</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
             <p className="text-2xl font-black text-amber-400">
@@ -105,7 +134,24 @@ export default async function ParentChildHubPage({
             </p>
             <p className="text-[11px] text-slate-500">গড় স্কোর</p>
           </div>
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center">
+            <p className="text-2xl font-black text-rose-300">{quizFails}</p>
+            <p className="text-[11px] text-slate-500">কুইজ &lt;৬০%</p>
+          </div>
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
+            <p className="text-2xl font-black text-amber-200">
+              {streakDays > 0 ? `🔥${streakDays}` : '0'}
+            </p>
+            <p className="text-[11px] text-slate-500">স্ট্রিক (দিন)</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
+            <p className="text-2xl font-black text-violet-300">{tracked}</p>
+            <p className="text-[11px] text-slate-500">ট্র্যাকড</p>
+          </div>
         </div>
+        <p className="text-center text-[11px] text-slate-500">
+          শুধু এই সন্তানের ক্লাস ({classLabel}) এর অগ্রগতি · Priority 1 overview
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
