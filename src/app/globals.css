@@ -53,6 +53,32 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  :focus-visible {
+    outline: 2px solid #a78bfa;
+    outline-offset: 2px;
+  }
+
+  @media (pointer: coarse) {
+    button:not([disabled]),
+    a,
+    [role="button"] {
+      min-height: 44px;
+    }
+  }
 }
 
 @layer utilities {
@@ -169,5 +195,28 @@
 
   .glow-secondary {
     box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
   }
 }
