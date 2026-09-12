@@ -1,2 +1,2 @@
-/** ONONNO education banner — placeholder; replaced by full data in next commit */
-export const EDUCATION_BANNER_SRC = '/icons/logo-icon.png'
+/** Optional path for real banner artwork (add public/images/edu-banner.webp). */
+export const EDUCATION_BANNER_SRC = '/images/edu-banner.webp'
