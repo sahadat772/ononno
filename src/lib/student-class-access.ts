@@ -1,6 +1,6 @@
 /**
- * Map student_profiles.class_level → curriculum class slug / number.
- * Students should only access matching class content.
+ * Progressive class unlock: only registered class open at start;
+ * completing class unlocks the next.
  */
 
 export type ClassLevelKey =
@@ -67,6 +67,12 @@ export function classLevelToNumber(level: string | null | undefined): number | n
   return null
 }
 
+export function classNumberToLevel(n: number): string {
+  if (n <= 0) return 'nursery'
+  if (n >= 1 && n <= 12) return `class_${n}`
+  return 'class_12'
+}
+
 export function classLevelToSlug(level: string | null | undefined): string | null {
   if (!level) return null
   if (LEVEL_TO_SLUG[level]) return LEVEL_TO_SLUG[level]
@@ -95,25 +101,56 @@ export function normalizeClassSlug(raw: string): string {
   return s
 }
 
-export function studentCanAccessClassSlug(
-  classLevel: string | null | undefined,
-  classSlug: string,
-): boolean {
-  if (!classLevel) return true
-  const allowed = classLevelToSlug(classLevel)
-  if (!allowed) return true
-  return normalizeClassSlug(classSlug) === normalizeClassSlug(allowed)
+export function getUnlockedUpToNumber(
+  registeredLevel: string | null | undefined,
+  unlockedLevel: string | null | undefined,
+): number | null {
+  const start = classLevelToNumber(registeredLevel)
+  const max = classLevelToNumber(unlockedLevel ?? registeredLevel)
+  if (start == null && max == null) return null
+  if (start == null) return max
+  if (max == null) return start
+  return Math.max(start, max)
 }
 
 export function studentCanAccessClassNumber(
-  classLevel: string | null | undefined,
+  registeredLevel: string | null | undefined,
   classNumber: number | null | undefined,
+  unlockedLevel?: string | null,
 ): boolean {
-  if (!classLevel || classNumber == null) return true
-  const n = classLevelToNumber(classLevel)
-  if (n == null) return true
-  if (n === 0) return classNumber === 0 || classNumber === 1
-  return n === classNumber
+  if (classNumber == null) return true
+  if (!registeredLevel) return true
+  const start = classLevelToNumber(registeredLevel)
+  if (start == null) return true
+  if (start === 0) return classNumber === 0
+  const max = getUnlockedUpToNumber(registeredLevel, unlockedLevel ?? registeredLevel) ?? start
+  return classNumber >= start && classNumber <= max
+}
+
+export function studentCanAccessClassSlug(
+  registeredLevel: string | null | undefined,
+  classSlug: string,
+  unlockedLevel?: string | null,
+): boolean {
+  if (!registeredLevel) return true
+  const n = slugToClassNumber(classSlug)
+  if (n == null) {
+    const allowed = classLevelToSlug(registeredLevel)
+    if (!allowed) return true
+    return normalizeClassSlug(classSlug) === normalizeClassSlug(allowed)
+  }
+  return studentCanAccessClassNumber(registeredLevel, n, unlockedLevel)
+}
+
+export function nextClassLevel(
+  registeredLevel: string | null | undefined,
+  unlockedLevel?: string | null,
+): string | null {
+  const max =
+    getUnlockedUpToNumber(registeredLevel, unlockedLevel) ?? classLevelToNumber(registeredLevel)
+  if (max == null || max >= 12) return null
+  if (max === 0) return 'class_1'
+  return classNumberToLevel(max + 1)
 }
 
 export function sectorForClassLevel(level: string | null | undefined): string | null {
@@ -125,4 +162,20 @@ export function sectorForClassLevel(level: string | null | undefined): string | 
   if (n <= 10) return 'high-school'
   if (n <= 12) return 'hsc'
   return 'university'
+}
+
+export function lockReasonBn(
+  registeredLevel: string | null | undefined,
+  classNumber: number,
+  unlockedLevel?: string | null,
+): string {
+  const start = classLevelToNumber(registeredLevel) ?? 1
+  const max = getUnlockedUpToNumber(registeredLevel, unlockedLevel) ?? start
+  if (classNumber < start) {
+    return `আপনি ক্লাস ${start}-এ রেজিস্টার করেছেন — আগের ক্লাস এখানে লক`
+  }
+  if (classNumber > max) {
+    return `ক্লাস ${max} এর সব বিষয় শেষ করে পরীক্ষায় পাস করলে ক্লাস ${classNumber} আনলক হবে`
+  }
+  return 'এই ক্লাস লক আছে'
 }
