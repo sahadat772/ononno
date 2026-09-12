@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+import EducationBanner from '@/components/admin/dashboard/EducationBanner'
 
 type ClassProg = { label: string; pct: number; tone: string }
 type Pipeline = { extracted: number; generated: number; review: number; approved: number; published: number }
@@ -217,16 +217,7 @@ export default function AdminDashboardBody({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-100 via-cyan-50 to-emerald-50 p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="text-5xl">🎒</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-black text-slate-800 sm:text-lg">&ldquo;Great education builds a better tomorrow&rdquo;</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">— ONONNO</p>
-          </div>
-          <Image src="/icons/logo-icon.png" alt="" width={40} height={40} className="rounded-xl opacity-90" />
-        </div>
-      </div>
+      <EducationBanner />
     </div>
   )
 }
