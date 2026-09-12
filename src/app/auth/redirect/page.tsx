@@ -13,24 +13,37 @@ export default async function AuthRedirect() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    console.log('USER ID:', user.id)
-    console.log('USER EMAIL:', user.email)
-
-    const { data: profile, error } = await supabase
+    const { data: profileRaw, error } = await supabase
         .from('profiles')
         .select('role, full_name')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
-    console.log('PROFILE:', profile)
-    console.log('ERROR:', error)
+    // OAuth profile bootstrap — first Google login may lack profiles row
+    let profile = profileRaw
+    if (!profile) {
+        const meta = user.user_metadata || {}
+        const full_name =
+            (meta.full_name as string) ||
+            (meta.name as string) ||
+            user.email?.split('@')[0] ||
+            'User'
+        const role = (meta.role as string) || 'student'
+        await adminSupabase.from('profiles').upsert({
+            id: user.id,
+            full_name,
+            email: user.email,
+            role,
+        })
+        profile = { role, full_name }
+    }
 
-    // Session start করো
+    void error
+
     if (profile) {
         const headersList = await headers()
         const deviceInfo = headersList.get('user-agent') || 'Unknown'
 
-        // Session insert
         const { data: sessionData } = await adminSupabase
             .from('user_sessions')
             .insert({
@@ -41,15 +54,12 @@ export default async function AuthRedirect() {
             .select('id')
             .single()
 
-        // Student হলে Parent/Teacher কে notification পাঠাও
         if (profile.role === 'student' && sessionData) {
-            // Parent খোঁজো
             const { data: parentData } = await adminSupabase
                 .from('parent_children')
                 .select('parent_id')
                 .eq('child_id', user.id)
 
-            // Teacher খোঁজো
             const { data: teacherData } = await adminSupabase
                 .from('teacher_students')
                 .select('teacher_id')
