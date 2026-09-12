@@ -37,13 +37,21 @@ export async function saveLessonProgress(opts: {
     if (ins.error) return { ok: false as const, error: ins.error.message }
   }
 
-  // Phase 2: parent push on exam pass
   if (status === 'completed' && isLessonExamPassed(opts.scorePercent)) {
     notifyParentOnLessonPass({
       scorePercent: opts.scorePercent,
       lessonTitle: opts.lessonTitle || 'পাঠ',
       lessonId: opts.lessonId,
     })
+
+    void fetch('/api/student/subject-completion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subjectId: opts.subjectId,
+        tryUnlock: true,
+      }),
+    }).catch(() => {})
   }
 
   return { ok: true as const, skipped: false }
