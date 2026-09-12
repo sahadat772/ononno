@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import InviteUserPanel from '@/components/admin/InviteUserPanel'
 import {
   ADMIN_PERMISSIONS,
   PERMISSION_META,
@@ -203,6 +204,8 @@ export default function AdminUsersPage() {
           </div>
         )}
 
+        <InviteUserPanel isSuper={isSuper} onInvited={() => void fetchUsers()} />
+
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {[ ['মোট', stats.total, '👥'], ['শিক্ষার্থী', stats.students, '🎓'], ['শিক্ষক', stats.teachers, '👨‍🏫'], ['অভিভাবক', stats.parents, '👨‍👩‍👧'], ['Adult', stats.adults, '👤'], ['Sub Admin', stats.subAdmins, '🛡️'] ].map(([label, value, icon]) => (
             <div key={String(label)} className="rounded-2xl border border-slate-700/70 bg-[#080d1b] p-3 text-center">
@@ -294,10 +297,9 @@ export default function AdminUsersPage() {
 
         <div className="rounded-2xl border border-slate-700/70 bg-[#080d1b] p-4 text-xs text-slate-400">
           <p className="mb-1 font-bold text-slate-300">কীভাবে</p>
-          <p><strong className="text-pink-300">Super Admin</strong> — সব + role assign</p>
-          <p><strong className="text-orange-300">Sub Admin</strong> — শুধু permission অনুযায়ী module</p>
-          <p>Env: <code className="text-slate-300">SUPABASE_SERVICE_ROLE_KEY</code> + redeploy</p>
-          <p>SQL: <code className="text-slate-300">20260910_sub_admin_permissions.sql</code></p>
+          <p><strong className="text-pink-300">Super Admin</strong> — সব + role assign + Invite</p>
+          <p><strong className="text-orange-300">Sub Admin</strong> — permission অনুযায়ী</p>
+          <p>Env: <code className="text-slate-300">SUPABASE_SERVICE_ROLE_KEY</code></p>
         </div>
       </div>
     </div>
