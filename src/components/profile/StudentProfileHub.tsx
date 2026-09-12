@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
+import { usePathname } from 'next/navigation'
 import type { StudentExtra } from '@/lib/profile-health'
+import StudentEditProfilePanel from '@/components/profile/StudentEditProfilePanel'
 
 type Profile = Record<string, string> | null
 
@@ -14,60 +16,116 @@ interface Props {
 }
 
 const CLASS_BN: Record<string, string> = {
-  nursery: 'নার্সারি',
-  kg: 'কেজি',
-  class_1: 'প্রথম শ্রেণী',
-  class_2: 'দ্বিতীয় শ্রেণী',
-  class_3: 'তৃতীয় শ্রেণী',
-  class_4: 'চতুর্থ শ্রেণী',
-  class_5: 'পঞ্চম শ্রেণী',
-  class_6: 'ষষ্ঠ শ্রেণী',
-  class_7: 'সপ্তম শ্রেণী',
-  class_8: 'অষ্টম শ্রেণী',
-  class_9: 'নবম শ্রেণী',
-  class_10: 'দশম শ্রেণী',
-  class_11: 'একাদশ শ্রেণী',
-  class_12: 'দ্বাদশ শ্রেণী',
+  nursery: 'Nursery',
+  kg: 'KG',
+  class_1: 'Class 1',
+  class_2: 'Class 2',
+  class_3: 'Class 3',
+  class_4: 'Class 4',
+  class_5: 'Class 5',
+  class_6: 'Class 6',
+  class_7: 'Class 7',
+  class_8: 'Class 8',
+  class_9: 'Class 9',
+  class_10: 'Class 10',
+  class_11: 'Class 11',
+  class_12: 'Class 12',
+  general: 'General',
+}
+
+const SIDE_NAV = [
+  { href: '/dashboard/student', label: 'Home', icon: '🏠' },
+  { href: '/dashboard/student/academic', label: 'My Learning', icon: '📚' },
+  { href: '/dashboard/student/learning-path', label: 'Study Planner', icon: '📅' },
+  { href: '/dashboard/student/performance', label: 'Progress', icon: '📈' },
+  { href: '/dashboard/student/performance', label: 'Quizzes', icon: '❓' },
+  { href: '/dashboard/student/academic', label: 'Missions', icon: '🎯' },
+  { href: '/dashboard/student/profile', label: 'Achievements', icon: '⭐' },
+]
+
+type Activity = {
+  id: string
+  icon: string
+  text: string
+  time: string
+  xp: string
+  color: string
 }
 
 export default function StudentProfileHub({ profile, studentExtra }: Props) {
+  const pathname = usePathname() || ''
   const classLevel = studentExtra?.class_level || 'general'
   const classLabel = CLASS_BN[classLevel] || classLevel.replace(/_/g, ' ')
   const name = profile?.full_name || 'Student'
   const first = name.split(' ')[0]
+  const motto = profile?.bio || 'Dream Big · Learn More · Be a Hero'
+  const [editing, setEditing] = useState(false)
 
-  const [stats, setStats] = useState({
-    lessons: 0,
-    xp: 0,
-    streak: 0,
-    avgScore: 0,
-  })
+  const [stats, setStats] = useState({ lessons: 0, xp: 0, streak: 0, avgScore: 0 })
+  const [activity, setActivity] = useState<Activity[]>([])
+  const [subjectProg, setSubjectProg] = useState([
+    { name: 'Bangla', short: 'বাংলা', done: 0, total: 5, pct: 0, icon: '📖', tone: 'bg-pink-50 text-pink-600' },
+    { name: 'English', short: 'English', done: 0, total: 5, pct: 0, icon: '🔤', tone: 'bg-sky-50 text-sky-600' },
+    { name: 'Math', short: 'Math', done: 0, total: 5, pct: 0, icon: '🔢', tone: 'bg-violet-50 text-violet-600' },
+    { name: 'Science', short: 'Science', done: 0, total: 5, pct: 0, icon: '🔬', tone: 'bg-emerald-50 text-emerald-600' },
+  ])
 
   useEffect(() => {
     async function load() {
       try {
         const supabase = createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+
         const { data } = await supabase
           .from('learning_progress')
-          .select('status, score, xp_earned')
+          .select('status, score, xp_earned, lesson_id, updated_at')
           .eq('user_id', user.id)
-        if (!data?.length) return
-        const completed = data.filter((r) => r.status === 'completed')
-        const xp = data.reduce((s, r) => s + (Number(r.xp_earned) || 0), 0)
-        const scores = data.map((r) => Number(r.score) || 0).filter((n) => n > 0)
-        const avg = scores.length
-          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-          : 0
-        setStats({
-          lessons: completed.length,
-          xp,
-          streak: Math.min(completed.length, 14),
-          avgScore: avg,
-        })
+          .order('updated_at', { ascending: false })
+          .limit(40)
+
+        if (data?.length) {
+          const completed = data.filter((r) => r.status === 'completed')
+          const xp = data.reduce((s, r) => s + (Number(r.xp_earned) || 0), 0)
+          const scores = data.filter((r) => r.score != null).map((r) => Number(r.score) || 0)
+          const avg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+          setStats({
+            lessons: completed.length,
+            xp,
+            streak: Math.min(Math.max(1, completed.length), 14),
+            avgScore: avg,
+          })
+
+          const base = Math.min(5, Math.max(0, Math.ceil(completed.length / 2)))
+          setSubjectProg([
+            { name: 'Bangla', short: 'বাংলা', done: Math.min(5, base + (completed.length > 0 ? 1 : 0)), total: 5, pct: Math.min(100, (Math.min(5, base + 1) / 5) * 100), icon: '📖', tone: 'bg-pink-50 text-pink-600' },
+            { name: 'English', short: 'English', done: Math.min(5, Math.max(0, base - 1)), total: 5, pct: Math.min(100, (Math.min(5, Math.max(0, base - 1)) / 5) * 100), icon: '🔤', tone: 'bg-sky-50 text-sky-600' },
+            { name: 'Math', short: 'Math', done: Math.min(5, base + (avg >= 60 ? 1 : 0)), total: 5, pct: Math.min(100, ((base + (avg >= 60 ? 1 : 0)) / 5) * 100), icon: '🔢', tone: 'bg-violet-50 text-violet-600' },
+            { name: 'Science', short: 'Science', done: Math.min(5, Math.floor(base / 2)), total: 5, pct: Math.min(100, (Math.floor(base / 2) / 5) * 100), icon: '🔬', tone: 'bg-emerald-50 text-emerald-600' },
+          ])
+
+          setActivity(
+            data.slice(0, 4).map((r, i) => {
+              const sc = r.score != null ? Number(r.score) : null
+              const xpE = Number(r.xp_earned) || (sc != null && sc >= 60 ? 30 : 15)
+              const done = r.status === 'completed'
+              return {
+                id: String(r.lesson_id || i),
+                icon: done ? (sc != null && sc >= 80 ? '💜' : '📘') : '⭐',
+                text: done ? (sc != null ? `Scored ${sc}% in quiz` : 'Completed a lesson') : 'Learning progress update',
+                time: r.updated_at
+                  ? new Date(r.updated_at as string).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' })
+                  : 'Recently',
+                xp: `+${xpE} XP`,
+                color: done ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700',
+              }
+            }),
+          )
+        } else {
+          setActivity([
+            { id: '1', icon: '📘', text: 'Start your first lesson', time: 'Today', xp: '+50 XP', color: 'bg-violet-100 text-violet-700' },
+          ])
+        }
       } catch {
         /* ignore */
       }
@@ -76,164 +134,182 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
   }, [])
 
   const level = Math.max(1, Math.floor(stats.xp / 500) + 1)
-  const xpInLevel = stats.xp % 500
-  const xpGoal = 500
+  const xpGoal = 2000
   const badges = Math.min(12, Math.floor(stats.lessons / 2) + (stats.avgScore >= 80 ? 1 : 0))
-
-  const subjects = [
-    { name: 'বাংলা', pct: Math.min(100, stats.lessons * 12 + 20), color: 'from-pink-500 to-rose-500' },
-    { name: 'English', pct: Math.min(100, stats.lessons * 10 + 15), color: 'from-sky-500 to-blue-500' },
-    { name: 'গণিত', pct: Math.min(100, stats.avgScore || 25), color: 'from-violet-500 to-indigo-500' },
-    { name: 'বিজ্ঞান', pct: Math.min(100, stats.lessons * 8 + 10), color: 'from-emerald-500 to-teal-500' },
-  ]
+  const missionDone = Math.min(8, stats.lessons)
+  const missionTotal = 8
+  const missionPct = Math.round((missionDone / missionTotal) * 100)
 
   return (
-    <div className="min-h-dvh bg-[#0b0620] text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.18),transparent_55%)]" />
+    <div className="min-h-dvh bg-[#f3f0ff] text-slate-800">
+      <StudentEditProfilePanel profile={profile} open={editing} onClose={() => setEditing(false)} />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-3 pb-8 pt-4 sm:px-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Link
-              href="/dashboard/student"
-              className="text-[11px] font-semibold text-violet-300/80 hover:text-violet-200"
-            >
-              ← Student Hub
-            </Link>
-            <h1 className="mt-1 text-xl font-black sm:text-2xl">
-              Student Profile{' '}
-              <span className="text-sm font-semibold text-violet-300">· Learn · Earn XP</span>
-            </h1>
+      <div className="mx-auto flex max-w-7xl">
+        <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col bg-gradient-to-b from-[#5b21b6] to-[#4c1d95] text-white lg:flex">
+          <div className="flex items-center gap-2 border-b border-white/10 px-4 py-5">
+            <Image src="/icons/logo-icon.png" alt="ONONNO" width={32} height={32} className="rounded-lg" />
+            <span className="text-sm font-black tracking-wide">ONONNO</span>
           </div>
-        </div>
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+            {SIDE_NAV.map((item) => {
+              const active =
+                item.label === 'Achievements'
+                  ? pathname.includes('/profile')
+                  : item.href === '/dashboard/student'
+                    ? pathname === '/dashboard/student'
+                    : pathname.startsWith(item.href) && item.label !== 'Home'
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                    active ? 'bg-white/20 text-white shadow-inner' : 'text-white/75 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+          <div className="border-t border-white/10 p-4">
+            <div className="flex items-center gap-2.5">
+              <div className="relative size-9 overflow-hidden rounded-full border-2 border-white/30">
+                {profile?.avatar_url ? (
+                  <Image src={profile.avatar_url} alt="" fill className="object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center bg-fuchsia-500 text-sm font-bold">{first.charAt(0)}</div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-bold">{first}</p>
+                <p className="text-[10px] text-white/60">{classLabel}</p>
+              </div>
+            </div>
+          </div>
+        </aside>
 
-        <div className="mb-4 overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-[#1a0f3a] via-[#120a28] to-[#0d0820] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border-2 border-violet-400/40 sm:size-20">
-              {profile?.avatar_url ? (
-                <Image src={profile.avatar_url} alt="" fill className="object-cover" />
-              ) : (
-                <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500 to-fuchsia-600 text-2xl font-black">
-                  {first.charAt(0)}
+        <div className="min-w-0 flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
+          <div className="mb-4 flex items-center justify-between lg:hidden">
+            <Link href="/dashboard/student" className="flex items-center gap-2">
+              <Image src="/icons/logo-icon.png" alt="" width={28} height={28} className="rounded-lg" />
+              <span className="text-sm font-black">ONONNO</span>
+            </Link>
+            <Link href="/dashboard/student" className="rounded-xl border border-violet-200 bg-white px-3 py-1.5 text-xs font-bold text-violet-700">
+              ← Home
+            </Link>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
+              🎓 Student Profile Page
+            </span>
+            <span className="text-xs font-semibold text-slate-500">Learn · Earn XP · Unlock New Adventures</span>
+          </div>
+
+          <div className="mb-4 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="relative size-16 overflow-hidden rounded-full border-4 border-violet-100 sm:size-[4.5rem]">
+                  {profile?.avatar_url ? (
+                    <Image src={profile.avatar_url} alt="" fill className="object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl font-black text-white">{first.charAt(0)}</div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-black sm:text-xl">{name}</p>
-              <p className="text-xs text-violet-200/80">{profile?.email}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="rounded-full border border-violet-500/30 bg-violet-500/20 px-2.5 py-0.5 text-[10px] font-bold text-violet-200">
-                  {classLabel}
-                </span>
-                <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/15 px-2.5 py-0.5 text-[10px] font-bold text-fuchsia-200">
-                  Dream Big · Learn More
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              { icon: '🏆', label: 'Level', value: String(level), sub: 'Explorer' },
-              { icon: '⚡', label: 'XP', value: String(stats.xp), sub: `/${xpGoal} level` },
-              { icon: '🔥', label: 'Streak', value: String(stats.streak), sub: 'Days' },
-              { icon: '🎖️', label: 'Badges', value: String(badges), sub: 'Earned' },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center"
-              >
-                <div className="text-lg">{s.icon}</div>
-                <p className="text-lg font-black text-violet-100">{s.value}</p>
-                <p className="text-[10px] font-semibold text-slate-400">
-                  {s.label} · {s.sub}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-4 overflow-hidden rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-violet-500/15 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="text-5xl">🎒</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wide text-amber-300/90">
-                Your Next Mission
-              </p>
-              <p className="mt-1 text-sm font-bold text-white sm:text-base">
-                আরও কয়েকটি পাঠ শেষ করো — পরের chapter unlock হবে
-              </p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-violet-500"
-                  style={{ width: `${Math.min(100, (stats.lessons % 8) * 12.5 + 12)}%` }}
-                />
-              </div>
-              <p className="mt-1 text-[11px] text-slate-400">
-                Progress · Level {level} · XP {xpInLevel}/{xpGoal}
-              </p>
-            </div>
-            <Link
-              href="/dashboard/student/academic"
-              className="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-violet-600/30"
-            >
-              View Map →
-            </Link>
-          </div>
-        </div>
-
-        <div className="mb-4 rounded-2xl border border-white/10 bg-[#120a28]/80 p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-black">My Learning Journey</h2>
-            <Link href="/dashboard/student/academic" className="text-[11px] text-violet-300">
-              View All
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {subjects.map((s) => (
-              <div key={s.name} className="rounded-xl border border-white/8 bg-white/5 p-3">
-                <p className="text-xs font-bold text-white">{s.name}</p>
-                <p className="mt-1 text-[10px] text-slate-400">{s.pct}% chapters</p>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${s.color}`}
-                    style={{ width: `${s.pct}%` }}
-                  />
+                <div>
+                  <h1 className="text-xl font-black text-slate-900 sm:text-2xl">{name}</h1>
+                  <span className="mt-0.5 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">{classLabel}</span>
+                  <p className="mt-1 text-xs font-medium text-slate-500">{motto}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+              <button type="button" onClick={() => setEditing(true)} className="rounded-xl border border-violet-200 bg-violet-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-violet-500">
+                Edit Profile
+              </button>
+            </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-[#120a28]/80 p-4">
-            <h2 className="mb-3 text-sm font-black">Recent Activity</h2>
-            <ul className="space-y-2.5 text-sm">
-              <li className="flex justify-between gap-2 rounded-xl bg-white/5 px-3 py-2">
-                <span className="text-slate-300">📚 সম্পন্ন লেসন</span>
-                <span className="font-bold text-emerald-300">{stats.lessons}</span>
-              </li>
-              <li className="flex justify-between gap-2 rounded-xl bg-white/5 px-3 py-2">
-                <span className="text-slate-300">✅ গড় quiz</span>
-                <span className="font-bold text-sky-300">{stats.avgScore || '—'}%</span>
-              </li>
-              <li className="flex justify-between gap-2 rounded-xl bg-white/5 px-3 py-2">
-                <span className="text-slate-300">⚡ মোট XP</span>
-                <span className="font-bold text-amber-300">+{stats.xp}</span>
-              </li>
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+              {[
+                { label: 'Level', value: String(level), sub: 'Explorer', icon: '🏆', bg: 'from-amber-50 to-orange-50 border-amber-100' },
+                { label: 'XP', value: stats.xp.toLocaleString(), sub: `/ ${xpGoal.toLocaleString()}`, icon: '⚡', bg: 'from-sky-50 to-blue-50 border-sky-100' },
+                { label: 'Streak', value: String(stats.streak || 1), sub: 'Days', icon: '🔥', bg: 'from-orange-50 to-rose-50 border-orange-100' },
+                { label: 'Badges', value: String(badges), sub: 'Earned', icon: '❤️', bg: 'from-pink-50 to-fuchsia-50 border-pink-100' },
+              ].map((s) => (
+                <div key={s.label} className={`rounded-2xl border bg-gradient-to-br px-3 py-3 text-center ${s.bg}`}>
+                  <div className="text-lg">{s.icon}</div>
+                  <p className="text-xl font-black text-slate-800">{s.value}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{s.label}</p>
+                  <p className="text-[10px] font-semibold text-slate-500">{s.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-100 via-yellow-50 to-lime-100 p-4 shadow-sm sm:p-5">
+            <div className="relative z-10 flex flex-wrap items-center gap-4">
+              <div className="text-5xl sm:text-6xl">🎒</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-black text-slate-800 sm:text-lg">Your Next Mission</p>
+                <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">Complete more lessons to unlock the next chapter!</p>
+                <div className="mt-3 h-2.5 max-w-xs overflow-hidden rounded-full bg-white/70">
+                  <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${missionPct}%` }} />
+                </div>
+                <p className="mt-1 text-[11px] font-bold text-violet-700">{missionDone}/{missionTotal}</p>
+              </div>
+              <Link href="/dashboard/student/academic" className="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-violet-500">
+                View Map
+              </Link>
+            </div>
+          </div>
+
+          <div className="mb-4 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-black text-slate-800">My Learning Journey</h2>
+              <Link href="/dashboard/student/academic" className="text-[11px] font-bold text-violet-600 hover:underline">View All</Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {subjectProg.map((s) => (
+                <div key={s.name} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-center">
+                  <div className={`mx-auto mb-2 flex size-10 items-center justify-center rounded-xl text-lg ${s.tone}`}>{s.icon}</div>
+                  <p className="text-xs font-black text-slate-800">{s.short}</p>
+                  <p className="text-[10px] font-semibold text-slate-400">{s.done}/{s.total} Chapters</p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${s.pct}%` }} />
+                  </div>
+                  <p className="mt-1 text-[10px] font-bold text-violet-600">{Math.round(s.pct)}%</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-black text-slate-800">Recent Activity</h2>
+              <Link href="/dashboard/student/performance" className="text-[11px] font-bold text-violet-600 hover:underline">View All</Link>
+            </div>
+            <ul className="space-y-2.5">
+              {activity.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-base ${a.color}`}>{a.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-700 sm:text-sm">{a.text}</p>
+                    <p className="text-[10px] text-slate-400">{a.time}</p>
+                  </div>
+                  <span className="shrink-0 text-xs font-bold text-emerald-600">{a.xp}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/10 p-4">
-            <p className="text-xs font-bold text-violet-200">Small Steps, Big Dreams!</p>
-            <p className="mt-2 text-sm text-slate-300">
-              তুমি ভালো করছো, {first} — প্রতিদিন একটু পড়লে streak বাড়বে।
-            </p>
-            <Link
-              href="/dashboard/student/learning-path"
-              className="mt-3 inline-flex rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/15"
-            >
-              আজকের Plan →
-            </Link>
+
+          <div className="overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-fuchsia-50 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="text-4xl">🏆</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-slate-800 sm:text-base">Small Steps, Big Dreams!</p>
+                <p className="mt-0.5 text-xs text-slate-500">You are doing great! Keep going.</p>
+              </div>
+              <div className="text-3xl">🚩</div>
+            </div>
           </div>
         </div>
       </div>
