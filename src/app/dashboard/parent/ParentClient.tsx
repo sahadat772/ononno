@@ -78,11 +78,11 @@ export default function ParentClient({ profile, childrenData }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a1a] text-white">
+    <main className="min-h-dvh bg-[#0a0a1a] text-white">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.08),transparent_55%)]" />
 
       <nav className="fixed inset-x-0 top-0 z-50 h-14 border-b border-white/10 bg-[#0a0a1a]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4">
+        <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-4">
           <Link href="/dashboard/parent" className="flex items-center gap-2.5">
             <Image src="/icons/logo-icon.png" alt="অনন্য" width={36} height={36} className="rounded-xl" />
             <div>
@@ -91,10 +91,11 @@ export default function ParentClient({ profile, childrenData }: Props) {
             </div>
           </Link>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard/parent/notifications" className="hidden rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-slate-300 sm:inline-flex">🔔 নোটিশ</Link>
-            <Link href="/dashboard/parent/create-child" className="hidden rounded-xl border border-violet-500/30 bg-violet-600/20 px-2.5 py-1.5 text-xs font-semibold text-violet-200 sm:inline-flex">➕ সন্তান</Link>
+            <Link href="/dashboard/parent/notifications" className="inline-flex min-h-[40px] items-center rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-slate-300 active:scale-95">🔔</Link>
+            <Link href="/dashboard/parent/create-child" className="inline-flex min-h-[40px] items-center rounded-xl border border-violet-500/30 bg-violet-600/20 px-2.5 py-1.5 text-xs font-semibold text-violet-200 active:scale-95">➕</Link>
+            <Link href="/dashboard/parent/profile" className="inline-flex min-h-[40px] items-center rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-slate-300 sm:hidden active:scale-95">👤</Link>
             <div className="relative">
-              <button type="button" onClick={() => setShowProfile((v) => !v)} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5">
+              <button type="button" onClick={() => setShowProfile((v) => !v)} className="flex min-h-[40px] items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1.5">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 text-xs font-bold">{firstName.charAt(0)}</div>
                 <span className="hidden text-xs font-semibold md:inline">{firstName}</span>
               </button>
@@ -109,7 +110,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
                 )}
               </AnimatePresence>
             </div>
-            <LogoutButton />
+            <div className="hidden sm:block"><LogoutButton /></div>
           </div>
         </div>
       </nav>
@@ -131,7 +132,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pb-28 pt-20 md:pb-16">
+      <div className="relative z-10 mx-auto max-w-6xl px-3 pb-8 pt-20 sm:px-4 md:pb-16">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-[#12122a] to-fuchsia-500/10 p-4 sm:p-5 md:p-7">
           <p className="text-sm text-slate-400">{greeting}</p>
           <h1 className="mt-1 text-2xl font-black md:text-3xl">আস-সালামু আলাইকুম, <span className="bg-gradient-to-r from-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{firstName}</span></h1>
@@ -159,9 +160,10 @@ export default function ParentClient({ profile, childrenData }: Props) {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
-          <Link href="/dashboard/parent/create-child" className="rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2.5 text-xs font-semibold text-violet-200">➕ নতুন child</Link>
-          <button type="button" onClick={() => setShowAddChild(true)} className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔗 ইমেইল লিংক</button>
-          <Link href="/dashboard/parent/notifications" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔔 নোটিশ</Link>
+          <Link href="/dashboard/parent/create-child" className="min-h-[44px] rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2.5 text-xs font-semibold text-violet-200">➕ নতুন child</Link>
+          <button type="button" onClick={() => setShowAddChild(true)} className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔗 ইমেইল লিংক</button>
+          <Link href="/dashboard/parent/notifications" className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔔 নোটিশ</Link>
+          <Link href="/dashboard/parent/profile" className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">👤 প্রোফাইল</Link>
         </div>
 
         <h2 className="mb-4 text-lg font-bold">আমার সন্তান</h2>
@@ -180,7 +182,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
                 <div key={child.child_id} className="rounded-2xl border border-white/10 bg-[#12122a] p-4">
                   <p className="font-bold">{child.profiles.full_name || 'সন্তান'}</p>
                   <p className="text-[11px] text-slate-500">{formatClass(child.class_level)} · {pct}%</p>
-                  <Link href={`/dashboard/parent/child/${child.child_id}`} className="mt-3 block rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold">বিস্তারিত</Link>
+                  <Link href={`/dashboard/parent/child/${child.child_id}`} className="mt-3 block min-h-[44px] rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold">বিস্তারিত</Link>
                 </div>
               )
             })}
