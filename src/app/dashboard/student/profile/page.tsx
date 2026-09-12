@@ -3,15 +3,29 @@ import { redirect } from 'next/navigation'
 import ProfilePage from '@/components/shared/ProfilePage'
 
 export default async function StudentProfile() {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/login')
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
-    return <ProfilePage profile={profile} role="student" />
+  const { data: studentProfile } = await supabase
+    .from('student_profiles')
+    .select('class_level, gender')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  return (
+    <ProfilePage
+      profile={profile}
+      role="student"
+      studentExtra={studentProfile}
+    />
+  )
 }
