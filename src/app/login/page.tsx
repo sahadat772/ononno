@@ -4,16 +4,18 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
+import AuthAdventurePanel from '@/components/auth/AuthAdventurePanel'
+import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function handleLogin(e: React.FormEvent) {
@@ -23,11 +25,15 @@ export default function LoginPage() {
     try {
       const supabase = createClient()
       const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       })
       if (authError) {
-        setError('ইমেইল বা পাসওয়ার্ড সঠিক নয়')
+        setError(
+          /confirm|verify/i.test(authError.message)
+            ? 'ইমেইল verify করুন — inbox চেক করুন'
+            : 'ইমেইল বা পাসওয়ার্ড সঠিক নয়',
+        )
         return
       }
       router.push('/auth/redirect')
@@ -39,124 +45,150 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogle() {
+    setGoogleLoading(true)
+    setError('')
+    try {
+      const supabase = createClient()
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/redirect`,
+        },
+      })
+      if (oauthError) {
+        setError('Google login এখনো সেটআপ হয়নি — ইমেইল দিয়ে লগইন করুন')
+      }
+    } catch {
+      setError('Google login ব্যর্থ')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050816] px-4 py-12">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#071428] via-[#0a0a1a] to-[#04050d]" />
-      <div className="pointer-events-none absolute -left-24 -top-32 h-[420px] w-[420px] rounded-full bg-emerald-500/20 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-40 -right-20 h-[480px] w-[480px] rounded-full bg-cyan-500/15 blur-[140px]" />
+    <main className="flex min-h-dvh bg-white text-slate-800">
+      <div className="hidden lg:block lg:w-[42%]">
+        <AuthAdventurePanel variant="login" />
+      </div>
 
-      <div className="relative z-10 w-full max-w-md">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 text-center"
-        >
-          <Link href="/" className="inline-flex items-center gap-3">
-            <Image
-              src="/icons/logo-icon.png"
-              alt="অনন্য"
-              width={48}
-              height={48}
-              className="rounded-2xl shadow-lg shadow-emerald-500/20"
-            />
-            <div className="text-left">
-              <p className="text-2xl font-black tracking-tight text-white">অনন্য</p>
-              <p className="text-xs font-semibold text-emerald-400">ONONNO · NCTB Learning</p>
-            </div>
-          </Link>
-          <h1 className="mt-8 text-2xl font-black text-white sm:text-3xl">আবার স্বাগতম</h1>
-          <p className="mt-2 text-sm text-slate-400">তোমার শেখার যাত্রা চালিয়ে যাও</p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl backdrop-blur-xl sm:p-8"
-        >
-          <form onSubmit={handleLogin} className="space-y-4">
+      <div className="flex flex-1 flex-col justify-center px-5 py-10 sm:px-10 lg:px-14">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <Image src="/icons/logo-icon.png" alt="ONONNO" width={40} height={40} className="rounded-xl" />
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-xs font-bold text-slate-400">
-                ইমেইল
-              </label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@email.com"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-emerald-500/50 focus:bg-white/[0.07]"
-                />
-              </div>
+              <p className="text-lg font-black">ONONNO</p>
+              <p className="text-[10px] font-semibold text-slate-500">Learn · Explore · Achieve</p>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="password" className="mb-1.5 block text-xs font-bold text-slate-400">
-                পাসওয়ার্ড
-              </label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-12 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-emerald-500/50 focus:bg-white/[0.07]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+          <div className="mb-2 hidden items-center justify-center gap-2 lg:flex">
+            <Image src="/icons/logo-icon.png" alt="" width={36} height={36} className="rounded-xl" />
+            <span className="text-sm font-black text-slate-700">ONONNO</span>
+          </div>
 
+          <h1 className="text-center text-2xl font-black text-slate-900 sm:text-3xl">Welcome Back 👋</h1>
+          <p className="mt-1 text-center text-sm text-slate-500">Login to continue your learning journey</p>
+
+          <form onSubmit={handleLogin} className="mt-8 space-y-4">
             {error && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">
                 {error}
               </div>
             )}
 
+            <label className="block text-xs font-bold text-slate-600">
+              Email or Phone Number
+              <div className="relative mt-1.5">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+            </label>
+
+            <label className="block text-xs font-bold text-slate-600">
+              Password
+              <div className="relative mt-1.5">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label="Toggle password"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </label>
+
+            <div className="flex items-center justify-between text-xs">
+              <label className="flex cursor-pointer items-center gap-2 font-semibold text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Remember me
+              </label>
+              <Link href="/forgot-password" className="font-bold text-blue-600 hover:underline">
+                Forgot Password?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-500/25 transition hover:brightness-110 disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-700/25 transition hover:bg-blue-600 disabled:opacity-60"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> প্রবেশ হচ্ছে…
-                </>
-              ) : (
-                <>
-                  লগইন <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : null}
+              Login →
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-400">
-            অ্যাকাউন্ট নেই?{' '}
-            <Link href="/register" className="font-bold text-emerald-400 hover:text-emerald-300">
-              রেজিস্ট্রেশন করো
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">OR</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleGoogle()}
+            disabled={googleLoading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            {googleLoading ? <Loader2 className="size-4 animate-spin" /> : <span className="text-base font-black text-red-500">G</span>}
+            Continue with Google
+          </button>
+
+          <p className="mt-8 text-center text-sm text-slate-500">
+            Don't have an account?{' '}
+            <Link href="/register" className="font-bold text-blue-600 hover:underline">
+              Register
             </Link>
           </p>
-        </motion.div>
 
-        <p className="mt-6 text-center text-xs text-slate-600">
-          <Link href="/" className="hover:text-slate-400">
-            ← হোমে ফিরে যাও
-          </Link>
-        </p>
+          <p className="mt-6 text-center text-[10px] text-slate-400">
+            Session → role-based dashboard (Student / Parent / Admin)
+          </p>
+        </div>
       </div>
     </main>
   )
