@@ -103,6 +103,7 @@ export default function RegisterPage() {
           await supabase.from('student_profiles').upsert({
             user_id: data.user.id,
             class_level: form.class_level,
+            unlocked_class_level: form.class_level,
           })
         }
         if (form.role === 'parent') {
@@ -113,7 +114,7 @@ export default function RegisterPage() {
       }
 
       if (data.session) {
-        router.push('/auth/redirect')
+        router.push(`/auth/welcome?role=${form.role}`)
         router.refresh()
       } else {
         router.push('/login?registered=1')
@@ -205,6 +206,7 @@ export default function RegisterPage() {
                     <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
+                <p className="mt-1 text-[10px] text-slate-400">শুধু এই ক্লাস আনলক থাকবে; পাস করলে পরের ক্লাস খুলবে।</p>
               </label>
             )}
 
