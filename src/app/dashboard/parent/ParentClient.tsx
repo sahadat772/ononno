@@ -7,6 +7,7 @@ import Image from 'next/image'
 import LogoutButton from '@/components/shared/LogoutButton'
 import ParentSoftLaunchCard from '@/components/parent/ParentSoftLaunchCard'
 import ParentPriorityPanel from '@/components/parent/ParentPriorityPanel'
+import ParentEngagementPanel from '@/components/parent/ParentEngagementPanel'
 import RelatedChildrenSuggestions from '@/components/parent/RelatedChildrenSuggestions'
 import { createClient } from '@/lib/supabase'
 
@@ -54,7 +55,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
   const firstName = profile?.full_name?.split(' ')[0] || 'অভিভাবক'
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'শুভ সকাল' : hour < 17 ? 'শুভ অপরাহ্ন' : 'শুভ সন্ধ্যা'
-  const totalCompleted = childrenData.reduce((s, c) => s + c.completedLessons, 0)
+  const totalCompleted = childrenData.reduce((s, c) => s + (c.completedLessons || 0), 0)
   const weekCompleted = childrenData.reduce((s, c) => s + (c.weekCompleted ?? 0), 0)
   const activeKids = childrenData.filter((c) => c.lastSession).length
 
@@ -107,10 +108,7 @@ export default function ParentClient({ profile, childrenData }: Props) {
                   <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-white/10 bg-[#12122a] p-4 shadow-2xl">
                     <p className="truncate text-sm font-bold">{profile?.full_name}</p>
                     <p className="truncate text-xs text-slate-400">{profile?.email}</p>
-                    <span className="mt-1 inline-block rounded-full border border-violet-500/30 bg-violet-500/15 px-2 py-0.5 text-[10px] text-violet-300">👨‍👩‍👧 অভিভাবক</span>
                     <Link href="/dashboard/parent/profile" className="mt-3 block rounded-xl border border-white/10 bg-white/5 py-2 text-center text-xs">প্রোফাইল</Link>
-                    <Link href="/dashboard/parent/create-child" className="mt-2 block rounded-xl border border-violet-500/30 bg-violet-500/15 py-2 text-center text-xs font-semibold text-violet-200">➕ নতুন child</Link>
-                    <button type="button" onClick={() => { setShowProfile(false); setShowAddChild(true) }} className="mt-2 w-full rounded-xl border border-white/10 py-2 text-xs text-slate-300">🔗 ইমেইল লিংক</button>
                     <div className="mt-2"><LogoutButton /></div>
                   </motion.div>
                 )}
@@ -126,12 +124,11 @@ export default function ParentClient({ profile, childrenData }: Props) {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowAddChild(false)}>
             <motion.div initial={{ scale: 0.96 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#12122a] p-5">
               <h3 className="text-lg font-bold">ইমেইল দিয়ে সন্তান লিংক</h3>
-              <p className="mt-1 text-xs text-slate-400">Student অ্যাকাউন্টের ইমেইল</p>
-              <input type="email" value={childEmail} onChange={(e) => setChildEmail(e.target.value)} placeholder="child@email.com" className="mt-4 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-violet-500/50" />
+              <input type="email" value={childEmail} onChange={(e) => setChildEmail(e.target.value)} placeholder="child@email.com" className="mt-4 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm outline-none" />
               {linkErr && <p className="mt-2 text-xs text-rose-300">{linkErr}</p>}
               {linkMsg && <p className="mt-2 text-xs text-emerald-300">{linkMsg}</p>}
               <div className="mt-4 flex gap-2">
-                <button type="button" disabled={linking} onClick={() => void linkExistingChild()} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-sm font-bold disabled:opacity-50">{linking ? '…' : 'লিংক করো'}</button>
+                <button type="button" disabled={linking} onClick={() => void linkExistingChild()} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-sm font-bold">{linking ? '…' : 'লিংক করো'}</button>
                 <button type="button" onClick={() => setShowAddChild(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm">বাতিল</button>
               </div>
             </motion.div>
@@ -140,14 +137,14 @@ export default function ParentClient({ profile, childrenData }: Props) {
       </AnimatePresence>
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 pb-28 pt-20 md:pb-16">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-[#12122a] to-fuchsia-500/10 p-4 sm:rounded-3xl sm:p-5 md:p-7">
-          <p className="text-sm text-slate-400">{greeting} · {new Date().toLocaleDateString('bn-BD', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-[#12122a] to-fuchsia-500/10 p-4 sm:p-5 md:p-7">
+          <p className="text-sm text-slate-400">{greeting}</p>
           <h1 className="mt-1 text-2xl font-black md:text-3xl">আস-সালামু আলাইকুম, <span className="bg-gradient-to-r from-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{firstName}</span></h1>
-          <p className="mt-2 max-w-xl text-sm text-slate-400">সন্তানের পড়াশোনা, অগ্রগতি ও সেশন — একাডেমিক + ইসলামিক শেখার সাথে তাল মিলিয়ে দেখুন।</p>
         </motion.div>
 
         <ParentSoftLaunchCard />
         <ParentPriorityPanel />
+        <ParentEngagementPanel />
         <RelatedChildrenSuggestions />
 
         <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -169,55 +166,30 @@ export default function ParentClient({ profile, childrenData }: Props) {
           <Link href="/dashboard/parent/create-child" className="rounded-xl border border-violet-500/30 bg-violet-500/15 px-3.5 py-2.5 text-xs font-semibold text-violet-200">➕ নতুন child</Link>
           <button type="button" onClick={() => setShowAddChild(true)} className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔗 ইমেইল লিংক</button>
           <Link href="/dashboard/parent/notifications" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">🔔 নোটিশ</Link>
-          <Link href="/dashboard/parent/profile" className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-300">👤 প্রোফাইল</Link>
         </div>
 
-        <h2 id="children" className="mb-1 scroll-mt-24 text-lg font-bold">আমার <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">সন্তান</span></h2>
-        <p className="mb-4 text-xs text-slate-500">অগ্রগতি, সেশন ও ক্লাস এক নজরে</p>
-
+        <h2 className="mb-4 text-lg font-bold">আমার সন্তান</h2>
         {childrenData.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-violet-500/30 bg-violet-500/5 p-8 text-center">
             <p className="text-4xl">👨‍👩‍👧</p>
             <h3 className="mt-3 text-lg font-bold">কোনো সন্তান লিংক নেই</h3>
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">নতুন student অ্যাকাউন্ট তৈরি করুন বা ইমেইল দিয়ে লিংক করুন।</p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Link href="/dashboard/parent/create-child" className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-bold">অ্যাকাউন্ট তৈরি</Link>
-              <button type="button" onClick={() => setShowAddChild(true)} className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold">ইমেইল লিংক</button>
-            </div>
+            <Link href="/dashboard/parent/create-child" className="mt-4 inline-block rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-bold">অ্যাকাউন্ট তৈরি</Link>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {childrenData.map((child, i) => {
+            {childrenData.map((child) => {
               const total = Math.max(child.totalLessons, 1)
               const pct = Math.min(100, Math.round((child.completedLessons / total) * 100))
               return (
-                <motion.div key={child.child_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="rounded-2xl border border-white/10 bg-[#12122a] p-4 hover:border-violet-500/35">
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-lg font-bold">{child.profiles.full_name?.charAt(0) || '?'}</div>
-                    <div className="min-w-0">
-                      <p className="truncate font-bold">{child.profiles.full_name || 'সন্তান'}</p>
-                      <p className="truncate text-[11px] text-slate-500">{child.profiles.email}</p>
-                      <span className="mt-1 inline-block rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-200">{formatClass(child.class_level)}</span>
-                    </div>
-                  </div>
-                  <div className="mb-1 flex justify-between text-[11px] text-slate-400"><span>অগ্রগতি</span><span>{child.completedLessons}/{total} · {pct}%</span></div>
-                  <div className="mb-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${pct}%` }} /></div>
-                  <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-xl border border-white/8 bg-white/5 p-2.5"><p className="text-slate-500">সম্পন্ন</p><p className="text-lg font-bold text-emerald-400">{child.completedLessons}</p></div>
-                    <div className="rounded-xl border border-white/8 bg-white/5 p-2.5"><p className="text-slate-500">এই সপ্তাহ</p><p className="text-lg font-bold text-sky-400">{child.weekCompleted ?? 0}</p></div>
-                  </div>
-                  {child.lastSession && <p className="mb-3 text-[11px] text-slate-500">শেষ সেশন: {formatTime(child.lastSession.login_at)}{child.lastSession.duration_minutes != null ? ` · ${child.lastSession.duration_minutes} মি.` : ''}</p>}
-                  <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/parent/child/${child.child_id}`} className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold">বিস্তারিত</Link>
-                    <Link href={`/dashboard/parent/child/${child.child_id}/progress`} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300">অগ্রগতি</Link>
-                    <Link href={`/dashboard/parent/child/${child.child_id}/sessions`} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300">সেশন</Link>
-                  </div>
-                </motion.div>
+                <div key={child.child_id} className="rounded-2xl border border-white/10 bg-[#12122a] p-4">
+                  <p className="font-bold">{child.profiles.full_name || 'সন্তান'}</p>
+                  <p className="text-[11px] text-slate-500">{formatClass(child.class_level)} · {pct}%</p>
+                  <Link href={`/dashboard/parent/child/${child.child_id}`} className="mt-3 block rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2.5 text-center text-xs font-bold">বিস্তারিত</Link>
+                </div>
               )
             })}
           </div>
         )}
-
         <p className="mt-10 text-center text-[11px] text-slate-600">© {new Date().getFullYear()} অনন্য · Parent Hub</p>
       </div>
     </main>
