@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { bandColor, type LessonPerformance } from '@/lib/quiz-performance'
+import ProgressTrackingCard from '@/components/student/ProgressTrackingCard'
 
 type Summary = {
   total: number
@@ -52,12 +53,13 @@ export default function PerformanceClient({ studentName }: { studentName: string
           </button>
           <div>
             <h1 className="font-bold">📊 Quiz Performance</h1>
-            <p className="text-xs text-white/40">{studentName} · Phase 2.4</p>
+            <p className="text-xs text-white/40">{studentName} · Progress</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        <ProgressTrackingCard />
         <p className="text-sm text-white/60">
           80%+ শক্তিশালী · 50–79% মাঝারি · 50%-এর নিচে দুর্বল — আবার পড়ো।
         </p>
@@ -71,12 +73,21 @@ export default function PerformanceClient({ studentName }: { studentName: string
         {summary && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
-              { label: 'গড় স্কোর', value: summary.average_score != null ? `${summary.average_score}%` : '—' },
+              {
+                label: 'গড় স্কোর',
+                value:
+                  summary.average_score != null
+                    ? `${summary.average_score}%`
+                    : '—',
+              },
               { label: 'শক্তিশালী', value: summary.strong },
               { label: 'মাঝারি', value: summary.medium },
               { label: 'দুর্বল', value: summary.weak },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center">
+              <div
+                key={s.label}
+                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center"
+              >
                 <p className="text-xl font-bold">{s.value}</p>
                 <p className="text-[10px] text-white/40">{s.label}</p>
               </div>
@@ -119,7 +130,9 @@ export default function PerformanceClient({ studentName }: { studentName: string
                 className={`rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-2 ${bandColor(p.band)}`}
               >
                 <div className="min-w-0">
-                  <p className="font-semibold truncate">{p.title_bn || p.title || p.lesson_id}</p>
+                  <p className="font-semibold truncate">
+                    {p.title_bn || p.title || p.lesson_id}
+                  </p>
                   <p className="text-xs opacity-80">{p.band_label}</p>
                 </div>
                 <div className="text-right">
@@ -136,7 +149,7 @@ export default function PerformanceClient({ studentName }: { studentName: string
         <button
           type="button"
           onClick={() => router.push('/dashboard/student/learning-path')}
-          className="w-full py-3 rounded-2xl bg-linear-to-r from-violet-500 to-purple-600 font-bold"
+          className="w-full py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 font-bold"
         >
           আজকের Plan →
         </button>
