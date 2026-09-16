@@ -12,6 +12,7 @@ import PWAInstallBanner from '@/components/notification/PWAInstallBanner'
 import CompleteProfileBanner from '@/components/shared/CompleteProfileBanner'
 import SoftLaunchBanner from '@/components/student/SoftLaunchBanner'
 import ContinueLearningCard from '@/components/student/ContinueLearningCard'
+import ProgressTrackingCard from '@/components/student/ProgressTrackingCard'
 
 interface Props {
   profile: Record<string, string> | null
@@ -167,6 +168,7 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
         <PushPermission variant="student" showWhenGranted />
         <SoftLaunchBanner />
         <ContinueLearningCard />
+        <ProgressTrackingCard />
 
         {announcements.length > 0 && (
           <div className="mb-4 space-y-2">
