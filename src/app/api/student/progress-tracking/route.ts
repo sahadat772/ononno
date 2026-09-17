@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { isLessonExamPassed, CURRICULUM_UNLOCK_THRESHOLD_PCT } from '@/lib/curriculum-unlock'
+import { levelFromTotalXp } from '@/lib/xp'
 import { getUnlockedUpToNumber } from '@/lib/student-class-access'
 import { evaluateClassForUser } from '@/lib/evaluate-class-completion-server'
 
@@ -162,9 +163,7 @@ export async function GET() {
       at: r.completed_at || r.updated_at,
     }))
 
-    const level = Math.max(1, Math.floor(totalXp / 500) + 1)
-    const xpInLevel = totalXp % 500
-    const xpToNext = 500 - xpInLevel
+    const { level, xpInLevel, xpToNext } = levelFromTotalXp(totalXp)
     const maxUnlocked = getUnlockedUpToNumber(registered, unlocked)
 
     return NextResponse.json({
