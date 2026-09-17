@@ -10,12 +10,8 @@ import { CURRICULUM_UNLOCK_THRESHOLD_PCT } from '@/lib/curriculum-unlock'
 
 export const DEFAULT_LESSON_XP_REWARD = 10
 export const XP_PER_LEVEL = 500
-/** Pass floor as fraction of base reward */
 export const XP_PASS_MIN_FRACTION = 0.6
 
-/**
- * Core formula — pure, no side effects.
- */
 export function calculateXpEarned(
   scorePercent: number,
   xpReward: number = DEFAULT_LESSON_XP_REWARD,
@@ -23,18 +19,14 @@ export function calculateXpEarned(
 ): number {
   const reward = Math.max(0, Number(xpReward) || DEFAULT_LESSON_XP_REWARD)
   const score = Math.min(100, Math.max(0, Number(scorePercent) || 0))
-
   let xp = Math.round((reward * score) / 100)
-
   if (score >= passThreshold) {
     const minPass = Math.round(reward * XP_PASS_MIN_FRACTION)
     xp = Math.max(xp, minPass)
   }
-
   return Math.max(0, xp)
 }
 
-/** Level from total XP (500 XP per level). */
 export function levelFromTotalXp(totalXp: number): {
   level: number
   xpInLevel: number
@@ -48,11 +40,6 @@ export function levelFromTotalXp(totalXp: number): {
   return { level, xpInLevel, xpToNext, totalXp: total }
 }
 
-/**
- * Resolve XP for a progress write.
- * Default: always use score × reward formula.
- * Set useFormula: false to force raw `xp` (kids engine).
- */
 export function resolveXpForProgress(opts: {
   scorePercent: number
   xpReward?: number | null
