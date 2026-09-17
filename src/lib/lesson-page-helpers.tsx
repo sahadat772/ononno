@@ -32,7 +32,9 @@ export function Paragraphs({ text }: { text: string }) {
   return (
     <div className="space-y-3">
       {parts.map((p, i) => (
-        <p key={i} className="text-base leading-relaxed text-gray-300">{p}</p>
+        <p key={i} className="text-base leading-relaxed text-gray-300">
+          {p}
+        </p>
       ))}
     </div>
   )
@@ -50,7 +52,8 @@ export function normalizeQuestions(raw: unknown): Question[] {
       : []
     let correct = Number(q.correct)
     if (!Number.isFinite(correct) || correct < 0) correct = 0
-    const explanation = String(q.explanation ?? '').trim() || 'সঠিক উত্তরটি বেছে নাও।'
+    const explanation =
+      String(q.explanation ?? '').trim() || 'সঠিক উত্তরটি বেছে নাও।'
     if (question && options.length >= 2) {
       out.push({
         question,
@@ -78,19 +81,7 @@ export function extractVocabulary(content: LessonContent | null): string[] {
       }
     }
   }
-  const fromExamples = (content.examples || [])
-    .map((e) => String(e).trim())
-    .filter((e) => /^শব্দ\s*:/i.test(e) || e.includes('—'))
-    .map((e) => e.replace(/^শব্দ\s*:\s*/i, '').trim())
-  const seen = new Set<string>()
-  const out: string[] = []
-  for (const v of [...fromNotes, ...fromExamples]) {
-    const k = v.toLowerCase()
-    if (seen.has(k)) continue
-    seen.add(k)
-    out.push(v)
-  }
-  return out.slice(0, 24)
+  return fromNotes
 }
 
 export function buildQuizSummary(opts: {
@@ -101,11 +92,14 @@ export function buildQuizSummary(opts: {
   wrongTopics: string[]
 }): string {
   const { correct, total, percent, band, wrongTopics } = opts
-  const lines = [`কুইজ ফলাফল: ${correct}/${total} সঠিক (${percent}%) — ${bandLabelBn(band)}।`]
+  const lines = [
+    `কুইজ ফলাফল: ${correct}/${total} সঠিক (${percent}%) — ${bandLabelBn(band)}।`,
+  ]
   if (band === 'strong') lines.push('দারুণ! মূল ধারণা ভালোভাবে ধরেছো।')
   else if (band === 'medium') lines.push('ভালো চেষ্টা। আর একটু অনুশীলন করো।')
   else if (band === 'weak') lines.push('আবার পড়ে পরীক্ষা দিলে স্কোর বাড়বে।')
-  if (wrongTopics.length) lines.push('মনোযোগ দাও: ' + wrongTopics.slice(0, 3).join(' · '))
+  if (wrongTopics.length)
+    lines.push('মনোযোগ দাও: ' + wrongTopics.slice(0, 3).join(' · '))
   return lines.join('\n')
 }
 
@@ -114,23 +108,35 @@ export async function saveLessonProgress(opts: {
   subjectId: string
   chapterId: string
   scorePercent: number
-  xp: number
+  /** @deprecated Prefer xpReward — computed via calculateXpEarned */
+  xp?: number
+  xpReward?: number
   status?: string
+  useFormula?: boolean
 }) {
   if (isFallbackId(opts.lessonId)) return { ok: true as const, skipped: true }
+  const { resolveXpForProgress, DEFAULT_LESSON_XP_REWARD } = await import(
+    '@/lib/xp'
+  )
   const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { ok: false as const, error: 'লগইন নেই' }
   const status = opts.status ?? 'completed'
+  const xpEarned = resolveXpForProgress({
+    scorePercent: opts.scorePercent,
+    xpReward: opts.xpReward ?? DEFAULT_LESSON_XP_REWARD,
+    xp: opts.xp,
+    useFormula: opts.useFormula,
+  })
   const payload: Record<string, unknown> = {
     user_id: user.id,
     lesson_id: opts.lessonId,
     subject_id: opts.subjectId,
     chapter_id: opts.chapterId,
     score: opts.scorePercent,
-    xp_earned: opts.xp,
+    xp_earned: xpEarned,
     status,
     completed_at: status === 'completed' ? new Date().toISOString() : null,
   }
@@ -141,63 +147,5 @@ export async function saveLessonProgress(opts: {
     const ins = await supabase.from('learning_progress').insert(payload)
     if (ins.error) return { ok: false as const, error: ins.error.message }
   }
-  return { ok: true as const, skipped: false }
-}
-
-export async function loadNextTargetAndProgress(opts: {
-  subjectId: string
-  chapterId: string
-  lessonId: string
-}): Promise<{ target: NextTarget; chapterProg: { done: number; total: number; pct: number } }> {
-  const supabase = createClient()
-  const { data: lessons } = await supabase
-    .from('curriculum_lessons')
-    .select('id, title, title_bn, order_index, lesson_number')
-    .eq('chapter_id', opts.chapterId)
-    .eq('is_published', true)
-    .order('order_index', { ascending: true })
-  const orderedLessons = [...(lessons ?? [])].sort(
-    (a, b) => (a.order_index ?? a.lesson_number ?? 0) - (b.order_index ?? b.lesson_number ?? 0),
-  )
-  const { data: chapters } = await supabase
-    .from('curriculum_chapters')
-    .select('id, title, title_bn, order_index, chapter_number')
-    .eq('subject_id', opts.subjectId)
-    .order('order_index', { ascending: true })
-  const orderedChapters = [...(chapters ?? [])].sort(
-    (a, b) => (a.order_index ?? a.chapter_number ?? 0) - (b.order_index ?? b.chapter_number ?? 0),
-  )
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  let done = 0
-  if (user) {
-    const ids = orderedLessons.map((l) => String(l.id))
-    if (ids.length) {
-      const { data: prog } = await supabase
-        .from('learning_progress')
-        .select('lesson_id')
-        .eq('user_id', user.id)
-        .eq('status', 'completed')
-        .in('lesson_id', ids)
-      const set = new Set((prog ?? []).map((p) => String(p.lesson_id)))
-      set.add(opts.lessonId)
-      done = set.size
-    }
-  } else done = 1
-  const total = Math.max(orderedLessons.length, 1)
-  const pct = Math.round((done / total) * 100)
-  const target = resolveNextTarget({
-    currentChapterId: opts.chapterId,
-    currentLessonId: opts.lessonId,
-    lessonsInChapter: orderedLessons.map((l) => ({
-      id: String(l.id),
-      title: (l.title_bn as string) || (l.title as string),
-    })),
-    chaptersInSubject: orderedChapters.map((c) => ({
-      id: String(c.id),
-      title: (c.title_bn as string) || (c.title as string),
-    })),
-  })
-  return { target, chapterProg: { done, total, pct } }
+  return { ok: true as const, skipped: false, xp_earned: xpEarned }
 }
