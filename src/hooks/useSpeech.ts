@@ -3,8 +3,10 @@
 import { useCallback, useRef, useState } from 'react'
 
 /**
- * Web Speech API (speechSynthesis) primary TTS for Kids Zone.
- * Falls back to /api/tts for bn/ar when browser has no suitable voice.
+ * Kids Zone TTS
+ * - en-US: Web Speech API
+ * - bn-BD: always /api/tts (Google bn) — browsers often fall back to Hindi
+ * - ar-SA: Web Speech if Arabic voice exists, else /api/tts
  */
 
 const BANGLA_PRONUNCIATION: Record<string, string> = {
@@ -95,6 +97,7 @@ export type SpeechStatus =
   | { phase: 'playing'; message: string }
   | { phase: 'error'; message: string }
 
+/** Only real Bangla / Arabic / English — never Hindi (hi). */
 function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null
   const voices = window.speechSynthesis.getVoices()
@@ -104,15 +107,16 @@ function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
     lang === 'en-US'
       ? ['en-US', 'en-GB', 'en']
       : lang === 'ar-SA'
-        ? ['ar-SA', 'ar-EG', 'ar']
-        : ['bn-BD', 'bn-IN', 'bn', 'hi-IN', 'hi']
+        ? ['ar-SA', 'ar-EG', 'ar-AE', 'ar']
+        : ['bn-BD', 'bn-IN', 'bn']
 
   for (const p of prefixes) {
-    const found = voices.find(
-      (v) =>
-        v.lang.toLowerCase() === p.toLowerCase() ||
-        v.lang.toLowerCase().startsWith(p.toLowerCase()),
-    )
+    const found = voices.find((v) => {
+      const l = v.lang.toLowerCase()
+      const name = (v.name || '').toLowerCase()
+      if (l.startsWith('hi') || name.includes('hindi')) return false
+      return l === p.toLowerCase() || l.startsWith(p.toLowerCase())
+    })
     if (found) return found
   }
   return null
@@ -170,15 +174,17 @@ export function useSpeech() {
       if (typeof window === 'undefined' || !window.speechSynthesis) return false
       ensureVoices()
 
+      const voice = pickVoice(lang)
+      if (lang === 'bn-BD' && !voice) return false
+      if (lang === 'ar-SA' && !voice) return false
+
       try {
         const utterance = new SpeechSynthesisUtterance(speakText)
         utterance.lang =
           lang === 'en-US' ? 'en-US' : lang === 'ar-SA' ? 'ar-SA' : 'bn-BD'
-        utterance.rate = lang === 'en-US' ? 0.9 : 0.8
+        utterance.rate = lang === 'en-US' ? 0.9 : 0.85
         utterance.pitch = 1.05
         utterance.volume = 1
-
-        const voice = pickVoice(lang)
         if (voice) utterance.voice = voice
 
         utterance.onstart = () => {
@@ -208,14 +214,19 @@ export function useSpeech() {
   )
 
   const speakViaApiTts = useCallback((speakText: string, lang: SpeechLang) => {
-    const ttsLang = lang === 'ar-SA' ? 'ar' : 'bn'
+    const ttsLang = lang === 'ar-SA' ? 'ar' : lang === 'en-US' ? 'en' : 'bn'
     const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
 
     setIsLoading(true)
     setIsSpeaking(true)
     setStatus({
       phase: 'loading',
-      message: ttsLang === 'ar' ? '⬇️ আরবি অডিও লোড…' : '⬇️ বাংলা অডিও লোড…',
+      message:
+        ttsLang === 'ar'
+          ? '⬇️ আরবি অডিও…'
+          : ttsLang === 'en'
+            ? '⬇️ English audio…'
+            : '⬇️ বাংলা উচ্চারণ…',
     })
 
     const audio = new Audio()
@@ -236,7 +247,12 @@ export function useSpeech() {
       setIsLoading(false)
       setStatus({
         phase: 'playing',
-        message: ttsLang === 'ar' ? '▶️ আরবি' : '▶️ বাংলা উচ্চারণ',
+        message:
+          ttsLang === 'ar'
+            ? '▶️ আরবি'
+            : ttsLang === 'en'
+              ? '▶️ English'
+              : '▶️ বাংলা উচ্চারণ',
       })
       audio.play().catch(onFail)
     })
@@ -252,33 +268,28 @@ export function useSpeech() {
   }, [])
 
   const speak = useCallback(
-    (text: string, lang: SpeechLang = 'bn-BD', opts?: { forceApi?: boolean }) => {
+    (text: string, lang: SpeechLang = 'bn-BD') => {
       if (typeof window === 'undefined' || !text?.trim()) return
 
       stop()
       const speakText = expandText(text, lang)
 
-      if (!opts?.forceApi && typeof window.speechSynthesis !== 'undefined') {
-        if (lang === 'en-US') {
-          speakViaWebSpeech(speakText, lang)
-          return
+      if (lang === 'en-US') {
+        if (!speakViaWebSpeech(speakText, lang)) {
+          setStatus({ phase: 'error', message: 'English voice পাওয়া যায়নি' })
         }
-        ensureVoices()
-        const voice = pickVoice(lang)
-        if (voice) {
-          speakViaWebSpeech(speakText, lang)
-          return
-        }
-        // No bn/ar voice in browser → server TTS
+        return
+      }
+
+      // Bangla → always Google TTS (lang=bn). Device Web Speech often uses Hindi.
+      if (lang === 'bn-BD') {
         speakViaApiTts(speakText, lang)
         return
       }
 
-      if (lang === 'en-US') {
-        setStatus({ phase: 'error', message: 'Speech supported নয়' })
-        return
-      }
-      speakViaApiTts(speakText, lang)
+      ensureVoices()
+      if (pickVoice('ar-SA') && speakViaWebSpeech(speakText, 'ar-SA')) return
+      speakViaApiTts(speakText, 'ar-SA')
     },
     [stop, speakViaWebSpeech, speakViaApiTts, ensureVoices],
   )
