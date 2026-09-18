@@ -1,42 +1,49 @@
+'use client'
+
 import { useCallback, useRef, useState } from 'react'
 
+/**
+ * Web Speech API (speechSynthesis) primary TTS for Kids Zone.
+ * Falls back to /api/tts for bn/ar when browser has no suitable voice.
+ */
+
 const BANGLA_PRONUNCIATION: Record<string, string> = {
-  অ: 'অ দিয়ে অজগর',
-  আ: 'আ দিয়ে আম',
-  ই: 'ই দিয়ে ইলিশ',
-  ঈ: 'ঈ দিয়ে ঈগল',
-  উ: 'উ দিয়ে উট',
-  ঊ: 'ঊ দিয়ে ঊষা',
-  ঋ: 'ঋ দিয়ে ঋষি',
-  এ: 'এ দিয়ে একতারা',
-  ঐ: 'ঐ দিয়ে ঐরাবত',
-  ও: 'ও দিয়ে ওল',
-  ঔ: 'ঔ দিয়ে ঔষধ',
-  ক: 'ক দিয়ে কলা',
-  খ: 'খ দিয়ে খরগোশ',
-  গ: 'গ দিয়ে গরু',
-  ঘ: 'ঘ দিয়ে ঘড়ি',
-  চ: 'চ দিয়ে চাঁদ',
-  ছ: 'ছ দিয়ে ছাগল',
-  জ: 'জ দিয়ে জাম',
-  ঝ: 'ঝ দিয়ে ঝড়',
-  ট: 'ট দিয়ে টমেটো',
-  ড: 'ড দিয়ে ডাব',
-  ণ: 'ণ দিয়ে মণি',
-  ত: 'ত দিয়ে তরমুজ',
-  দ: 'দ দিয়ে দাঁত',
-  ন: 'ন দিয়ে নৌকা',
-  প: 'প দিয়ে পাখি',
-  ফ: 'ফ দিয়ে ফুল',
-  ব: 'ব দিয়ে বাঘ',
-  ভ: 'ভ দিয়ে ভালুক',
-  ম: 'ম দিয়ে মাছ',
-  য: 'য দিয়ে যাত্রী',
-  র: 'র দিয়ে রকেট',
-  ল: 'ল দিয়ে লাল',
-  শ: 'শ দিয়ে শাপলা',
-  স: 'স দিয়ে সাপ',
-  হ: 'হ দিয়ে হাতি',
+  অ: 'অ অজগর',
+  আ: 'আ আম',
+  ই: 'ই ইলিশ',
+  ঈ: 'ঈ ঈগল',
+  উ: 'উ উট',
+  ঊ: 'ঊ ঊষা',
+  ঋ: 'ঋ ঋষি',
+  এ: 'এ একতারা',
+  ঐ: 'ঐ ঐরাবত',
+  ও: 'ও ওল',
+  ঔ: 'ঔ ঔষধ',
+  ক: 'ক কলা',
+  খ: 'খ খরগোশ',
+  গ: 'গ গরু',
+  ঘ: 'ঘ ঘড়ি',
+  চ: 'চ চাঁদ',
+  ছ: 'ছ ছাগল',
+  জ: 'জ জাম',
+  ঝ: 'ঝ ঝড়',
+  ট: 'ট টমেটো',
+  ড: 'ড ডাব',
+  ণ: 'ণ মণি',
+  ত: 'ত তরমুজ',
+  দ: 'দ দাঁত',
+  ন: 'ন নৌকা',
+  প: 'প পাখি',
+  ফ: 'ফ ফুল',
+  ব: 'ব বাঘ',
+  ভ: 'ভ ভালুক',
+  ম: 'ম মাছ',
+  য: 'য যাত্রী',
+  র: 'র রকেট',
+  ল: 'ল লাল',
+  শ: 'শ শাপলা',
+  স: 'স সাপ',
+  হ: 'হ হাতি',
   '১': 'এক',
   '২': 'দুই',
   '৩': 'তিন',
@@ -80,17 +87,62 @@ const ARABIC_LETTER_NAME: Record<string, string> = {
   ي: 'ইয়া',
 }
 
+export type SpeechLang = 'bn-BD' | 'en-US' | 'ar-SA'
+
 export type SpeechStatus =
   | { phase: 'idle' }
   | { phase: 'loading'; message: string }
   | { phase: 'playing'; message: string }
   | { phase: 'error'; message: string }
 
+function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return null
+  const voices = window.speechSynthesis.getVoices()
+  if (!voices.length) return null
+
+  const prefixes =
+    lang === 'en-US'
+      ? ['en-US', 'en-GB', 'en']
+      : lang === 'ar-SA'
+        ? ['ar-SA', 'ar-EG', 'ar']
+        : ['bn-BD', 'bn-IN', 'bn', 'hi-IN', 'hi']
+
+  for (const p of prefixes) {
+    const found = voices.find(
+      (v) =>
+        v.lang.toLowerCase() === p.toLowerCase() ||
+        v.lang.toLowerCase().startsWith(p.toLowerCase()),
+    )
+    if (found) return found
+  }
+  return null
+}
+
+function expandText(text: string, lang: SpeechLang): string {
+  const t = text.trim()
+  if (lang === 'bn-BD' && BANGLA_PRONUNCIATION[t]) return BANGLA_PRONUNCIATION[t]
+  if (lang === 'ar-SA' && t.length === 1 && ARABIC_LETTER_NAME[t]) {
+    return ARABIC_LETTER_NAME[t]
+  }
+  return t
+}
+
 export function useSpeech() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<SpeechStatus>({ phase: 'idle' })
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const ensureVoices = useCallback(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    const load = () => {
+      window.speechSynthesis.getVoices()
+    }
+    load()
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = load
+    }
+  }, [])
 
   const stop = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -113,27 +165,26 @@ export function useSpeech() {
     setStatus({ phase: 'idle' })
   }, [])
 
-  const speak = useCallback(
-    (text: string, lang: 'bn-BD' | 'en-US' | 'ar-SA' = 'bn-BD') => {
-      if (typeof window === 'undefined' || !text?.trim()) return
+  const speakViaWebSpeech = useCallback(
+    (speakText: string, lang: SpeechLang): boolean => {
+      if (typeof window === 'undefined' || !window.speechSynthesis) return false
+      ensureVoices()
 
-      stop()
-
-      let speakText = text.trim()
-      if (lang === 'bn-BD' && BANGLA_PRONUNCIATION[speakText]) {
-        speakText = BANGLA_PRONUNCIATION[speakText]
-      } else if (lang === 'ar-SA' && speakText.length === 1 && ARABIC_LETTER_NAME[speakText]) {
-        speakText = speakText
-      }
-
-      if (lang === 'en-US') {
+      try {
         const utterance = new SpeechSynthesisUtterance(speakText)
-        utterance.lang = 'en-US'
-        utterance.rate = 0.85
+        utterance.lang =
+          lang === 'en-US' ? 'en-US' : lang === 'ar-SA' ? 'ar-SA' : 'bn-BD'
+        utterance.rate = lang === 'en-US' ? 0.9 : 0.8
         utterance.pitch = 1.05
+        utterance.volume = 1
+
+        const voice = pickVoice(lang)
+        if (voice) utterance.voice = voice
+
         utterance.onstart = () => {
           setIsSpeaking(true)
-          setStatus({ phase: 'playing', message: 'শুনছো…' })
+          setIsLoading(false)
+          setStatus({ phase: 'playing', message: '🔊 শুনছো…' })
         }
         utterance.onend = () => {
           setIsSpeaking(false)
@@ -141,56 +192,104 @@ export function useSpeech() {
         }
         utterance.onerror = () => {
           setIsSpeaking(false)
-          setStatus({ phase: 'error', message: 'অডিও চালানো যায়নি' })
+          setStatus({ phase: 'error', message: 'Web Speech ব্যর্থ' })
         }
-        window.speechSynthesis.speak(utterance)
+
+        window.speechSynthesis.cancel()
+        setTimeout(() => {
+          window.speechSynthesis.speak(utterance)
+        }, 40)
+        return true
+      } catch {
+        return false
+      }
+    },
+    [ensureVoices],
+  )
+
+  const speakViaApiTts = useCallback((speakText: string, lang: SpeechLang) => {
+    const ttsLang = lang === 'ar-SA' ? 'ar' : 'bn'
+    const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
+
+    setIsLoading(true)
+    setIsSpeaking(true)
+    setStatus({
+      phase: 'loading',
+      message: ttsLang === 'ar' ? '⬇️ আরবি অডিও লোড…' : '⬇️ বাংলা অডিও লোড…',
+    })
+
+    const audio = new Audio()
+    audioRef.current = audio
+    audio.preload = 'auto'
+
+    const onFail = () => {
+      setIsSpeaking(false)
+      setIsLoading(false)
+      setStatus({
+        phase: 'error',
+        message: 'অডিও লোড হয়নি। আবার চেষ্টা করো।',
+      })
+      audioRef.current = null
+    }
+
+    audio.addEventListener('canplaythrough', () => {
+      setIsLoading(false)
+      setStatus({
+        phase: 'playing',
+        message: ttsLang === 'ar' ? '▶️ আরবি' : '▶️ বাংলা উচ্চারণ',
+      })
+      audio.play().catch(onFail)
+    })
+    audio.addEventListener('ended', () => {
+      setIsSpeaking(false)
+      setIsLoading(false)
+      setStatus({ phase: 'idle' })
+      audioRef.current = null
+    })
+    audio.addEventListener('error', onFail)
+    audio.src = apiUrl
+    audio.load()
+  }, [])
+
+  const speak = useCallback(
+    (text: string, lang: SpeechLang = 'bn-BD', opts?: { forceApi?: boolean }) => {
+      if (typeof window === 'undefined' || !text?.trim()) return
+
+      stop()
+      const speakText = expandText(text, lang)
+
+      if (!opts?.forceApi && typeof window.speechSynthesis !== 'undefined') {
+        if (lang === 'en-US') {
+          speakViaWebSpeech(speakText, lang)
+          return
+        }
+        ensureVoices()
+        const voice = pickVoice(lang)
+        if (voice) {
+          speakViaWebSpeech(speakText, lang)
+          return
+        }
+        // No bn/ar voice in browser → server TTS
+        speakViaApiTts(speakText, lang)
         return
       }
 
-      const ttsLang = lang === 'ar-SA' ? 'ar' : 'bn'
-      const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
-
-      setIsLoading(true)
-      setIsSpeaking(true)
-      setStatus({
-        phase: 'loading',
-        message:
-          ttsLang === 'ar'
-            ? '⬇️ আরবি অডিও লোড হচ্ছে… ওয়েব থেকে স্ট্রিম'
-            : '⬇️ বাংলা অডিও লোড হচ্ছে…',
-      })
-
-      const audio = new Audio()
-      audioRef.current = audio
-      audio.preload = 'auto'
-
-      const onFail = () => {
-        setIsSpeaking(false)
-        setIsLoading(false)
-        setStatus({ phase: 'error', message: 'অডিও লোড হয়নি। আবার চেষ্টা করো।' })
-        audioRef.current = null
+      if (lang === 'en-US') {
+        setStatus({ phase: 'error', message: 'Speech supported নয়' })
+        return
       }
-
-      audio.addEventListener('canplaythrough', () => {
-        setIsLoading(false)
-        setStatus({
-          phase: 'playing',
-          message: ttsLang === 'ar' ? '▶️ আরবি তিলাওয়াত চলছে' : '▶️ বাংলা উচ্চারণ চলছে',
-        })
-        audio.play().catch(onFail)
-      })
-      audio.addEventListener('ended', () => {
-        setIsSpeaking(false)
-        setIsLoading(false)
-        setStatus({ phase: 'idle' })
-        audioRef.current = null
-      })
-      audio.addEventListener('error', onFail)
-      audio.src = apiUrl
-      audio.load()
+      speakViaApiTts(speakText, lang)
     },
-    [stop],
+    [stop, speakViaWebSpeech, speakViaApiTts, ensureVoices],
   )
 
-  return { speak, stop, isSpeaking, isLoading, status }
+  return {
+    speak,
+    stop,
+    isSpeaking,
+    isLoading,
+    status,
+    webSpeechSupported:
+      typeof window !== 'undefined' && 'speechSynthesis' in window,
+  }
 }
