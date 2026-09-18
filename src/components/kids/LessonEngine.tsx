@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { useAccess } from '@/hooks/useAccess'
 import LockOverlay from '@/components/shared/LockOverlay'
+import { letterIcon } from '@/lib/kids-letter-icons'
 
 export type ExerciseType =
     | 'intro' | 'listen-repeat' | 'tap-correct' | 'bubble-pop' | 'letter-puzzle'
@@ -34,6 +35,8 @@ export type LessonConfig = {
     lang: 'bn-BD' | 'en-US' | 'ar-SA'
     backHref: string
     showDotCount?: boolean
+    storyImage?: string
+    letterImage?: string
     exercises: Exercise[]
 }
 
@@ -56,6 +59,89 @@ function resolveVoiceLang(lesson: LessonConfig): 'bn-BD' | 'en-US' | 'ar-SA' {
     if (lesson.backHref.includes('/english') || lesson.lang === 'en-US') return 'en-US'
     if (lesson.backHref.includes('/arabic') || lesson.lang === 'ar-SA') return 'ar-SA'
     return lesson.lang || 'bn-BD'
+}
+
+function WordBuilderExercise({
+    currentEx,
+    lesson,
+    speak,
+    onSuccess,
+}: {
+    currentEx: Exercise
+    lesson: LessonConfig
+    speak: (text: string, lang: 'bn-BD' | 'en-US' | 'ar-SA') => void
+    onSuccess: () => void
+}) {
+    const voiceLang = resolveVoiceLang(lesson)
+    const target = (currentEx.correctAnswer || currentEx.content || '').trim()
+    const tiles = useMemo(() => {
+        const base = currentEx.options?.length ? [...currentEx.options] : target.split('')
+        return shuffleArray(base)
+    }, [currentEx.options, currentEx.id, target])
+
+    const [built, setBuilt] = useState<string[]>([])
+    const [pool, setPool] = useState<string[]>(tiles)
+    const [wrong, setWrong] = useState(false)
+
+    useEffect(() => {
+        setBuilt([])
+        setPool(tiles)
+        setWrong(false)
+    }, [currentEx.id, tiles])
+
+    function pick(letter: string, idx: number) {
+        const nextBuilt = [...built, letter]
+        const nextPool = pool.filter((_, i) => i !== idx)
+        setBuilt(nextBuilt)
+        setPool(nextPool)
+        setWrong(false)
+        speak(letter, voiceLang)
+        const soFar = nextBuilt.join('')
+        if (soFar === target) {
+            setTimeout(() => onSuccess(), 500)
+        } else if (nextBuilt.length >= target.length && soFar !== target) {
+            setWrong(true)
+        }
+    }
+
+    function reset() {
+        setBuilt([])
+        setPool(tiles)
+        setWrong(false)
+    }
+
+    const display = built.length ? built.join('') : '· · ·'
+    const icon = letterIcon(lesson.letter, lesson.emoji)
+
+    return (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
+            <div className="mb-4 flex items-center justify-center gap-2">
+                <span className="text-4xl">{icon}</span>
+                <span className="text-sm text-slate-400">শব্দ সাজাও</span>
+            </div>
+            <div className={`mb-5 min-h-[3.5rem] rounded-2xl border-2 px-4 py-3 text-3xl font-black tracking-wide ${
+                wrong ? 'border-red-400/50 bg-red-500/10 text-red-200'
+                : built.join('') === target ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200'
+                : 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+            }`}>
+                {display}
+            </div>
+            <div className="mb-4 flex flex-wrap justify-center gap-2">
+                {pool.map((letter, idx) => (
+                    <button key={`${letter}-${idx}`} type="button" onClick={() => pick(letter, idx)}
+                        className="grid size-14 place-items-center rounded-2xl border-2 border-sky-400/40 bg-sky-500/25 text-2xl font-black text-white shadow-lg transition active:scale-95">
+                        {letter}
+                    </button>
+                ))}
+            </div>
+            {pool.length === 0 && built.join('') !== target && (
+                <p className="mb-2 text-sm text-red-300">আবার চেষ্টা করো</p>
+            )}
+            <button type="button" onClick={reset} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold text-slate-300">
+                ↺ আবার সাজাও
+            </button>
+        </motion.div>
+    )
 }
 
 function MatchingExercise({
@@ -133,9 +219,8 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
     const { speak } = useSpeech()
     const voiceLang = resolveVoiceLang(lesson)
-    // Math addition lessons historically pointed at /math/addition (missing page)
     const safeBackHref = lesson.backHref.replace(/\/addition\/?$/, '')
-    const { isListening, transcript, resetTranscript } = useSpeechRecognition()
+    const { isListening, transcript, resetTranscript, startListening } = useSpeechRecognition()
     const [exIdx, setExIdx] = useState(0)
     const [hearts, setHearts] = useState(3)
     const [xp, setXp] = useState(0)
@@ -273,9 +358,7 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                     <div className="bg-white/5 rounded-2xl p-3"><div className="text-yellow-400 font-bold">{stars}/3</div><div className="text-xs text-gray-500">Stars</div></div>
                     <div className="bg-white/5 rounded-2xl p-3"><div className="text-red-400 font-bold">{hearts}/3</div><div className="text-xs text-gray-500">Hearts</div></div>
                 </div>
-                <button type="button" onClick={() => void finishAndSave()} className="w-full min-h-12 rounded-2xl bg-sky-500 font-bold text-white">
-                    ← তালিকায় ফিরে যাও
-                </button>
+                <button type="button" onClick={() => void finishAndSave()} className="w-full min-h-12 rounded-2xl bg-sky-500 font-bold text-white">← তালিকায় ফিরে যাও</button>
             </motion.div>
         </div>
     )
@@ -313,43 +396,89 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
 
             <div className="mb-3 px-4 text-center">
                 <p className="text-base font-black text-white">{repeatMode ? '🔁 ' : ''}{currentEx?.title}</p>
-                <p className="mt-0.5 text-xs text-slate-400">ধাপ {exIdx + 1} / {totalSteps} · {lesson.letter} {lesson.emoji}</p>
+                <p className="mt-0.5 text-xs text-slate-400">ধাপ {exIdx + 1} / {totalSteps} · {lesson.letter} {letterIcon(lesson.letter, lesson.emoji)}</p>
             </div>
 
             <div className="flex flex-1 flex-col items-center justify-center px-4 pb-6">
                 <AnimatePresence mode="wait">
                     {currentEx?.type === 'intro' && (
-                        <motion.div key={`i-${exIdx}`} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <div onClick={() => speak(currentEx.voiceText, voiceLang)} className={`mx-auto mb-5 flex h-40 w-40 cursor-pointer items-center justify-center rounded-3xl bg-gradient-to-br text-7xl font-bold text-white shadow-2xl ${lesson.color}`}>{lesson.letter}</div>
-                            <p className="mb-2 text-2xl font-bold">{lesson.emoji} {lesson.word}</p>
-                            <p className="mb-6 text-sm text-gray-400">{currentEx.voiceText}</p>
-                            <button type="button" onClick={() => nextEx()} className="min-h-12 w-full rounded-2xl bg-sky-500 font-bold text-white">পরের ধাপ →</button>
+                        <motion.div key={`i-${exIdx}`} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
+                            <div className="relative mx-auto mb-4">
+                                <div className={`mx-auto flex h-44 w-44 flex-col items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-br shadow-2xl ring-4 ring-white/10 ${lesson.color}`}>
+                                    {lesson.storyImage ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={lesson.storyImage} alt={lesson.word} className="h-full w-full object-cover" />
+                                    ) : (
+                                        <>
+                                            <span className="text-6xl drop-shadow-lg">{letterIcon(lesson.letter, lesson.emoji)}</span>
+                                            <span className="mt-1 text-4xl font-black text-white/95">{lesson.letter}</span>
+                                        </>
+                                    )}
+                                </div>
+                                <button type="button" onClick={() => speak(currentEx.voiceText, voiceLang)}
+                                    className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/20 bg-[#12122a] px-3 py-1.5 text-xs font-bold text-sky-200 shadow-lg">
+                                    🔊 গল্প শোনো
+                                </button>
+                            </div>
+                            <p className="mt-5 text-xl font-black text-white">{letterIcon(lesson.letter, lesson.emoji)} {lesson.word}</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-400">{lesson.wordEn}</p>
+                            <p className="mt-3 mb-5 text-sm leading-relaxed text-slate-300">{currentEx.voiceText}</p>
+                            <button type="button" onClick={() => nextEx()} className="min-h-12 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 font-bold text-white shadow-lg shadow-sky-600/30">চলো শিখি →</button>
                         </motion.div>
                     )}
 
                     {currentEx?.type === 'listen-repeat' && (
                         <motion.div key={`lr-${exIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <p className="mb-4 text-5xl font-bold">{currentEx.content}</p>
-                            <button type="button" onClick={() => speak(currentEx.voiceText, voiceLang)} className="mb-4 rounded-full bg-white/10 px-6 py-3 text-white">🔊 আবার শোনো</button>
+                            <div className={`mx-auto mb-4 grid size-28 place-items-center rounded-3xl bg-gradient-to-br text-5xl shadow-xl ${lesson.color}`}>
+                                {letterIcon(currentEx.content[0] || lesson.letter, lesson.emoji)}
+                            </div>
+                            <p className="mb-1 text-5xl font-black tracking-wide text-white">{currentEx.content}</p>
+                            <p className="mb-5 text-sm text-slate-400">শোনো, তারপর তুমিও বলো</p>
+                            <div className="mb-3 flex gap-2">
+                                <button type="button" onClick={() => speak(currentEx.voiceText, voiceLang)} className="min-h-12 flex-1 rounded-2xl border border-white/15 bg-white/10 font-bold text-white">🔊 শোনো</button>
+                                <button type="button" onClick={() => { try { startListening(voiceLang) } catch { /* */ } }}
+                                    className={`min-h-12 flex-1 rounded-2xl font-bold text-white ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-violet-600'}`}>
+                                    {isListening ? '🎤 শুনছি...' : '🎤 আমি বলব'}
+                                </button>
+                            </div>
+                            {transcript && <p className="mb-3 text-xs text-emerald-300">তুমি বলেছো: {transcript}</p>}
                             <button type="button" onClick={() => { setXp(x => x + 5); nextEx() }} className="min-h-12 w-full rounded-2xl bg-emerald-500 font-bold text-white">বলেছি →</button>
                         </motion.div>
                     )}
 
                     {currentEx?.type === 'pronounce' && (
                         <motion.div key={`pr-${exIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <p className="mb-6 text-6xl font-bold">{currentEx.content}</p>
+                            <p className="mb-2 text-sm font-semibold text-violet-300">জোরে বলো বন্ধু!</p>
+                            <div className={`mx-auto mb-4 grid size-36 place-items-center rounded-[2rem] bg-gradient-to-br shadow-2xl ring-4 ring-violet-400/20 ${lesson.color}`}>
+                                <span className="text-7xl font-black text-white">{currentEx.content}</span>
+                            </div>
+                            <p className="mb-1 text-3xl">{letterIcon(currentEx.content, lesson.emoji)}</p>
+                            <div className="mb-4 flex gap-2">
+                                <button type="button" onClick={() => speak(currentEx.voiceText || currentEx.content, voiceLang)} className="min-h-12 flex-1 rounded-2xl border border-white/15 bg-white/10 font-bold">🔊 শোনো</button>
+                                <button type="button" onClick={() => { try { startListening(voiceLang) } catch { /* */ } }}
+                                    className={`min-h-12 flex-1 rounded-2xl font-bold text-white ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-violet-600 shadow-lg shadow-violet-600/30'}`}>
+                                    {isListening ? '🎤 শুনছি...' : '🎤 মাইক'}
+                                </button>
+                            </div>
+                            {transcript && <p className="mb-3 text-xs text-sky-300">শোনা গেছে: “{transcript}”</p>}
                             <button type="button" onClick={() => { setXp(x => x + 5); nextEx() }} className="min-h-12 w-full rounded-2xl bg-violet-500 font-bold text-white">জোরে বলেছি ✓</button>
                         </motion.div>
                     )}
 
-                    {(currentEx?.type === 'tap-correct' || currentEx?.type === 'letter-puzzle' || currentEx?.type === 'quiz') && (
+                    {(currentEx?.type === 'tap-correct' || currentEx?.type === 'letter-puzzle' || currentEx?.type === 'quiz' || currentEx?.type === 'archery-target') && (
                         <motion.div key={`tap-${exIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <p className="mb-6 text-lg text-gray-300">{currentEx.title}</p>
+                            <p className="mb-2 text-lg font-bold text-white">{currentEx.title}</p>
+                            <p className="mb-5 text-4xl">{letterIcon(lesson.letter, lesson.emoji)}</p>
                             <div className="grid grid-cols-2 gap-3">
                                 {(currentEx.options || []).map((opt) => (
                                     <button key={opt} type="button" onClick={() => handleSelect(opt)}
-                                        className={`min-h-16 rounded-2xl border-2 text-2xl font-bold text-white ${selected === opt ? (isCorrect ? 'border-emerald-400 bg-emerald-500' : 'border-red-400 bg-red-500') : 'border-white/20 bg-white/10'}`}>
-                                        {opt}
+                                        className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border-2 text-2xl font-black transition active:scale-95 ${
+                                            selected === opt
+                                                ? isCorrect ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-red-400 bg-red-500 text-white'
+                                                : 'border-white/15 bg-white/10 text-white hover:border-sky-400/40'
+                                        }`}>
+                                        <span className="text-lg opacity-80">{letterIcon(opt)}</span>
+                                        <span>{opt}</span>
                                     </button>
                                 ))}
                             </div>
@@ -358,24 +487,39 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
 
                     {currentEx?.type === 'bubble-pop' && (
                         <motion.div key={`bub-${exIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <p className="mb-4 text-gray-300">{currentEx.title}</p>
+                            <p className="mb-1 text-lg font-bold text-white">{currentEx.title}</p>
+                            <p className="mb-6 text-sm text-slate-400">সঠিক অক্ষরের বুদবুদটি ছুঁয়ে ফাটাও!</p>
                             <div className="flex flex-wrap justify-center gap-4">
-                                {(currentEx.options || []).map((opt) => (
-                                    <button key={opt} type="button" onClick={() => handleSelect(opt)}
-                                        className={`size-20 rounded-full text-2xl font-bold text-white ${selected === opt ? (isCorrect ? 'bg-emerald-500' : 'bg-red-500') : 'border-2 border-sky-400 bg-sky-500/30'}`}>
-                                        {opt}
-                                    </button>
+                                {(currentEx.options || []).map((opt, i) => (
+                                    <motion.button key={opt} type="button" onClick={() => handleSelect(opt)}
+                                        initial={{ y: 20, opacity: 0 }}
+                                        animate={{ y: [0, -8, 0], opacity: 1 }}
+                                        transition={{ delay: i * 0.08, y: { repeat: Infinity, duration: 2 + i * 0.2, ease: 'easeInOut' } }}
+                                        className={`flex size-[4.75rem] flex-col items-center justify-center rounded-full text-2xl font-black shadow-lg transition active:scale-90 ${
+                                            selected === opt
+                                                ? isCorrect ? 'bg-emerald-500 text-white shadow-emerald-500/40' : 'bg-red-500 text-white shadow-red-500/40'
+                                                : 'border-2 border-sky-300/50 bg-gradient-to-br from-sky-500/40 to-cyan-600/30 text-white shadow-sky-900/40'
+                                        }`}>
+                                        <span className="text-sm leading-none opacity-90">{letterIcon(opt)}</span>
+                                        <span>{opt}</span>
+                                    </motion.button>
                                 ))}
                             </div>
                         </motion.div>
                     )}
 
-                    {currentEx?.type === 'word-builder' && (
-                        <motion.div key={`wb-${exIdx}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-sm text-center">
-                            <p className="mb-4 text-gray-300">{currentEx.title}</p>
-                            <p className="mb-6 text-3xl font-bold text-amber-300">{currentEx.correctAnswer}</p>
-                            <button type="button" onClick={() => handleSelect(currentEx.correctAnswer || '')} className="min-h-12 w-full rounded-2xl bg-amber-500 font-bold text-white">সাজিয়েছি ✓</button>
-                        </motion.div>
+                    {currentEx?.type === 'word-builder' && currentEx && (
+                        <WordBuilderExercise
+                            key={`wb-${exIdx}`}
+                            currentEx={currentEx}
+                            lesson={lesson}
+                            speak={speak}
+                            onSuccess={() => {
+                                celebrate()
+                                setXp((x) => x + 10)
+                                setTimeout(() => nextEx(), 600)
+                            }}
+                        />
                     )}
 
                     {currentEx?.type === 'matching' && currentEx && (
