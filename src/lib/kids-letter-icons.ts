@@ -51,9 +51,9 @@ export const BN_LETTER_ICONS: Record<string, string> = {
   ঢ়: '🥒',
   য়: '➡️',
   ৎ: '✨',
-  ং: '🔔',
-  ঃ: '💨',
-  ঁ: '〰️',
+  'ং': '🔔',
+  'ঃ': '💨',
+  'ঁ': '〰️',
 }
 
 export const EN_LETTER_ICONS: Record<string, string> = {
