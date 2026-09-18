@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useSpeech } from '@/hooks/useSpeech'
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
+import { useSpeechRecognition, matchSpokenToExpected } from '@/hooks/useSpeechRecognition'
 import { createClient } from '@/lib/supabase'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { useAccess } from '@/hooks/useAccess'
@@ -62,10 +62,7 @@ function resolveVoiceLang(lesson: LessonConfig): 'bn-BD' | 'en-US' | 'ar-SA' {
 }
 
 function WordBuilderExercise({
-    currentEx,
-    lesson,
-    speak,
-    onSuccess,
+    currentEx, lesson, speak, onSuccess,
 }: {
     currentEx: Exercise
     lesson: LessonConfig
@@ -78,41 +75,22 @@ function WordBuilderExercise({
         const base = currentEx.options?.length ? [...currentEx.options] : target.split('')
         return shuffleArray(base)
     }, [currentEx.options, currentEx.id, target])
-
     const [built, setBuilt] = useState<string[]>([])
     const [pool, setPool] = useState<string[]>(tiles)
     const [wrong, setWrong] = useState(false)
-
-    useEffect(() => {
-        setBuilt([])
-        setPool(tiles)
-        setWrong(false)
-    }, [currentEx.id, tiles])
-
+    useEffect(() => { setBuilt([]); setPool(tiles); setWrong(false) }, [currentEx.id, tiles])
     function pick(letter: string, idx: number) {
         const nextBuilt = [...built, letter]
         const nextPool = pool.filter((_, i) => i !== idx)
-        setBuilt(nextBuilt)
-        setPool(nextPool)
-        setWrong(false)
+        setBuilt(nextBuilt); setPool(nextPool); setWrong(false)
         speak(letter, voiceLang)
         const soFar = nextBuilt.join('')
-        if (soFar === target) {
-            setTimeout(() => onSuccess(), 500)
-        } else if (nextBuilt.length >= target.length && soFar !== target) {
-            setWrong(true)
-        }
+        if (soFar === target) setTimeout(() => onSuccess(), 500)
+        else if (nextBuilt.length >= target.length && soFar !== target) setWrong(true)
     }
-
-    function reset() {
-        setBuilt([])
-        setPool(tiles)
-        setWrong(false)
-    }
-
+    function reset() { setBuilt([]); setPool(tiles); setWrong(false) }
     const display = built.length ? built.join('') : '· · ·'
     const icon = letterIcon(lesson.letter, lesson.emoji)
-
     return (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
             <div className="mb-4 flex items-center justify-center gap-2">
@@ -123,23 +101,15 @@ function WordBuilderExercise({
                 wrong ? 'border-red-400/50 bg-red-500/10 text-red-200'
                 : built.join('') === target ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200'
                 : 'border-amber-400/30 bg-amber-500/10 text-amber-200'
-            }`}>
-                {display}
-            </div>
+            }`}>{display}</div>
             <div className="mb-4 flex flex-wrap justify-center gap-2">
                 {pool.map((letter, idx) => (
                     <button key={`${letter}-${idx}`} type="button" onClick={() => pick(letter, idx)}
-                        className="grid size-14 place-items-center rounded-2xl border-2 border-sky-400/40 bg-sky-500/25 text-2xl font-black text-white shadow-lg transition active:scale-95">
-                        {letter}
-                    </button>
+                        className="grid size-14 place-items-center rounded-2xl border-2 border-sky-400/40 bg-sky-500/25 text-2xl font-black text-white shadow-lg transition active:scale-95">{letter}</button>
                 ))}
             </div>
-            {pool.length === 0 && built.join('') !== target && (
-                <p className="mb-2 text-sm text-red-300">আবার চেষ্টা করো</p>
-            )}
-            <button type="button" onClick={reset} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold text-slate-300">
-                ↺ আবার সাজাও
-            </button>
+            {pool.length === 0 && built.join('') !== target && <p className="mb-2 text-sm text-red-300">আবার চেষ্টা করো</p>}
+            <button type="button" onClick={reset} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold text-slate-300">↺ আবার সাজাও</button>
         </motion.div>
     )
 }
@@ -163,7 +133,6 @@ function MatchingExercise({
     }) || [], [currentEx.options])
     const letters = useMemo(() => pairs.map(p => p.letter), [pairs])
     const words = useMemo(() => shuffleArray(pairs.map(p => p.word)), [pairs])
-
     function handleLeftClick(letter: string) {
         if (matched[letter]) return
         speak(letter, voiceLang)
@@ -187,7 +156,6 @@ function MatchingExercise({
             onComplete(false)
         }
     }
-
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center max-w-sm w-full">
             <p className="text-xl font-bold text-white mb-2">🔗 মেলাও!</p>
@@ -217,10 +185,13 @@ function MatchingExercise({
 export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     const router = useRouter()
     const { isPaid, canDoLesson, loading: accessLoading } = useAccess()
-    const { speak } = useSpeech()
     const voiceLang = resolveVoiceLang(lesson)
     const safeBackHref = lesson.backHref.replace(/\/addition\/?$/, '')
-    const { isListening, transcript, resetTranscript, startListening } = useSpeechRecognition()
+    const {
+        isListening, transcript, interimTranscript, error: micError,
+        supported: micSupported, startListening, stopListening, resetTranscript,
+    } = useSpeechRecognition()
+    const { speak, stop: stopSpeak } = useSpeech()
     const [exIdx, setExIdx] = useState(0)
     const [hearts, setHearts] = useState(3)
     const [xp, setXp] = useState(0)
@@ -250,16 +221,19 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     useEffect(() => {
         if (!transcript || isListening) return
         if (currentEx?.type !== 'listen-repeat' && currentEx?.type !== 'pronounce') return
-        const expected = currentEx.content.toLowerCase()
-        const actual = transcript.toLowerCase()
-        const correct = actual.includes(expected) || expected.includes(actual)
+        const expected = currentEx.content
+        const correct = matchSpokenToExpected(transcript, expected)
         queueMicrotask(() => {
-            if (correct) setXp(x => x + 5)
-            else setHearts(h => Math.max(0, h - 1))
+            if (correct) {
+                setXp((x) => x + 10)
+                celebrate()
+            } else {
+                setHearts((h) => Math.max(0, h - 1))
+            }
         })
         resetTranscript()
-        const t = setTimeout(() => nextEx(), 2000)
-        return () => clearTimeout(t)
+        const timer = setTimeout(() => nextEx(), correct ? 1200 : 1800)
+        return () => clearTimeout(timer)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [transcript, isListening])
 
@@ -344,6 +318,13 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
             console.error('Progress save failed:', e)
         }
         router.push(safeBackHref)
+    }
+
+    function toggleMic() {
+        try {
+            if (isListening) stopListening()
+            else { stopSpeak(); startListening(voiceLang) }
+        } catch { /* */ }
     }
 
     if (isResult) return (
@@ -436,12 +417,16 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             <p className="mb-5 text-sm text-slate-400">শোনো, তারপর তুমিও বলো</p>
                             <div className="mb-3 flex gap-2">
                                 <button type="button" onClick={() => speak(currentEx.voiceText, voiceLang)} className="min-h-12 flex-1 rounded-2xl border border-white/15 bg-white/10 font-bold text-white">🔊 শোনো</button>
-                                <button type="button" onClick={() => { try { startListening(voiceLang) } catch { /* */ } }}
+                                <button type="button" onClick={toggleMic}
                                     className={`min-h-12 flex-1 rounded-2xl font-bold text-white ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-violet-600'}`}>
                                     {isListening ? '🎤 শুনছি...' : '🎤 আমি বলব'}
                                 </button>
                             </div>
-                            {transcript && <p className="mb-3 text-xs text-emerald-300">তুমি বলেছো: {transcript}</p>}
+                            {(interimTranscript || transcript) && (
+                                <p className="mb-2 text-xs text-emerald-300">{isListening ? 'শুনছি… ' : 'তুমি বলেছো: '}{interimTranscript || transcript}</p>
+                            )}
+                            {micError && <p className="mb-2 text-xs text-red-300">{micError}</p>}
+                            {!micSupported && <p className="mb-2 text-xs text-amber-300">মাইক Chrome-এ ভালো কাজ করে</p>}
                             <button type="button" onClick={() => { setXp(x => x + 5); nextEx() }} className="min-h-12 w-full rounded-2xl bg-emerald-500 font-bold text-white">বলেছি →</button>
                         </motion.div>
                     )}
@@ -455,12 +440,15 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             <p className="mb-1 text-3xl">{letterIcon(currentEx.content, lesson.emoji)}</p>
                             <div className="mb-4 flex gap-2">
                                 <button type="button" onClick={() => speak(currentEx.voiceText || currentEx.content, voiceLang)} className="min-h-12 flex-1 rounded-2xl border border-white/15 bg-white/10 font-bold">🔊 শোনো</button>
-                                <button type="button" onClick={() => { try { startListening(voiceLang) } catch { /* */ } }}
+                                <button type="button" onClick={toggleMic}
                                     className={`min-h-12 flex-1 rounded-2xl font-bold text-white ${isListening ? 'bg-rose-500 animate-pulse' : 'bg-violet-600 shadow-lg shadow-violet-600/30'}`}>
                                     {isListening ? '🎤 শুনছি...' : '🎤 মাইক'}
                                 </button>
                             </div>
-                            {transcript && <p className="mb-3 text-xs text-sky-300">শোনা গেছে: “{transcript}”</p>}
+                            {(interimTranscript || transcript) && (
+                                <p className="mb-2 text-xs text-sky-300">{isListening ? 'শুনছি… ' : 'শোনা গেছে: '}“{interimTranscript || transcript}”</p>
+                            )}
+                            {micError && <p className="mb-2 text-xs text-red-300">{micError}</p>}
                             <button type="button" onClick={() => { setXp(x => x + 5); nextEx() }} className="min-h-12 w-full rounded-2xl bg-violet-500 font-bold text-white">জোরে বলেছি ✓</button>
                         </motion.div>
                     )}
@@ -509,17 +497,8 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                     )}
 
                     {currentEx?.type === 'word-builder' && currentEx && (
-                        <WordBuilderExercise
-                            key={`wb-${exIdx}`}
-                            currentEx={currentEx}
-                            lesson={lesson}
-                            speak={speak}
-                            onSuccess={() => {
-                                celebrate()
-                                setXp((x) => x + 10)
-                                setTimeout(() => nextEx(), 600)
-                            }}
-                        />
+                        <WordBuilderExercise key={`wb-${exIdx}`} currentEx={currentEx} lesson={lesson} speak={speak}
+                            onSuccess={() => { celebrate(); setXp((x) => x + 10); setTimeout(() => nextEx(), 600) }} />
                     )}
 
                     {currentEx?.type === 'matching' && currentEx && (
