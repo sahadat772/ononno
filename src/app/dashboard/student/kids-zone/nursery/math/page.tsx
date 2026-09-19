@@ -106,7 +106,7 @@ export default function NurseryMathPage() {
             return (
               <div key={unit.id}>
                 <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)}
-                  className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''}`}>
+                  className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''`}>
                   <div className="flex items-center gap-3">
                     <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${unit.color}`}>{isUnitUnlocked ? unit.icon : '🔒'}</div>
                     <div className="min-w-0 flex-1">
@@ -135,8 +135,8 @@ export default function NurseryMathPage() {
                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}
                           </Link>
                           <div className="min-w-0 flex-1">
-                            <p className={`truncate text-sm font-medium ${isUnlocked ? 'text-white' : 'text-gray-500'}">{lesson.title}</p>
-                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ` · ${'⭐'.repeat(stars)}` : ''}</p>
+                            <p className={`truncate text-sm font-medium ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{lesson.title}</p>
+                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ' · ' + '⭐'.repeat(stars) : ''}</p>
                           </div>
                         </div>
                       )
