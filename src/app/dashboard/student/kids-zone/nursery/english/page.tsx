@@ -320,7 +320,7 @@ export default function NurseryEnglishPage() {
                               {lesson.title}
                             </p>
                             <p className="text-xs text-amber-400">
-                              ⚡ {lesson.xp} XP{stars > 0 ? ` · ${'⭐'.repeat(stars)}` : ''}
+                              ⚡ {lesson.xp} XP{stars > 0 ? ' · ' + '⭐'.repeat(stars) : ''}
                             </p>
                           </div>
                         </div>
