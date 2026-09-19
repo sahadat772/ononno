@@ -133,7 +133,7 @@ export default function NurseryArabicPage() {
                       const isUnlocked = isLessonUnlocked(unitIdx, lessonIdx)
                       const stars = progress[lesson.id]?.stars || 0
                       return (
-                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'`}>
+                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'}`}>
                           <Link href={isUnlocked ? `/dashboard/student/kids-zone/nursery/arabic/${lesson.id}` : '#'} className={`flex size-14 items-center justify-center rounded-full text-2xl font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'}`} style={{ fontFamily: 'Arial' }}>
                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}
                           </Link>
