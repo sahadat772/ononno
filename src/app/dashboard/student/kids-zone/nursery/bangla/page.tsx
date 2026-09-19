@@ -247,7 +247,7 @@ export default function NurseryBanglaPage() {
                                                 const isUnlocked = isLessonUnlocked(unitIdx, lessonIdx)
                                                 const stars = progress[lesson.id]?.stars || 0
                                                 return (
-                                                    <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'}`}>
+                                                    <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'`}>
                                                         <Link
                                                             href={isUnlocked ? `/dashboard/student/kids-zone/nursery/bangla/${lesson.id}` : '#'}
                                                             className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shrink-0 ${
@@ -260,7 +260,7 @@ export default function NurseryBanglaPage() {
                                                         </Link>
                                                         <div className="flex-1 min-w-0">
                                                             <p className={`text-sm font-medium truncate ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{lesson.title}</p>
-                                                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ` · ${'⭐'.repeat(stars)}` : ''}</p>
+                                                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ' · ' + '⭐'.repeat(stars) : ''}</p>
                                                         </div>
                                                     </div>
                                                 )

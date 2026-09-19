@@ -19,7 +19,7 @@ const units = [
     lessons: [
       { id: 'arabic-ra', title: 'ر — রা', icon: 'ر', xp: 10 }, { id: 'arabic-za', title: 'ز — যা', icon: 'ز', xp: 10 },
       { id: 'arabic-sin', title: 'س — সিন', icon: 'س', xp: 10 }, { id: 'arabic-shin', title: 'ش — শিন', icon: 'ش', xp: 10 },
-      { id: 'arabic-sad', title: 'ص — سোয়াদ', icon: 'ص', xp: 10 }, { id: 'arabic-dad', title: 'ض — দোয়াদ', icon: 'ض', xp: 10 },
+      { id: 'arabic-sad', title: 'ص — সোয়াদ', icon: 'ص', xp: 10 }, { id: 'arabic-dad', title: 'ض — দোয়াদ', icon: 'ض', xp: 10 },
     ], bossQuiz: { id: 'boss-arabic-2', title: 'ر–ض Boss Quiz', xp: 50 } },
   { id: 3, title: 'তোয়া থেকে কাফ', subtitle: 'ط ظ ع غ ف ق', icon: '🌳', color: 'from-amber-400 to-orange-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
     lessons: [
