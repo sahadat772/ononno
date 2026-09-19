@@ -19,7 +19,7 @@ const units = [
     lessons: [
       { id: 'arabic-ra', title: 'ر — রা', icon: 'ر', xp: 10 }, { id: 'arabic-za', title: 'ز — যা', icon: 'ز', xp: 10 },
       { id: 'arabic-sin', title: 'س — সিন', icon: 'س', xp: 10 }, { id: 'arabic-shin', title: 'ش — শিন', icon: 'ش', xp: 10 },
-      { id: 'arabic-sad', title: 'ص — সোয়াদ', icon: 'ص', xp: 10 }, { id: 'arabic-dad', title: 'ض — দোয়াদ', icon: 'ض', xp: 10 },
+      { id: 'arabic-sad', title: 'ص — سোয়াদ', icon: 'ص', xp: 10 }, { id: 'arabic-dad', title: 'ض — দোয়াদ', icon: 'ض', xp: 10 },
     ], bossQuiz: { id: 'boss-arabic-2', title: 'ر–ض Boss Quiz', xp: 50 } },
   { id: 3, title: 'তোয়া থেকে কাফ', subtitle: 'ط ظ ع غ ف ق', icon: '🌳', color: 'from-amber-400 to-orange-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
     lessons: [
@@ -112,7 +112,7 @@ export default function NurseryArabicPage() {
             const unitCompleted = unit.lessons.filter(l => progress[l.id]?.completed).length
             return (
               <div key={unit.id}>
-                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''}`}>
+                <button type="button" onClick={() => isUnitUnlocked && setExpandedUnit(isExpanded ? 0 : unit.id)} className={`w-full rounded-2xl border p-4 text-left ${unit.border} ${unit.bg} ${!isUnitUnlocked ? 'opacity-50' : ''`}>
                   <div className="flex items-center gap-3">
                     <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br text-2xl ${unit.color}`}>{isUnitUnlocked ? unit.icon : '🔒'}</div>
                     <div className="min-w-0 flex-1">
@@ -133,13 +133,13 @@ export default function NurseryArabicPage() {
                       const isUnlocked = isLessonUnlocked(unitIdx, lessonIdx)
                       const stars = progress[lesson.id]?.stars || 0
                       return (
-                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'}`}>
+                        <div key={lesson.id} className={`flex items-center gap-3 ${lessonIdx % 2 === 0 ? 'ml-2' : 'ml-8'`}>
                           <Link href={isUnlocked ? `/dashboard/student/kids-zone/nursery/arabic/${lesson.id}` : '#'} className={`flex size-14 items-center justify-center rounded-full text-2xl font-bold ${isCompleted ? `bg-gradient-to-br ${unit.color} text-white` : isUnlocked ? `bg-gradient-to-br ${unit.color} text-white ring-4 ring-white/20` : 'bg-gray-700/50 text-gray-500'}`} style={{ fontFamily: 'Arial' }}>
                             {isCompleted ? '✅' : isUnlocked ? lesson.icon : '🔒'}
                           </Link>
                           <div className="min-w-0 flex-1">
                             <p className={`truncate text-sm font-medium ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{lesson.title}</p>
-                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ` · ${'⭐'.repeat(stars)}` : ''}</p>
+                            <p className="text-xs text-amber-400">⚡ {lesson.xp} XP{stars > 0 ? ' · ' + '⭐'.repeat(stars) : ''}</p>
                           </div>
                         </div>
                       )
