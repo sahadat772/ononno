@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -85,41 +85,77 @@ const units = [
 
 type Progress = Record<string, { completed: boolean; stars: number }>
 
+function isRowCompleted(row: {
+  completed?: boolean | null
+  status?: string | null
+}): boolean {
+  if (row.completed === true) return true
+  if (typeof row.status === 'string' && row.status.toLowerCase() === 'completed') return true
+  return false
+}
+
 export default function NurseryEnglishPage() {
   const [progress, setProgress] = useState<Progress>({})
   const [loading, setLoading] = useState(true)
   const [expandedUnit, setExpandedUnit] = useState(1)
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
+  const loadProgress = useCallback(async () => {
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('learning_progress')
+        .select('lesson_id, completed, stars, score, status')
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.warn('Progress load error:', error.message)
+      }
+
+      const progressMap: Progress = {}
+
       try {
-        const supabase = createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) {
-          if (!cancelled) setLoading(false)
-          return
-        }
-        const { data } = await supabase
-          .from('learning_progress')
-          .select('lesson_id, completed, stars, score')
-          .eq('user_id', user.id)
-        if (cancelled) return
-        const progressMap: Progress = {}
-        data?.forEach((row: { lesson_id: string; completed: boolean; stars: number }) => {
-          progressMap[row.lesson_id] = { completed: row.completed, stars: row.stars || 0 }
-        })
-        setProgress(progressMap)
+        const key = `kids_progress_${user.id}`
+        const cached = JSON.parse(sessionStorage.getItem(key) || '{}') as Progress
+        Object.assign(progressMap, cached)
       } catch {
         /* ignore */
-      } finally {
-        if (!cancelled) setLoading(false)
       }
+
+      data?.forEach(
+        (row: {
+          lesson_id: string
+          completed?: boolean | null
+          stars?: number | null
+          status?: string | null
+        }) => {
+          progressMap[row.lesson_id] = {
+            completed: isRowCompleted(row) || progressMap[row.lesson_id]?.completed === true,
+            stars: row.stars || progressMap[row.lesson_id]?.stars || 0,
+          }
+        },
+      )
+      setProgress(progressMap)
+    } catch (e) {
+      console.warn('Progress load failed', e)
+    } finally {
+      setLoading(false)
     }
-    void load()
-    const onFocus = () => { void load() }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void loadProgress()
+    const onFocus = () => {
+      if (!cancelled) void loadProgress()
+    }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') onFocus()
@@ -128,7 +164,7 @@ export default function NurseryEnglishPage() {
       cancelled = true
       window.removeEventListener('focus', onFocus)
     }
-  }, [])
+  }, [loadProgress])
 
   const isLessonUnlocked = (unitIdx: number, lessonIdx: number) => {
     if (unitIdx === 0 && lessonIdx === 0) return true
