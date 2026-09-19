@@ -104,7 +104,9 @@ export async function loadKidsProgressFromDb(userId: string): Promise<{
       .select(cols)
       .eq('user_id', userId)
     if (!error) {
-      return { map: rowsToProgressMap((data as KidsProgressRow[]) || []), error: null }
+      // Dynamic select() makes TS infer GenericStringError[]; bridge via unknown
+      const rows = (data as unknown as KidsProgressRow[] | null) || []
+      return { map: rowsToProgressMap(rows), error: null }
     }
     lastError = error.message
   }
