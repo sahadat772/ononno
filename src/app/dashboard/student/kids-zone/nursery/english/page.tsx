@@ -119,8 +119,14 @@ export default function NurseryEnglishPage() {
       }
     }
     void load()
+    const onFocus = () => { void load() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') onFocus()
+    })
     return () => {
       cancelled = true
+      window.removeEventListener('focus', onFocus)
     }
   }, [])
 
