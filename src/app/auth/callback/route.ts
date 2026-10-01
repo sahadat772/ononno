@@ -21,9 +21,19 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = await cookies()
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !anonKey) {
+      return NextResponse.redirect(
+        `${origin}/login?error=${encodeURIComponent('Supabase env missing')}`,
+      )
+    }
+
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      anonKey,
       {
         cookies: {
           getAll() {
