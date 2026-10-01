@@ -119,8 +119,13 @@ export default function RegisterPage() {
       } else {
         router.push('/login?registered=1')
       }
-    } catch {
-      setError('কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (/Missing Supabase|NEXT_PUBLIC_SUPABASE/i.test(msg)) {
+        setError('সাইট কনফিগ সমস্যা — admin-কে জানান (Supabase env)')
+      } else {
+        setError('কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+      }
     } finally {
       setLoading(false)
     }
