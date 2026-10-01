@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import AuthAdventurePanel from '@/components/auth/AuthAdventurePanel'
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -18,14 +17,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+  const [justRegistered, setJustRegistered] = useState(false)
 
   useEffect(() => {
-    const q = searchParams.get('error')
-    if (q) setError(decodeURIComponent(q))
-    if (searchParams.get('registered') === '1') {
-      setError('')
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const q = params.get('error')
+      if (q) setError(decodeURIComponent(q))
+      if (params.get('registered') === '1') setJustRegistered(true)
+    } catch {
+      /* ignore */
     }
-  }, [searchParams])
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -107,7 +110,7 @@ export default function LoginPage() {
           <h1 className="text-center text-2xl font-black text-slate-900 sm:text-3xl">Welcome Back 👋</h1>
           <p className="mt-1 text-center text-sm text-slate-500">Login to continue your learning journey</p>
 
-          {searchParams.get('registered') === '1' && !error && (
+          {justRegistered && !error && (
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">
               অ্যাকাউন্ট তৈরি হয়েছে — এখন লগইন করুন
             </div>
@@ -121,7 +124,7 @@ export default function LoginPage() {
             )}
 
             <label className="block text-xs font-bold text-slate-600">
-              Email or Phone Number
+              Email
               <div className="relative mt-1.5">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
