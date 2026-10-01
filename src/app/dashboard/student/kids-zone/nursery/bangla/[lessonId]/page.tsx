@@ -5,15 +5,23 @@ import LessonEngine from '@/components/kids/LessonEngine'
 import { banglaLessonsP1 } from './lessons-p1'
 import { banglaLessonsP1b } from './lessons-p1b'
 import { banglaLessonsP1c } from './lessons-p1c'
-// Remaining modules will be added as they are pushed:
-// import { banglaLessonsP2 } from './lessons-p2'
-// import { banglaLessonsP3 } from './lessons-p3'
-// import { banglaLessonsP4 } from './lessons-p4'
+import { banglaLessonsP2a } from './lessons-p2a'
+import { banglaLessonsP2b } from './lessons-p2b'
+import { banglaLessonsP3a } from './lessons-p3a'
+import { banglaLessonsP3b } from './lessons-p3b'
+import { banglaLessonsP4a } from './lessons-p4a'
+import { banglaLessonsP4b } from './lessons-p4b'
 
 const lessons = {
   ...banglaLessonsP1,
   ...banglaLessonsP1b,
   ...banglaLessonsP1c,
+  ...banglaLessonsP2a,
+  ...banglaLessonsP2b,
+  ...banglaLessonsP3a,
+  ...banglaLessonsP3b,
+  ...banglaLessonsP4a,
+  ...banglaLessonsP4b,
 }
 
 export default function BanglaLessonPage() {
