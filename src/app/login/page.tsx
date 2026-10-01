@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import AuthAdventurePanel from '@/components/auth/AuthAdventurePanel'
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -17,6 +18,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const q = searchParams.get('error')
+    if (q) setError(decodeURIComponent(q))
+    if (searchParams.get('registered') === '1') {
+      setError('')
+    }
+  }, [searchParams])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -29,17 +38,25 @@ export default function LoginPage() {
         password,
       })
       if (authError) {
-        setError(
-          /confirm|verify/i.test(authError.message)
-            ? 'ইমেইল verify করুন — inbox চেক করুন'
-            : 'ইমেইল বা পাসওয়ার্ড সঠিক নয়',
-        )
+        const msg = authError.message || ''
+        if (/confirm|verify/i.test(msg)) {
+          setError('ইমেইল verify করুন — inbox চেক করুন')
+        } else if (/invalid|credentials|password/i.test(msg)) {
+          setError('ইমেইল বা পাসওয়ার্ড সঠিক নয়')
+        } else {
+          setError(msg || 'লগইন ব্যর্থ হয়েছে')
+        }
         return
       }
       router.push('/auth/redirect')
       router.refresh()
-    } catch {
-      setError('কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করো।')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (/Missing Supabase|NEXT_PUBLIC_SUPABASE/i.test(msg)) {
+        setError('সাইট কনফিগ সমস্যা — admin-কে জানান (Supabase env)')
+      } else {
+        setError('কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করো।')
+      }
     } finally {
       setLoading(false)
     }
@@ -89,6 +106,12 @@ export default function LoginPage() {
 
           <h1 className="text-center text-2xl font-black text-slate-900 sm:text-3xl">Welcome Back 👋</h1>
           <p className="mt-1 text-center text-sm text-slate-500">Login to continue your learning journey</p>
+
+          {searchParams.get('registered') === '1' && !error && (
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800">
+              অ্যাকাউন্ট তৈরি হয়েছে — এখন লগইন করুন
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="mt-8 space-y-4">
             {error && (
@@ -174,7 +197,11 @@ export default function LoginPage() {
             disabled={googleLoading}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
           >
-            {googleLoading ? <Loader2 className="size-4 animate-spin" /> : <span className="text-base font-black text-red-500">G</span>}
+            {googleLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <span className="text-base font-black text-red-500">G</span>
+            )}
             Continue with Google
           </button>
 
