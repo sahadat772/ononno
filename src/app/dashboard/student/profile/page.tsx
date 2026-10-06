@@ -17,11 +17,9 @@ export default async function StudentProfile() {
 
   const { data: studentProfile } = await supabase
     .from('student_profiles')
-    .select('class_level, gender')
+    .select('class_level, gender, school_name')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  return (
-    <StudentProfileHub profile={profile} studentExtra={studentProfile} />
-  )
+  return <StudentProfileHub profile={profile} studentExtra={studentProfile} />
 }
