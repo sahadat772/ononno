@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase'
-
 const MAX_BYTES = 2 * 1024 * 1024 // 2MB original
 const MAX_EDGE = 512 // compress to max 512px
 
@@ -12,8 +10,8 @@ function readAsDataURL(file: File): Promise<string> {
   })
 }
 
-/** Compress image client-side → JPEG blob (smaller upload, fewer storage failures) */
-export async function compressImage(file: File): Promise<Blob> {
+/** Compress image client-side → JPEG File */
+export async function compressImage(file: File): Promise<File> {
   const dataUrl = await readAsDataURL(file)
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image()
@@ -34,88 +32,63 @@ export async function compressImage(file: File): Promise<Blob> {
   ctx.drawImage(img, 0, 0, w, h)
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85),
+    canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.82),
   )
   if (!blob) throw new Error('ছবি কম্প্রেস হয়নি')
-  return blob
+  return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
 }
 
 export type UploadAvatarResult = {
   publicUrl: string
-  path: string
+  path?: string
+  via?: string
 }
 
 /**
- * Upload user avatar to Supabase Storage bucket `avatars`
- * and update `profiles.avatar_url`.
+ * Upload user avatar through server API (service role + data-URL fallback).
+ * Works even when client Storage RLS / missing bucket would block browser upload.
  */
 export async function uploadUserAvatar(file: File): Promise<UploadAvatarResult> {
-  if (!file.type.startsWith('image/')) {
+  if (!file.type.startsWith('image/') && file.type !== '') {
     throw new Error('শুধু ছবি আপলোড করো (JPG, PNG, WEBP)।')
   }
   if (file.size > MAX_BYTES) {
     throw new Error('ছবির সাইজ ২MB এর বেশি হবে না।')
   }
 
-  const supabase = createClient()
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser()
-  if (authErr || !user) {
-    throw new Error('লগইন নেই — আবার লগইন করো।')
-  }
-
-  let body: Blob = file
-  let contentType = file.type || 'image/jpeg'
-  let ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
-
+  let toSend: File = file
   try {
-    body = await compressImage(file)
-    contentType = 'image/jpeg'
-    ext = 'jpg'
+    toSend = await compressImage(file)
   } catch {
-    // keep original if compress fails
+    // keep original
   }
 
-  // unique path avoids CDN/cache sticking to old image
-  const path = `${user.id}/avatar-${Date.now()}.${ext}`
+  const body = new FormData()
+  body.append('file', toSend)
 
-  const { error: upErr } = await supabase.storage.from('avatars').upload(path, body, {
-    upsert: true,
-    contentType,
-    cacheControl: '3600',
+  const res = await fetch('/api/profile/avatar', {
+    method: 'POST',
+    body,
+    credentials: 'include',
   })
 
-  if (upErr) {
-    const msg = upErr.message || ''
-    if (/bucket|not found|404/i.test(msg)) {
-      throw new Error(
-        'Storage bucket "avatars" পাওয়া যায়নি। Supabase Dashboard → Storage → New bucket (public) নাম: avatars',
-      )
-    }
-    if (/policy|permission|rls|row-level|403|unauthorized/i.test(msg)) {
-      throw new Error(
-        'Storage permission নেই। Bucket policies-এ authenticated user-কে upload allow করো।',
-      )
-    }
-    throw new Error(msg || 'আপলোড ব্যর্থ হয়েছে।')
+  let json: {
+    error?: string
+    publicUrl?: string
+    via?: string
+  } = {}
+  try {
+    json = await res.json()
+  } catch {
+    /* ignore */
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from('avatars').getPublicUrl(path)
-
-  const urlWithBust = `${publicUrl}?t=${Date.now()}`
-
-  const { error: dbErr } = await supabase
-    .from('profiles')
-    .update({ avatar_url: publicUrl })
-    .eq('id', user.id)
-
-  if (dbErr) {
-    throw new Error(dbErr.message || 'প্রোফাইলে ছবি সেভ হয়নি।')
+  if (!res.ok || !json.publicUrl) {
+    throw new Error(json.error || `আপলোড ব্যর্থ (HTTP ${res.status})`)
   }
 
-  return { publicUrl: urlWithBust, path }
+  return {
+    publicUrl: json.publicUrl,
+    via: json.via,
+  }
 }
