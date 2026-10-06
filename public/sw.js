@@ -1,8 +1,9 @@
 /* ONONNO service worker — offline cache + FCM background push */
-const CACHE_NAME = 'ononno-v2'
+const CACHE_NAME = 'ononno-v3'
 const STATIC_ASSETS = [
   '/',
   '/login',
+  '/register',
   '/manifest.json',
   '/icons/android/launchericon-192x192.png',
   '/icons/android/launchericon-512x512.png',
@@ -28,6 +29,28 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('/api/')) return
   if (event.request.url.includes('supabase.co')) return
   if (event.request.method !== 'GET') return
+
+  // Navigations: network-first, never block with broken cache
+  const isNavigate =
+    event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') || '').includes('text/html')
+
+  if (isNavigate) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {})
+          }
+          return response
+        })
+        .catch(() =>
+          caches.match(event.request).then((c) => c || caches.match('/') || Response.error()),
+        ),
+    )
+    return
+  }
 
   event.respondWith(
     fetch(event.request)
