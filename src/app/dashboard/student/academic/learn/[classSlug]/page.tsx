@@ -57,6 +57,9 @@ const ICON_FALLBACK: Record<string, string> = {
   islamic: '🕌',
   'ইসলাম': '🕌',
   'ইসলাম শিক্ষা': '🕌',
+  gk: '🌍',
+  'general knowledge': '🌍',
+  'সাধারণ জ্ঞান': '🌍',
 }
 
 function subjectIcon(subject: Subject): string {
@@ -158,7 +161,20 @@ export default function ClassSubjectsPage() {
           return
         }
 
-        const subjectList = subs && subs.length > 0 ? subs : fallbackSubjects(cls.class_number)
+        // DB subjects + ensure GK appears for class 1 when missing from DB
+        let subjectList = subs && subs.length > 0 ? [...subs] : fallbackSubjects(cls.class_number)
+        if (subs && subs.length > 0 && cls.class_number === 1) {
+          const hasGk = subjectList.some(
+            (s) =>
+              /gk|general.?knowledge|সাধারণ.?জ্ঞান/i.test(
+                `${s.id} ${s.name} ${s.name_bn || ''}`,
+              ),
+          )
+          if (!hasGk) {
+            const fbGk = fallbackSubjects(1).find((s) => s.id.includes('-gk'))
+            if (fbGk) subjectList = [...subjectList, fbGk]
+          }
+        }
         setSubjects(subjectList)
 
         let published =
@@ -172,14 +188,16 @@ export default function ClassSubjectsPage() {
           ).data ?? []
 
         if (published.length === 0 && subjectList.length > 0) {
-          const ids = subjectList.map((s) => s.id)
-          const { data } = await supabase
-            .from('curriculum_lessons')
-            .select('id, subject_id')
-            .in('subject_id', ids)
-            .eq('is_active', true)
-            .eq('is_published', true)
-          published = data ?? []
+          const ids = subjectList.map((s) => s.id).filter((id) => !id.startsWith('fb-'))
+          if (ids.length > 0) {
+            const { data } = await supabase
+              .from('curriculum_lessons')
+              .select('id, subject_id')
+              .in('subject_id', ids)
+              .eq('is_active', true)
+              .eq('is_published', true)
+            published = data ?? []
+          }
         }
 
         const totalBySubject: Record<string, number> = {}
