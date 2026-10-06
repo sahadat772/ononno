@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { StudentExtra } from '@/lib/profile-health'
+import { uploadUserAvatar } from '@/lib/upload-avatar'
 
 type Profile = Record<string, string> | null
 
@@ -54,7 +55,7 @@ export default function StudentEditProfilePanel({
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<'basic' | 'school'>('basic')
+  const [tab, setTab] = useState<'basic' | 'school' | 'photo'>('photo')
 
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
@@ -82,7 +83,7 @@ export default function StudentEditProfilePanel({
     setAvatarUrl(profile?.avatar_url || '')
     setError('')
     setSuccess('')
-    setTab('basic')
+    setTab('photo')
   }, [open, profile, studentExtra])
 
   if (!open) return null
@@ -103,36 +104,17 @@ export default function StudentEditProfilePanel({
   async function handleAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setError('শুধু ছবি আপলোড করো (JPG, PNG)।')
-      return
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setError('ছবির সাইজ ২MB এর বেশি হবে না।')
-      return
-    }
     setUploading(true)
     setError('')
+    setSuccess('')
     try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-      const ext = file.name.split('.').pop() || 'jpg'
-      const path = `${user.id}/avatar.${ext}`
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-      if (upErr) throw upErr
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('avatars').getPublicUrl(path)
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
-      setAvatarUrl(publicUrl + '?t=' + Date.now())
-      setSuccess('প্রোফাইল ছবি আপডেট হয়েছে!')
-      setTimeout(() => setSuccess(''), 2500)
+      const { publicUrl } = await uploadUserAvatar(file)
+      setAvatarUrl(publicUrl)
+      setSuccess('প্রোফাইল ছবি সফলভাবে আপলোড হয়েছে!')
+      setTimeout(() => setSuccess(''), 3000)
       router.refresh()
-    } catch {
-      setError('ছবি আপলোড হয়নি। Storage permission চেক করো।')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ছবি আপলোড হয়নি।')
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -176,7 +158,6 @@ export default function StudentEditProfilePanel({
         onConflict: 'user_id',
       })
       if (spErr) {
-        // fallback: update only if row exists
         await supabase
           .from('student_profiles')
           .update({
@@ -207,10 +188,8 @@ export default function StudentEditProfilePanel({
         aria-labelledby="edit-profile-title"
         className="flex max-h-[94dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-violet-100 bg-white shadow-2xl sm:rounded-3xl"
       >
-        {/* Header */}
         <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-violet-600 via-fuchsia-600 to-indigo-600 px-5 pb-6 pt-5 text-white">
           <div className="absolute -right-6 -top-6 size-28 rounded-full bg-white/10" />
-          <div className="absolute bottom-0 left-10 size-16 rounded-full bg-white/5" />
           <div className="relative flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-violet-100">প্রোফাইল সম্পাদনা</p>
@@ -227,8 +206,6 @@ export default function StudentEditProfilePanel({
               ✕
             </button>
           </div>
-
-          {/* Completeness */}
           <div className="relative mt-4 rounded-2xl bg-white/15 px-3 py-2.5 backdrop-blur-sm">
             <div className="mb-1.5 flex items-center justify-between text-xs font-semibold">
               <span>প্রোফাইল সম্পূর্ণতা</span>
@@ -243,48 +220,12 @@ export default function StudentEditProfilePanel({
           </div>
         </div>
 
-        {/* Avatar strip */}
-        <div className="-mt-5 flex shrink-0 flex-col items-center px-5">
-          <div className="relative">
-            <div className="relative size-24 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt="" fill className="object-cover" unoptimized />
-              ) : (
-                <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500 to-fuchsia-600 text-3xl font-black text-white">
-                  {(form.full_name || 'S').charAt(0)}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-0 right-0 grid size-9 place-items-center rounded-full border-2 border-white bg-violet-600 text-sm text-white shadow-md transition hover:bg-violet-500 disabled:opacity-60"
-              aria-label="ছবি বদলাও"
-            >
-              {uploading ? '…' : '📷'}
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
-          </div>
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="mt-2 text-xs font-bold text-violet-600 hover:underline disabled:opacity-50"
-          >
-            {uploading ? 'আপলোড হচ্ছে…' : 'প্রোফাইল ছবি বদলাও'}
-          </button>
-          {profile?.email && (
-            <p className="mt-1 text-[11px] font-medium text-slate-400">{profile.email}</p>
-          )}
-        </div>
-
-        {/* Tabs */}
         <div className="mt-3 flex shrink-0 gap-1 px-5">
           {(
             [
-              { id: 'basic' as const, label: '👤 মৌলিক তথ্য' },
-              { id: 'school' as const, label: '🏫 স্কুল ও শ্রেণি' },
+              { id: 'photo' as const, label: '📷 ছবি' },
+              { id: 'basic' as const, label: '👤 তথ্য' },
+              { id: 'school' as const, label: '🏫 স্কুল' },
             ] as const
           ).map((t) => (
             <button
@@ -302,15 +243,72 @@ export default function StudentEditProfilePanel({
           ))}
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {(success || error) && (
             <div
-              className={`mb-3 rounded-xl px-3 py-2.5 text-xs font-semibold ${
-                success ? 'border border-emerald-200 bg-emerald-50 text-emerald-800' : 'border border-rose-200 bg-rose-50 text-rose-700'
+              className={`mb-3 rounded-xl px-3 py-2.5 text-xs font-semibold leading-relaxed ${
+                success
+                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border border-rose-200 bg-rose-50 text-rose-700'
               }`}
             >
               {success || error}
+            </div>
+          )}
+
+          {tab === 'photo' && (
+            <div className="flex flex-col items-center py-4">
+              <div className="relative">
+                <div className="relative size-32 overflow-hidden rounded-full border-4 border-violet-100 bg-slate-100 shadow-xl sm:size-36">
+                  {avatarUrl ? (
+                    <Image src={avatarUrl} alt="" fill className="object-cover" unoptimized />
+                  ) : (
+                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500 to-fuchsia-600 text-4xl font-black text-white">
+                      {(form.full_name || 'S').charAt(0)}
+                    </div>
+                  )}
+                  {uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                      <span className="size-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-1 right-1 grid size-11 place-items-center rounded-full border-2 border-white bg-violet-600 text-lg text-white shadow-lg transition hover:bg-violet-500 disabled:opacity-60"
+                  aria-label="ছবি আপলোড"
+                >
+                  📷
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  capture="user"
+                  className="hidden"
+                  onChange={(e) => void handleAvatar(e)}
+                />
+              </div>
+
+              <p className="mt-4 text-center text-sm font-bold text-slate-800">প্রোফাইল ছবি</p>
+              <p className="mt-1 max-w-xs text-center text-[11px] text-slate-500">
+                JPG, PNG বা WEBP · সর্বোচ্চ ২MB · স্বয়ংক্রিয়ভাবে ছোট করা হবে
+              </p>
+
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-5 w-full max-w-xs rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-600/25 transition hover:brightness-110 disabled:opacity-50"
+              >
+                {uploading ? 'আপলোড হচ্ছে…' : avatarUrl ? '📷 নতুন ছবি বেছে নাও' : '📷 ছবি আপলোড করো'}
+              </button>
+
+              {profile?.email && (
+                <p className="mt-3 text-[11px] font-medium text-slate-400">{profile.email}</p>
+              )}
             </div>
           )}
 
@@ -326,7 +324,6 @@ export default function StudentEditProfilePanel({
                   autoComplete="name"
                 />
               </label>
-
               <label className="block text-xs font-bold text-slate-600">
                 মোবাইল নম্বর
                 <input
@@ -335,10 +332,8 @@ export default function StudentEditProfilePanel({
                   className={inputCls}
                   placeholder="01XXXXXXXXX"
                   inputMode="tel"
-                  autoComplete="tel"
                 />
               </label>
-
               <label className="block text-xs font-bold text-slate-600">
                 জন্ম তারিখ
                 <input
@@ -348,7 +343,6 @@ export default function StudentEditProfilePanel({
                   className={inputCls}
                 />
               </label>
-
               <div>
                 <p className="mb-1.5 text-xs font-bold text-slate-600">লিঙ্গ</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -364,7 +358,7 @@ export default function StudentEditProfilePanel({
                       className={`rounded-xl border-2 py-2.5 text-center text-xs font-bold transition ${
                         form.gender === g.value
                           ? 'border-violet-500 bg-violet-50 text-violet-800'
-                          : 'border-slate-150 border-slate-200 bg-slate-50 text-slate-600 hover:border-violet-200'
+                          : 'border-slate-200 bg-slate-50 text-slate-600'
                       }`}
                     >
                       <span className="block text-base">{g.emoji}</span>
@@ -373,7 +367,6 @@ export default function StudentEditProfilePanel({
                   ))}
                 </div>
               </div>
-
               <label className="block text-xs font-bold text-slate-600">
                 ঠিকানা
                 <input
@@ -381,10 +374,8 @@ export default function StudentEditProfilePanel({
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
                   className={inputCls}
                   placeholder="জেলা / এলাকা"
-                  autoComplete="street-address"
                 />
               </label>
-
               <label className="block text-xs font-bold text-slate-600">
                 বায়ো / মোটো
                 <input
@@ -401,7 +392,7 @@ export default function StudentEditProfilePanel({
                     key={m}
                     type="button"
                     onClick={() => setForm({ ...form, bio: m })}
-                    className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-100"
+                    className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700"
                   >
                     {m.length > 28 ? m.slice(0, 26) + '…' : m}
                   </button>
@@ -427,7 +418,6 @@ export default function StudentEditProfilePanel({
                   ))}
                 </select>
               </label>
-
               <label className="block text-xs font-bold text-slate-600">
                 স্কুলের নাম
                 <input
@@ -437,40 +427,34 @@ export default function StudentEditProfilePanel({
                   placeholder="তোমার স্কুলের নাম"
                 />
               </label>
-
-              <div className="rounded-2xl border border-violet-100 bg-violet-50/80 p-4">
-                <p className="text-xs font-bold text-violet-800">💡 টিপস</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-violet-700/90">
-                  সঠিক শ্রেণি সিলেক্ট করলে Kids Zone বা Academic পাঠ সেই লেভেল অনুযায়ী দেখাবে।
-                  নার্সারি/কেজি হলে Kids Zone-এ নিয়ে যাবে।
-                </p>
-              </div>
             </div>
           )}
         </div>
 
-        {/* Footer actions */}
         <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
           <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={saving || !form.full_name.trim()}
-              onClick={() => void handleSave()}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-600/25 transition hover:brightness-110 disabled:opacity-50"
-            >
-              {saving ? (
-                <>
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  সেভ হচ্ছে…
-                </>
-              ) : (
-                <>💾 সেভ করো</>
-              )}
-            </button>
+            {tab === 'photo' ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex flex-1 items-center justify-center rounded-2xl bg-violet-600 py-3.5 text-sm font-black text-white"
+              >
+                ✓ হয়ে গেছে
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={saving || !form.full_name.trim()}
+                onClick={() => void handleSave()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-600/25 disabled:opacity-50"
+              >
+                {saving ? 'সেভ হচ্ছে…' : '💾 সেভ করো'}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
-              className="rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-bold text-slate-600"
             >
               বাতিল
             </button>
