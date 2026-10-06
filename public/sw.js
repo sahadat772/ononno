@@ -1,17 +1,29 @@
-/* ONONNO service worker — offline cache + FCM background push */
-const CACHE_NAME = 'ononno-v3'
+/* ONONNO service worker — light offline + FCM. Never hijack auth/dashboard routes. */
+const CACHE_NAME = 'ononno-v4'
+
 const STATIC_ASSETS = [
-  '/',
-  '/login',
-  '/register',
   '/manifest.json',
   '/icons/android/launchericon-192x192.png',
   '/icons/android/launchericon-512x512.png',
 ]
 
+/** Paths that must always hit the network (no HTML cache fallback to /) */
+function isSensitivePath(pathname) {
+  return (
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/api/')
+  )
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {}),
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .catch(() => {}),
   )
   self.skipWaiting()
 })
@@ -26,15 +38,34 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/')) return
-  if (event.request.url.includes('supabase.co')) return
+  const url = new URL(event.request.url)
+
+  // Never intercept API / Supabase / non-GET
+  if (url.pathname.startsWith('/api/')) return
+  if (url.hostname.includes('supabase.co')) return
   if (event.request.method !== 'GET') return
 
-  // Navigations: network-first, never block with broken cache
   const isNavigate =
     event.request.mode === 'navigate' ||
     (event.request.headers.get('accept') || '').includes('text/html')
 
+  // Auth + dashboard: network-only (no stale home shell)
+  if (isNavigate && isSensitivePath(url.pathname)) {
+    event.respondWith(
+      fetch(event.request).catch(
+        () =>
+          new Response(
+            '<!doctype html><html lang="bn"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/><title>অনন্য</title></head><body style="font-family:system-ui;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#0a0a1a;color:#fff;text-align:center;padding:24px"><div><p style="font-size:40px">📡</p><h1>নেটওয়ার্ক নেই</h1><p style="color:#94a3b8">ইন্টারনেট চালু করে আবার চেষ্টা করো।</p><p><a href="/" style="color:#34d399">হোমে যান</a> · <a href="' +
+              url.pathname +
+              '" style="color:#38bdf8">আবার চেষ্টা</a></p></div></body></html>',
+            { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+          ),
+      ),
+    )
+    return
+  }
+
+  // Other navigations: network-first, only same-URL cache fallback (never force /)
   if (isNavigate) {
     event.respondWith(
       fetch(event.request)
@@ -46,12 +77,20 @@ self.addEventListener('fetch', (event) => {
           return response
         })
         .catch(() =>
-          caches.match(event.request).then((c) => c || caches.match('/') || Response.error()),
+          caches.match(event.request).then(
+            (c) =>
+              c ||
+              new Response(
+                '<!doctype html><html lang="bn"><body style="font-family:system-ui;text-align:center;padding:40px"><h1>অফলাইন</h1><a href="/">হোম</a></body></html>',
+                { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+              ),
+          ),
         ),
     )
     return
   }
 
+  // Static assets: network-first with cache fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -61,7 +100,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response
       })
-      .catch(() => caches.match(event.request).then((c) => c || caches.match('/'))),
+      .catch(() => caches.match(event.request)),
   )
 })
 
