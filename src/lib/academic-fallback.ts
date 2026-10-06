@@ -77,7 +77,7 @@ export function fallbackSubjects(classNum: number): FbSubject[] {
   const base = `fb-c${classNum}`
   const primary = classNum <= 5
   if (primary) {
-    return [
+    const subjects: FbSubject[] = [
       {
         id: `${base}-bangla`,
         name: 'Bangla',
@@ -124,6 +124,19 @@ export function fallbackSubjects(classNum: number): FbSubject[] {
         order_index: 5,
       },
     ]
+
+    // General Knowledge — Grade 1 (and available for other primary)
+    subjects.push({
+      id: `${base}-gk`,
+      name: 'General Knowledge',
+      name_bn: 'সাধারণ জ্ঞান',
+      icon: '🌍',
+      color: 'from-lime-500 to-emerald-600',
+      is_mandatory: classNum === 1,
+      order_index: 6,
+    })
+
+    return subjects
   }
   return [
     {
@@ -222,7 +235,9 @@ export function fallbackChapters(subjectId: string): FbChapter[] {
                 ? 'ict'
                 : subjectId.includes('health')
                   ? 'health'
-                  : 'general'
+                  : subjectId.includes('-gk') || subjectId.includes('general-knowledge')
+                    ? 'gk'
+                    : 'general'
 
   const primaryPacks: Record<string, { title: string; title_bn: string; desc: string }[]> = {
     bangla: [
@@ -249,6 +264,12 @@ export function fallbackChapters(subjectId: string): FbChapter[] {
       { title: 'Our Body', title_bn: 'আমাদের শরীর', desc: 'ইন্দ্রিয় ও যত্ন' },
       { title: 'Plants & Animals', title_bn: 'গাছ ও প্রাণী', desc: 'প্রকৃতির বন্ধু' },
       { title: 'Weather', title_bn: 'আবহাওয়া', desc: 'বৃষ্টি · রোদ · ঋতু' },
+    ],
+    gk: [
+      { title: 'Our Bangladesh', title_bn: 'আমাদের বাংলাদেশ', desc: 'পতাকা · রাজধানী · জাতীয় প্রতীক' },
+      { title: 'Colors & Nature', title_bn: 'রঙ ও প্রকৃতি', desc: 'রঙ · ঋতু · আবহাওয়া' },
+      { title: 'Animals & Fruits', title_bn: 'প্রাণী ও ফল', desc: 'পরিচিত প্রাণী ও ফল' },
+      { title: 'Community Helpers', title_bn: 'সমাজের সাহায্যকারী', desc: 'ডাক্তার · শিক্ষক · কৃষক' },
     ],
     bangladesh: [
       { title: 'Our Country', title_bn: 'আমাদের দেশ', desc: 'বাংলাদেশ পরিচিতি' },
@@ -329,7 +350,92 @@ export function fallbackChapters(subjectId: string): FbChapter[] {
   }))
 }
 
+/** Richer demo content for GK lessons (Grade 1) */
+const GK_LESSON_CONTENT: Record<
+  string,
+  { overview: string; main_content: string; summary: string }
+> = {
+  'bd-intro': {
+    overview: 'বাংলাদেশ আমাদের প্রিয় দেশ। আজ দেশের নাম ও পরিচয় শিখব।',
+    main_content:
+      'বাংলাদেশ দক্ষিণ এশিয়ার একটি সুন্দর দেশ।\n\n• দেশের নাম: বাংলাদেশ\n• ভাষা: বাংলা\n• মানুষ: বাঙালি\n\nআমরা বাংলাদেশে থাকি। এ দেশের নদী, ধানক্ষেত ও সবুজ গাছ আমাদের গর্ব।',
+    summary: 'বাংলাদেশ আমাদের দেশ। বাংলা আমাদের ভাষা।',
+  },
+  'bd-flag': {
+    overview: 'জাতীয় পতাকার রঙ ও অর্থ শিখব।',
+    main_content:
+      'বাংলাদেশের জাতীয় পতাকা:\n\n• সবুজ রঙ — দেশের সবুজ প্রকৃতি\n• লাল বৃত্ত — সূর্য ও স্বাধীনতার ত্যাগ\n\nপতাকা উত্তোলনের সময় সম্মান দেখাতে হয়।',
+    summary: 'সবুজ পতাকা, মাঝে লাল সূর্য — এটাই আমাদের জাতীয় পতাকা।',
+  },
+  'bd-capital': {
+    overview: 'রাজধানী ঢাকা সম্পর্কে জানব।',
+    main_content:
+      'ঢাকা বাংলাদেশের রাজধানী।\n\n• এখানে সরকারের প্রধান কার্যালয়\n• অনেক মানুষ বাস করে\n• ঐতিহাসিক স্থান: লালবাগ কেল্লা, আহসান মঞ্জিল\n\nরাজধানী মানে দেশের প্রধান শহর।',
+    summary: 'বাংলাদেশের রাজধানী ঢাকা।',
+  },
+  'bd-symbols': {
+    overview: 'জাতীয় ফুল, পাখি ও পশু চিনব।',
+    main_content:
+      'বাংলাদেশের জাতীয় প্রতীক:\n\n• জাতীয় ফুল — শাপলা\n• জাতীয় পাখি — দোয়েল\n• জাতীয় পশু — রয়েল বেঙ্গল টাইগার (বাঘ)\n• জাতীয় ফল — আম\n\nএগুলো আমাদের পরিচয়ের অংশ।',
+    summary: 'শাপলা, দোয়েল, বাঘ ও আম — জাতীয় প্রতীক।',
+  },
+}
+
 export function fallbackLessons(chapterId: string): FbLesson[] {
+  // Grade-1 GK chapters get themed lessons
+  if (chapterId.includes('-gk-ch')) {
+    const chNum = chapterId.match(/-ch(\d+)/)?.[1] || '1'
+    const packs: Record<
+      string,
+      { title: string; title_bn: string; type: string; key?: string }[]
+    > = {
+      '1': [
+        { title: 'Our Country', title_bn: 'আমাদের দেশ', type: 'text', key: 'bd-intro' },
+        { title: 'National Flag', title_bn: 'জাতীয় পতাকা', type: 'text', key: 'bd-flag' },
+        { title: 'Capital Dhaka', title_bn: 'রাজধানী ঢাকা', type: 'text', key: 'bd-capital' },
+        { title: 'National Symbols', title_bn: 'জাতীয় প্রতীক', type: 'quiz', key: 'bd-symbols' },
+      ],
+      '2': [
+        { title: 'Colors Around Us', title_bn: 'আমাদের চারপাশের রঙ', type: 'text' },
+        { title: 'Seasons', title_bn: 'ঋতু', type: 'text' },
+        { title: 'Sunny & Rainy', title_bn: 'রোদ ও বৃষ্টি', type: 'exercise' },
+        { title: 'Nature Quiz', title_bn: 'প্রকৃতি কুইজ', type: 'quiz' },
+      ],
+      '3': [
+        { title: 'Farm Animals', title_bn: 'খামারের প্রাণী', type: 'text' },
+        { title: 'Wild Animals', title_bn: 'বন্য প্রাণী', type: 'text' },
+        { title: 'Fruits We Eat', title_bn: 'আমরা যে ফল খাই', type: 'exercise' },
+        { title: 'Animals & Fruits Quiz', title_bn: 'প্রাণী ও ফল কুইজ', type: 'quiz' },
+      ],
+      '4': [
+        { title: 'Teacher & Doctor', title_bn: 'শিক্ষক ও ডাক্তার', type: 'text' },
+        { title: 'Farmer & Police', title_bn: 'কৃষক ও পুলিশ', type: 'text' },
+        { title: 'How They Help Us', title_bn: 'তারা কীভাবে সাহায্য করে', type: 'exercise' },
+        { title: 'Helpers Quiz', title_bn: 'সাহায্যকারী কুইজ', type: 'quiz' },
+      ],
+    }
+    const topics = packs[chNum] || packs['1']
+    return topics.map((t, i) => {
+      const rich = t.key ? GK_LESSON_CONTENT[t.key] : undefined
+      return {
+        id: `${chapterId}-l${i + 1}`,
+        title: t.title,
+        title_bn: t.title_bn,
+        lesson_type: t.type,
+        duration_minutes: t.type === 'quiz' ? 5 : 8,
+        xp_reward: t.type === 'quiz' ? 25 : 15,
+        order_index: i + 1,
+        lesson_number: i + 1,
+        chapter_id: chapterId,
+        overview: rich?.overview || 'এই পাঠে সাধারণ জ্ঞানের মজার বিষয় শিখবে।',
+        main_content:
+          rich?.main_content ||
+          `${t.title_bn}\n\nএটি প্রথম শ্রেণির সাধারণ জ্ঞান পাঠ। ছবি দেখে, পড়ে ও মনে রেখে শেখো।\n\nঅনুশীলন করো এবং কুইজে নিজেকে যাচাই করো!`,
+        summary: rich?.summary || 'মূল বিষয় মনে রাখো এবং পরের পাঠে এগিয়ে যাও।',
+      }
+    })
+  }
+
   const topics = [
     { title: 'Introduction', title_bn: 'ভূমিকা', type: 'text' },
     { title: 'Learn the idea', title_bn: 'ধারণা শেখা', type: 'text' },
