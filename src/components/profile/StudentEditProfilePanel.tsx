@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { StudentExtra } from '@/lib/profile-health'
 import { uploadUserAvatar } from '@/lib/upload-avatar'
+import SafeAvatar from '@/components/profile/SafeAvatar'
 
 type Profile = Record<string, string> | null
 
@@ -260,13 +260,11 @@ export default function StudentEditProfilePanel({
             <div className="flex flex-col items-center py-4">
               <div className="relative">
                 <div className="relative size-32 overflow-hidden rounded-full border-4 border-violet-100 bg-slate-100 shadow-xl sm:size-36">
-                  {avatarUrl ? (
-                    <Image src={avatarUrl} alt="" fill className="object-cover" unoptimized />
-                  ) : (
-                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500 to-fuchsia-600 text-4xl font-black text-white">
-                      {(form.full_name || 'S').charAt(0)}
-                    </div>
-                  )}
+                  <SafeAvatar
+                    src={avatarUrl}
+                    name={form.full_name || 'S'}
+                    textClassName="text-4xl font-black text-white"
+                  />
                   {uploading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                       <span className="size-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -286,7 +284,6 @@ export default function StudentEditProfilePanel({
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
-                  capture="user"
                   className="hidden"
                   onChange={(e) => void handleAvatar(e)}
                 />
