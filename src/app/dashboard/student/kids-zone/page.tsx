@@ -52,6 +52,17 @@ const nurserySubjects = [
     border: 'border-amber-400/40',
     href: '/dashboard/student/kids-zone/nursery/math',
   },
+  {
+    id: 'gk',
+    name: 'সাধারণ জ্ঞান',
+    subtitle: 'রঙ · ফল · প্রাণী',
+    icon: '🌍',
+    emoji: '💡',
+    color: 'from-lime-400 to-emerald-500',
+    bg: 'bg-lime-500/10',
+    border: 'border-lime-400/40',
+    href: '/dashboard/student/kids-zone/nursery/gk',
+  },
 ]
 
 const islamicLinks = [
@@ -198,7 +209,7 @@ export default function KidsZonePage() {
         <div className="mb-6 grid grid-cols-2 gap-3">
           {(
             [
-              { key: 'nursery' as const, label: '🌱 Nursery', desc: 'অ আ ই · ABC · ১২৩', emoji: '🐣' },
+              { key: 'nursery' as const, label: '🌱 Nursery', desc: 'অ আ ই · ABC · ১২৩ · GK', emoji: '🐣' },
               { key: 'kg' as const, label: '⭐ KG', desc: 'জগৎ বেছে নাও', emoji: '🚀' },
             ] as const
           ).map((level) => {
@@ -231,7 +242,7 @@ export default function KidsZonePage() {
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-black text-white">📚 বিষয় বেছে নাও</p>
               <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-slate-300">
-                ৪টি বিষয়
+                {nurserySubjects.length}টি বিষয়
               </span>
             </div>
 
