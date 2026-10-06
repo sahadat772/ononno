@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation'
 import type { StudentExtra } from '@/lib/profile-health'
 import { buildProfileHealthItems, scoreProfileHealth } from '@/lib/profile-health'
 import StudentEditProfilePanel from '@/components/profile/StudentEditProfilePanel'
+import SafeAvatar from '@/components/profile/SafeAvatar'
 
 type Profile = Record<string, string> | null
 
@@ -55,17 +56,30 @@ type Activity = {
 export default function StudentProfileHub({ profile, studentExtra }: Props) {
   const pathname = usePathname() || ''
   const classLevel = studentExtra?.class_level || 'general'
-  const classLabel = CLASS_BN[classLevel] || classLevel.replace(/_/g, ' ')
+  const classLabel = CLASS_BN[classLevel] || String(classLevel).replace(/_/g, ' ')
   const name = profile?.full_name || 'Student'
-  const first = name.split(' ')[0]
+  const first = name.split(' ')[0] || 'S'
   const motto = profile?.bio || 'স্বপ্ন দেখো · শেখো · এগিয়ে যাও'
   const [editing, setEditing] = useState(false)
 
-  const healthItems = buildProfileHealthItems(profile, studentExtra)
-  const health = scoreProfileHealth(healthItems)
+  let health = { score: 0, filled: 0, total: 0, label: 'শুরু করুন', color: 'rose' }
+  try {
+    health = scoreProfileHealth(buildProfileHealthItems(profile, studentExtra))
+  } catch {
+    /* ignore */
+  }
 
   const [stats, setStats] = useState({ lessons: 0, xp: 0, streak: 0, avgScore: 0 })
-  const [activity, setActivity] = useState<Activity[]>([])
+  const [activity, setActivity] = useState<Activity[]>([
+    {
+      id: '1',
+      icon: '📘',
+      text: 'প্রথম পাঠ শুরু করো',
+      time: 'আজ',
+      xp: '+50 XP',
+      color: 'bg-violet-100 text-violet-700',
+    },
+  ])
   const [subjectProg, setSubjectProg] = useState([
     { name: 'Bangla', short: 'বাংলা', done: 0, total: 5, pct: 0, icon: '📖', tone: 'bg-pink-50 text-pink-600' },
     { name: 'English', short: 'English', done: 0, total: 5, pct: 0, icon: '🔤', tone: 'bg-sky-50 text-sky-600' },
@@ -89,100 +103,90 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
           .order('updated_at', { ascending: false })
           .limit(40)
 
-        if (data?.length) {
-          const completed = data.filter((r) => r.status === 'completed')
-          const xp = data.reduce((s, r) => s + (Number(r.xp_earned) || 0), 0)
-          const scores = data.filter((r) => r.score != null).map((r) => Number(r.score) || 0)
-          const avg =
-            scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-          setStats({
-            lessons: completed.length,
-            xp,
-            streak: Math.min(Math.max(1, completed.length), 14),
-            avgScore: avg,
-          })
+        if (!data?.length) return
 
-          const base = Math.min(5, Math.max(0, Math.ceil(completed.length / 2)))
-          setSubjectProg([
-            {
-              name: 'Bangla',
-              short: 'বাংলা',
-              done: Math.min(5, base + (completed.length > 0 ? 1 : 0)),
-              total: 5,
-              pct: Math.min(100, (Math.min(5, base + 1) / 5) * 100),
-              icon: '📖',
-              tone: 'bg-pink-50 text-pink-600',
-            },
-            {
-              name: 'English',
-              short: 'English',
-              done: Math.min(5, Math.max(0, base - 1)),
-              total: 5,
-              pct: Math.min(100, (Math.min(5, Math.max(0, base - 1)) / 5) * 100),
-              icon: '🔤',
-              tone: 'bg-sky-50 text-sky-600',
-            },
-            {
-              name: 'Math',
-              short: 'গণিত',
-              done: Math.min(5, base + (avg >= 60 ? 1 : 0)),
-              total: 5,
-              pct: Math.min(100, ((base + (avg >= 60 ? 1 : 0)) / 5) * 100),
-              icon: '🔢',
-              tone: 'bg-violet-50 text-violet-600',
-            },
-            {
-              name: 'Science',
-              short: 'বিজ্ঞান',
-              done: Math.min(5, Math.floor(base / 2)),
-              total: 5,
-              pct: Math.min(100, (Math.floor(base / 2) / 5) * 100),
-              icon: '🔬',
-              tone: 'bg-emerald-50 text-emerald-600',
-            },
-          ])
+        const completed = data.filter((r) => r.status === 'completed')
+        const xp = data.reduce((s, r) => s + (Number(r.xp_earned) || 0), 0)
+        const scores = data.filter((r) => r.score != null).map((r) => Number(r.score) || 0)
+        const avg =
+          scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
 
-          setActivity(
-            data.slice(0, 4).map((r, i) => {
-              const sc = r.score != null ? Number(r.score) : null
-              const xpE = Number(r.xp_earned) || (sc != null && sc >= 60 ? 30 : 15)
-              const done = r.status === 'completed'
-              return {
-                id: String(r.lesson_id || i),
-                icon: done ? (sc != null && sc >= 80 ? '💜' : '📘') : '⭐',
-                text: done
-                  ? sc != null
-                    ? `কুইজে ${sc}% স্কোর`
-                    : 'একটি পাঠ সম্পন্ন'
-                  : 'শেখার অগ্রগতি আপডেট',
-                time: r.updated_at
-                  ? new Date(r.updated_at as string).toLocaleString('bn-BD', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true,
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  : 'সম্প্রতি',
-                xp: `+${xpE} XP`,
-                color: done ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700',
-              }
-            }),
-          )
-        } else {
-          setActivity([
-            {
-              id: '1',
-              icon: '📘',
-              text: 'প্রথম পাঠ শুরু করো',
-              time: 'আজ',
-              xp: '+50 XP',
-              color: 'bg-violet-100 text-violet-700',
-            },
-          ])
-        }
+        setStats({
+          lessons: completed.length,
+          xp,
+          streak: Math.min(Math.max(1, completed.length), 14),
+          avgScore: avg,
+        })
+
+        const base = Math.min(5, Math.max(0, Math.ceil(completed.length / 2)))
+        setSubjectProg([
+          {
+            name: 'Bangla',
+            short: 'বাংলা',
+            done: Math.min(5, base + (completed.length > 0 ? 1 : 0)),
+            total: 5,
+            pct: Math.min(100, (Math.min(5, base + 1) / 5) * 100),
+            icon: '📖',
+            tone: 'bg-pink-50 text-pink-600',
+          },
+          {
+            name: 'English',
+            short: 'English',
+            done: Math.min(5, Math.max(0, base - 1)),
+            total: 5,
+            pct: Math.min(100, (Math.min(5, Math.max(0, base - 1)) / 5) * 100),
+            icon: '🔤',
+            tone: 'bg-sky-50 text-sky-600',
+          },
+          {
+            name: 'Math',
+            short: 'গণিত',
+            done: Math.min(5, base + (avg >= 60 ? 1 : 0)),
+            total: 5,
+            pct: Math.min(100, ((base + (avg >= 60 ? 1 : 0)) / 5) * 100),
+            icon: '🔢',
+            tone: 'bg-violet-50 text-violet-600',
+          },
+          {
+            name: 'Science',
+            short: 'বিজ্ঞান',
+            done: Math.min(5, Math.floor(base / 2)),
+            total: 5,
+            pct: Math.min(100, (Math.floor(base / 2) / 5) * 100),
+            icon: '🔬',
+            tone: 'bg-emerald-50 text-emerald-600',
+          },
+        ])
+
+        setActivity(
+          data.slice(0, 4).map((r, i) => {
+            const sc = r.score != null ? Number(r.score) : null
+            const xpE = Number(r.xp_earned) || (sc != null && sc >= 60 ? 30 : 15)
+            const done = r.status === 'completed'
+            return {
+              id: String(r.lesson_id || i),
+              icon: done ? (sc != null && sc >= 80 ? '💜' : '📘') : '⭐',
+              text: done
+                ? sc != null
+                  ? `কুইজে ${sc}% স্কোর`
+                  : 'একটি পাঠ সম্পন্ন'
+                : 'শেখার অগ্রগতি আপডেট',
+              time: r.updated_at
+                ? new Date(r.updated_at as string).toLocaleString('bn-BD', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                    month: 'short',
+                    day: 'numeric',
+                  })
+                : 'সম্প্রতি',
+              xp: `+${xpE} XP`,
+              color: done ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700',
+            }
+          }),
+        )
       } catch {
-        /* ignore */
+        /* ignore network errors */
       }
     }
     void load()
@@ -250,13 +254,7 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
               className="flex w-full items-center gap-2.5 rounded-xl p-1 text-left transition hover:bg-white/10"
             >
               <div className="relative size-9 overflow-hidden rounded-full border-2 border-white/30">
-                {profile?.avatar_url ? (
-                  <Image src={profile.avatar_url} alt="" fill className="object-cover" />
-                ) : (
-                  <div className="flex size-full items-center justify-center bg-fuchsia-500 text-sm font-bold">
-                    {first.charAt(0)}
-                  </div>
-                )}
+                <SafeAvatar src={profile?.avatar_url} name={name} textClassName="text-sm font-bold text-white" />
               </div>
               <div className="min-w-0">
                 <p className="truncate text-xs font-bold">{first}</p>
@@ -287,19 +285,12 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
             <span className="text-xs font-semibold text-slate-500">শেখো · XP অর্জন করো · এগিয়ে যাও</span>
           </div>
 
-          {/* Profile card */}
           <div className="mb-4 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-center gap-4">
                 <button type="button" onClick={() => setEditing(true)} className="relative group">
                   <div className="relative size-16 overflow-hidden rounded-full border-4 border-violet-100 sm:size-[4.5rem]">
-                    {profile?.avatar_url ? (
-                      <Image src={profile.avatar_url} alt="" fill className="object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl font-black text-white">
-                        {first.charAt(0)}
-                      </div>
-                    )}
+                    <SafeAvatar src={profile?.avatar_url} name={name} textClassName="text-2xl font-black text-white" />
                   </div>
                   <span className="absolute bottom-0 right-0 grid size-7 place-items-center rounded-full border-2 border-white bg-violet-600 text-[10px] text-white shadow group-hover:bg-violet-500">
                     ✏️
@@ -310,9 +301,9 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
                   <span className="mt-0.5 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">
                     {classLabel}
                   </span>
-                  {studentExtra?.school_name && (
+                  {studentExtra?.school_name ? (
                     <p className="mt-1 text-[11px] font-medium text-slate-400">🏫 {studentExtra.school_name}</p>
-                  )}
+                  ) : null}
                   <p className="mt-1 text-xs font-medium text-slate-500">{motto}</p>
                 </div>
               </div>
@@ -325,7 +316,6 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
               </button>
             </div>
 
-            {/* Health bar */}
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -340,51 +330,24 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
               <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                 <div
                   className={`h-full rounded-full bg-gradient-to-r ${healthColor} transition-all`}
-                  style={{ width: `${health.score}%` }}
+                  style={{ width: `${Math.min(100, Math.max(0, health.score))}%` }}
                 />
               </div>
-              {health.score < 100 && (
+              {health.score < 100 ? (
                 <p className="mt-1.5 text-[10px] font-semibold text-violet-600">
                   {health.filled}/{health.total} পূর্ণ · বাকি তথ্য যোগ করতে ট্যাপ করো →
                 </p>
-              )}
+              ) : null}
             </button>
 
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               {[
-                {
-                  label: 'লেভেল',
-                  value: String(level),
-                  sub: 'Explorer',
-                  icon: '🏆',
-                  bg: 'from-amber-50 to-orange-50 border-amber-100',
-                },
-                {
-                  label: 'XP',
-                  value: stats.xp.toLocaleString(),
-                  sub: `/ ${xpGoal.toLocaleString()}`,
-                  icon: '⚡',
-                  bg: 'from-sky-50 to-blue-50 border-sky-100',
-                },
-                {
-                  label: 'স্ট্রিক',
-                  value: String(stats.streak || 1),
-                  sub: 'দিন',
-                  icon: '🔥',
-                  bg: 'from-orange-50 to-rose-50 border-orange-100',
-                },
-                {
-                  label: 'ব্যাজ',
-                  value: String(badges),
-                  sub: 'অর্জিত',
-                  icon: '❤️',
-                  bg: 'from-pink-50 to-fuchsia-50 border-pink-100',
-                },
+                { label: 'লেভেল', value: String(level), sub: 'Explorer', icon: '🏆', bg: 'from-amber-50 to-orange-50 border-amber-100' },
+                { label: 'XP', value: stats.xp.toLocaleString(), sub: `/ ${xpGoal.toLocaleString()}`, icon: '⚡', bg: 'from-sky-50 to-blue-50 border-sky-100' },
+                { label: 'স্ট্রিক', value: String(stats.streak || 1), sub: 'দিন', icon: '🔥', bg: 'from-orange-50 to-rose-50 border-orange-100' },
+                { label: 'ব্যাজ', value: String(badges), sub: 'অর্জিত', icon: '❤️', bg: 'from-pink-50 to-fuchsia-50 border-pink-100' },
               ].map((s) => (
-                <div
-                  key={s.label}
-                  className={`rounded-2xl border bg-gradient-to-br px-3 py-3 text-center ${s.bg}`}
-                >
+                <div key={s.label} className={`rounded-2xl border bg-gradient-to-br px-3 py-3 text-center ${s.bg}`}>
                   <div className="text-lg">{s.icon}</div>
                   <p className="text-xl font-black text-slate-800">{s.value}</p>
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{s.label}</p>
@@ -399,9 +362,7 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
               <div className="text-5xl sm:text-6xl">🎒</div>
               <div className="min-w-0 flex-1">
                 <p className="text-base font-black text-slate-800 sm:text-lg">পরের মিশন</p>
-                <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">
-                  আরও পাঠ শেষ করে পরের অধ্যায় আনলক করো!
-                </p>
+                <p className="mt-0.5 text-xs text-slate-600 sm:text-sm">আরও পাঠ শেষ করে পরের অধ্যায় আনলক করো!</p>
                 <div className="mt-3 h-2.5 max-w-xs overflow-hidden rounded-full bg-white/70">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
@@ -424,24 +385,14 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
           <div className="mb-4 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-black text-slate-800">আমার শেখার যাত্রা</h2>
-              <Link
-                href="/dashboard/student/academic"
-                className="text-[11px] font-bold text-violet-600 hover:underline"
-              >
+              <Link href="/dashboard/student/academic" className="text-[11px] font-bold text-violet-600 hover:underline">
                 সব দেখো
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {subjectProg.map((s) => (
-                <div
-                  key={s.name}
-                  className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-center"
-                >
-                  <div
-                    className={`mx-auto mb-2 flex size-10 items-center justify-center rounded-xl text-lg ${s.tone}`}
-                  >
-                    {s.icon}
-                  </div>
+                <div key={s.name} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-center">
+                  <div className={`mx-auto mb-2 flex size-10 items-center justify-center rounded-xl text-lg ${s.tone}`}>{s.icon}</div>
                   <p className="text-xs font-black text-slate-800">{s.short}</p>
                   <p className="text-[10px] font-semibold text-slate-400">
                     {s.done}/{s.total} অধ্যায়
@@ -461,10 +412,7 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
           <div className="mb-4 rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-black text-slate-800">সাম্প্রতিক কার্যক্রম</h2>
-              <Link
-                href="/dashboard/student/performance"
-                className="text-[11px] font-bold text-violet-600 hover:underline"
-              >
+              <Link href="/dashboard/student/performance" className="text-[11px] font-bold text-violet-600 hover:underline">
                 সব দেখো
               </Link>
             </div>
@@ -474,9 +422,7 @@ export default function StudentProfileHub({ profile, studentExtra }: Props) {
                   key={a.id}
                   className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5"
                 >
-                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-base ${a.color}`}>
-                    {a.icon}
-                  </span>
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-base ${a.color}`}>{a.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-700 sm:text-sm">{a.text}</p>
                     <p className="text-[10px] text-slate-400">{a.time}</p>
