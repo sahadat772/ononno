@@ -4,9 +4,10 @@ import { useCallback, useRef, useState } from 'react'
 
 /**
  * Kids Zone TTS
- * - en-US: Web Speech API
- * - bn-BD: always /api/tts (Google bn) — browsers often fall back to Hindi
- * - ar-SA: Web Speech if Arabic voice exists, else /api/tts
+ * - bn-BD / ar-SA: /api/tts (Google) — stable Bangla & Arabic
+ * - en-US: Web Speech first, then /api/tts fallback
+ * - Uses blob URLs so playback is more reliable than streaming Audio(src=api)
+ * - unlockAudio() must run on first user tap (browser autoplay policy)
  */
 
 const BANGLA_PRONUNCIATION: Record<string, string> = {
@@ -97,7 +98,6 @@ export type SpeechStatus =
   | { phase: 'playing'; message: string }
   | { phase: 'error'; message: string }
 
-/** Only real Bangla / Arabic / English — never Hindi (hi). */
 function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null
   const voices = window.speechSynthesis.getVoices()
@@ -131,11 +131,35 @@ function expandText(text: string, lang: SpeechLang): string {
   return t
 }
 
+/** Shared unlock — call on first user tap so later autoplay works. */
+let audioUnlocked = false
+
+export function unlockSpeechAudio() {
+  if (typeof window === 'undefined' || audioUnlocked) return
+  try {
+    const a = new Audio()
+    a.src =
+      'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+1DEAAAGAAGn9AAAIgAANP8AAABEwPMWTgIANq9AAAAAAAA9DWppbk1UPj8uOjo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Oj/////////+1DEDsP1AAn9AAAIgAANP8AAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAAAAAAgAAAA0gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=='
+    a.volume = 0.01
+    void a.play().then(() => {
+      a.pause()
+      audioUnlocked = true
+    }).catch(() => {
+      /* still mark attempted */
+      audioUnlocked = true
+    })
+  } catch {
+    audioUnlocked = true
+  }
+}
+
 export function useSpeech() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<SpeechStatus>({ phase: 'idle' })
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
+  const genRef = useRef(0)
 
   const ensureVoices = useCallback(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return
@@ -149,6 +173,7 @@ export function useSpeech() {
   }, [])
 
   const stop = useCallback(() => {
+    genRef.current += 1
     if (typeof window === 'undefined') return
     try {
       window.speechSynthesis.cancel()
@@ -158,11 +183,20 @@ export function useSpeech() {
     if (audioRef.current) {
       try {
         audioRef.current.pause()
-        audioRef.current.src = ''
+        audioRef.current.removeAttribute('src')
+        audioRef.current.load()
       } catch {
         /* ignore */
       }
       audioRef.current = null
+    }
+    if (blobUrlRef.current) {
+      try {
+        URL.revokeObjectURL(blobUrlRef.current)
+      } catch {
+        /* ignore */
+      }
+      blobUrlRef.current = null
     }
     setIsSpeaking(false)
     setIsLoading(false)
@@ -187,22 +221,27 @@ export function useSpeech() {
         utterance.volume = 1
         if (voice) utterance.voice = voice
 
+        const myGen = genRef.current
         utterance.onstart = () => {
+          if (myGen !== genRef.current) return
           setIsSpeaking(true)
           setIsLoading(false)
           setStatus({ phase: 'playing', message: '🔊 শুনছো…' })
         }
         utterance.onend = () => {
+          if (myGen !== genRef.current) return
           setIsSpeaking(false)
           setStatus({ phase: 'idle' })
         }
         utterance.onerror = () => {
+          if (myGen !== genRef.current) return
           setIsSpeaking(false)
           setStatus({ phase: 'error', message: 'Web Speech ব্যর্থ' })
         }
 
         window.speechSynthesis.cancel()
         setTimeout(() => {
+          if (myGen !== genRef.current) return
           window.speechSynthesis.speak(utterance)
         }, 40)
         return true
@@ -213,85 +252,112 @@ export function useSpeech() {
     [ensureVoices],
   )
 
-  const speakViaApiTts = useCallback((speakText: string, lang: SpeechLang) => {
-    const ttsLang = lang === 'ar-SA' ? 'ar' : lang === 'en-US' ? 'en' : 'bn'
-    const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
+  const speakViaApiTts = useCallback(
+    async (speakText: string, lang: SpeechLang) => {
+      const ttsLang = lang === 'ar-SA' ? 'ar' : lang === 'en-US' ? 'en' : 'bn'
+      const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
+      const myGen = genRef.current
 
-    setIsLoading(true)
-    setIsSpeaking(true)
-    setStatus({
-      phase: 'loading',
-      message:
-        ttsLang === 'ar'
-          ? '⬇️ আরবি অডিও…'
-          : ttsLang === 'en'
-            ? '⬇️ English audio…'
-            : '⬇️ বাংলা উচ্চারণ…',
-    })
-
-    const audio = new Audio()
-    audioRef.current = audio
-    audio.preload = 'auto'
-
-    const onFail = () => {
-      setIsSpeaking(false)
-      setIsLoading(false)
+      setIsLoading(true)
+      setIsSpeaking(true)
       setStatus({
-        phase: 'error',
-        message: 'অডিও লোড হয়নি। আবার চেষ্টা করো।',
-      })
-      audioRef.current = null
-    }
-
-    audio.addEventListener('canplaythrough', () => {
-      setIsLoading(false)
-      setStatus({
-        phase: 'playing',
+        phase: 'loading',
         message:
           ttsLang === 'ar'
-            ? '▶️ আরবি'
+            ? '⬇️ আরবি অডিও…'
             : ttsLang === 'en'
-              ? '▶️ English'
-              : '▶️ বাংলা উচ্চারণ',
+              ? '⬇️ English audio…'
+              : '⬇️ বাংলা উচ্চারণ…',
       })
-      audio.play().catch(onFail)
-    })
-    audio.addEventListener('ended', () => {
-      setIsSpeaking(false)
-      setIsLoading(false)
-      setStatus({ phase: 'idle' })
-      audioRef.current = null
-    })
-    audio.addEventListener('error', onFail)
-    audio.src = apiUrl
-    audio.load()
-  }, [])
+
+      try {
+        const res = await fetch(apiUrl, { cache: 'force-cache' })
+        if (!res.ok) throw new Error(`TTS ${res.status}`)
+        const blob = await res.blob()
+        if (blob.size < 100) throw new Error('empty audio')
+        if (myGen !== genRef.current) return
+
+        if (blobUrlRef.current) {
+          try {
+            URL.revokeObjectURL(blobUrlRef.current)
+          } catch {
+            /* */
+          }
+        }
+        const url = URL.createObjectURL(blob)
+        blobUrlRef.current = url
+
+        const audio = new Audio()
+        audioRef.current = audio
+        audio.preload = 'auto'
+
+        const onFail = () => {
+          if (myGen !== genRef.current) return
+          setIsSpeaking(false)
+          setIsLoading(false)
+          setStatus({
+            phase: 'error',
+            message: 'অডিও চালু হয়নি — 🔊 বাটনে চাপ দাও',
+          })
+          audioRef.current = null
+        }
+
+        audio.oncanplaythrough = () => {
+          if (myGen !== genRef.current) return
+          setIsLoading(false)
+          setStatus({
+            phase: 'playing',
+            message:
+              ttsLang === 'ar'
+                ? '▶️ আরবি'
+                : ttsLang === 'en'
+                  ? '▶️ English'
+                  : '▶️ বাংলা উচ্চারণ',
+          })
+          audio.play().catch(onFail)
+        }
+        audio.onended = () => {
+          if (myGen !== genRef.current) return
+          setIsSpeaking(false)
+          setIsLoading(false)
+          setStatus({ phase: 'idle' })
+          audioRef.current = null
+        }
+        audio.onerror = onFail
+        audio.src = url
+        audio.load()
+      } catch {
+        if (myGen !== genRef.current) return
+        setIsSpeaking(false)
+        setIsLoading(false)
+        setStatus({
+          phase: 'error',
+          message: 'অডিও লোড হয়নি। 🔊 আবার চেষ্টা করো।',
+        })
+      }
+    },
+    [],
+  )
 
   const speak = useCallback(
     (text: string, lang: SpeechLang = 'bn-BD') => {
       if (typeof window === 'undefined' || !text?.trim()) return
 
+      unlockSpeechAudio()
       stop()
       const speakText = expandText(text, lang)
 
       if (lang === 'en-US') {
         if (!speakViaWebSpeech(speakText, lang)) {
-          setStatus({ phase: 'error', message: 'English voice পাওয়া যায়নি' })
+          void speakViaApiTts(speakText, lang)
         }
         return
       }
 
-      // Bangla → always Google TTS (lang=bn). Device Web Speech often uses Hindi.
-      if (lang === 'bn-BD') {
-        speakViaApiTts(speakText, lang)
-        return
-      }
-
-      ensureVoices()
-      if (pickVoice('ar-SA') && speakViaWebSpeech(speakText, 'ar-SA')) return
-      speakViaApiTts(speakText, 'ar-SA')
+      // Bangla & Arabic → Google TTS API (blob playback)
+      void speakViaApiTts(speakText, lang)
     },
-    [stop, speakViaWebSpeech, speakViaApiTts, ensureVoices],
+    [stop, speakViaWebSpeech, speakViaApiTts],
   )
 
   return {
@@ -300,6 +366,7 @@ export function useSpeech() {
     isSpeaking,
     isLoading,
     status,
+    unlock: unlockSpeechAudio,
     webSpeechSupported:
       typeof window !== 'undefined' && 'speechSynthesis' in window,
   }
