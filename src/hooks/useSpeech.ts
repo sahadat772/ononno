@@ -4,10 +4,9 @@ import { useCallback, useRef, useState } from 'react'
 
 /**
  * Kids Zone TTS
- * - bn-BD / ar-SA: /api/tts (Google) — stable Bangla & Arabic
- * - en-US: Web Speech first, then /api/tts fallback
- * - Uses blob URLs so playback is more reliable than streaming Audio(src=api)
- * - unlockAudio() must run on first user tap (browser autoplay policy)
+ * - bn-BD / ar-SA: /api/tts (Google) via blob + session cache
+ * - en-US: Web Speech first, then /api/tts
+ * - unlockSpeechAudio() on first user gesture (autoplay policy)
  */
 
 const BANGLA_PRONUNCIATION: Record<string, string> = {
@@ -57,6 +56,63 @@ const BANGLA_PRONUNCIATION: Record<string, string> = {
   '৮': 'আট',
   '৯': 'নয়',
   '১০': 'দশ',
+  // GK / everyday words — clearer for kids TTS
+  লাল: 'লাল',
+  নীল: 'নীল',
+  সবুজ: 'সবুজ',
+  হলুদ: 'হলুদ',
+  কমলা: 'কমলা',
+  বেগুনি: 'বেগুনি',
+  সাদা: 'সাদা',
+  কালো: 'কালো',
+  আম: 'আম',
+  কলা: 'কলা',
+  আপেল: 'আপেল',
+  তরমুজ: 'তরমুজ',
+  আঙ্গুর: 'আঙ্গুর',
+  কাঁঠাল: 'কাঁঠাল',
+  পেয়ারা: 'পেয়ারা',
+  বাঘ: 'বাঘ',
+  হাতি: 'হাতি',
+  গরু: 'গরু',
+  বিড়াল: 'বিড়াল',
+  কুকুর: 'কুকুর',
+  পাখি: 'পাখি',
+  মাছ: 'মাছ',
+  খরগোশ: 'খরগোশ',
+  চোখ: 'চোখ',
+  কান: 'কান',
+  হাত: 'হাত',
+  পা: 'পা',
+  নাক: 'নাক',
+  মুখ: 'মুখ',
+  বাস: 'বাস',
+  গাড়ি: 'গাড়ি',
+  ট্রেন: 'ট্রেন',
+  নৌকা: 'নৌকা',
+  বিমান: 'বিমান',
+  রিকশা: 'রিকশা',
+  পতাকা: 'পতাকা',
+  ঢাকা: 'ঢাকা',
+  শাপলা: 'শাপলা',
+  দোয়েল: 'দোয়েল',
+  ইলিশ: 'ইলিশ',
+  বাংলা: 'বাংলা',
+  গ্রীষ্ম: 'গ্রীষ্ম',
+  বর্ষা: 'বর্ষা',
+  শীত: 'শীত',
+  বসন্ত: 'বসন্ত',
+  ডাক্তার: 'ডাক্তার',
+  শিক্ষক: 'শিক্ষক',
+  কৃষক: 'কৃষক',
+  পুলিশ: 'পুলিশ',
+  চালক: 'চালক',
+  সূর্য: 'সূর্য',
+  চাঁদ: 'চাঁদ',
+  মেঘ: 'মেঘ',
+  বৃষ্টি: 'বৃষ্টি',
+  তারা: 'তারা',
+  শাবাশ: 'শাবাশ! দারুণ হয়েছে!',
 }
 
 const ARABIC_LETTER_NAME: Record<string, string> = {
@@ -98,6 +154,13 @@ export type SpeechStatus =
   | { phase: 'playing'; message: string }
   | { phase: 'error'; message: string }
 
+/** Session-level blob cache so replay is instant */
+const ttsCache = new Map<string, string>()
+
+function cacheKey(text: string, lang: string) {
+  return `${lang}::${text}`
+}
+
 function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null
   const voices = window.speechSynthesis.getVoices()
@@ -124,7 +187,13 @@ function pickVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
 
 function expandText(text: string, lang: SpeechLang): string {
   const t = text.trim()
-  if (lang === 'bn-BD' && BANGLA_PRONUNCIATION[t]) return BANGLA_PRONUNCIATION[t]
+  if (!t) return t
+
+  if (lang === 'bn-BD') {
+    if (BANGLA_PRONUNCIATION[t]) return BANGLA_PRONUNCIATION[t]
+    // Single Bangla letter inside longer phrase: leave as-is for full sentence TTS
+    if (t.length === 1 && BANGLA_PRONUNCIATION[t]) return BANGLA_PRONUNCIATION[t]
+  }
   if (lang === 'ar-SA' && t.length === 1 && ARABIC_LETTER_NAME[t]) {
     return ARABIC_LETTER_NAME[t]
   }
@@ -137,17 +206,36 @@ let audioUnlocked = false
 export function unlockSpeechAudio() {
   if (typeof window === 'undefined' || audioUnlocked) return
   try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (Ctx) {
+      const ctx = new Ctx()
+      if (ctx.state === 'suspended') void ctx.resume()
+      // silent buffer tick
+      const buf = ctx.createBuffer(1, 1, 22050)
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      src.connect(ctx.destination)
+      src.start(0)
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
     const a = new Audio()
     a.src =
-      'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+1DEAAAGAAGn9AAAIgAANP8AAABEwPMWTgIANq9AAAAAAAA9DWppbk1UPj8uOjo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Oj/////////+1DEDsP1AAn9AAAIgAANP8AAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAAAAAAgAAAA0gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=='
+      'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
     a.volume = 0.01
-    void a.play().then(() => {
-      a.pause()
-      audioUnlocked = true
-    }).catch(() => {
-      /* still mark attempted */
-      audioUnlocked = true
-    })
+    void a
+      .play()
+      .then(() => {
+        a.pause()
+        audioUnlocked = true
+      })
+      .catch(() => {
+        audioUnlocked = true
+      })
   } catch {
     audioUnlocked = true
   }
@@ -190,14 +278,8 @@ export function useSpeech() {
       }
       audioRef.current = null
     }
-    if (blobUrlRef.current) {
-      try {
-        URL.revokeObjectURL(blobUrlRef.current)
-      } catch {
-        /* ignore */
-      }
-      blobUrlRef.current = null
-    }
+    // Don't revoke cache URLs — only non-cached ephemeral ones
+    blobUrlRef.current = null
     setIsSpeaking(false)
     setIsLoading(false)
     setStatus({ phase: 'idle' })
@@ -216,8 +298,9 @@ export function useSpeech() {
         const utterance = new SpeechSynthesisUtterance(speakText)
         utterance.lang =
           lang === 'en-US' ? 'en-US' : lang === 'ar-SA' ? 'ar-SA' : 'bn-BD'
-        utterance.rate = lang === 'en-US' ? 0.9 : 0.85
-        utterance.pitch = 1.05
+        // Slower for kids
+        utterance.rate = lang === 'en-US' ? 0.85 : 0.75
+        utterance.pitch = 1.08
         utterance.volume = 1
         if (voice) utterance.voice = voice
 
@@ -252,10 +335,54 @@ export function useSpeech() {
     [ensureVoices],
   )
 
+  const playBlobUrl = useCallback((url: string, ttsLang: string, myGen: number) => {
+    const audio = new Audio()
+    audioRef.current = audio
+    audio.preload = 'auto'
+    // Slightly slower feel via playbackRate for kids
+    audio.playbackRate = ttsLang === 'en' ? 0.95 : 0.9
+
+    const onFail = () => {
+      if (myGen !== genRef.current) return
+      setIsSpeaking(false)
+      setIsLoading(false)
+      setStatus({
+        phase: 'error',
+        message: 'অডিও চালু হয়নি — 🔊 বাটনে চাপ দাও',
+      })
+      audioRef.current = null
+    }
+
+    audio.oncanplaythrough = () => {
+      if (myGen !== genRef.current) return
+      setIsLoading(false)
+      setStatus({
+        phase: 'playing',
+        message:
+          ttsLang === 'ar'
+            ? '▶️ আরবি উচ্চারণ'
+            : ttsLang === 'en'
+              ? '▶️ English'
+              : '▶️ বাংলা উচ্চারণ',
+      })
+      void audio.play().catch(onFail)
+    }
+    audio.onended = () => {
+      if (myGen !== genRef.current) return
+      setIsSpeaking(false)
+      setIsLoading(false)
+      setStatus({ phase: 'idle' })
+      audioRef.current = null
+    }
+    audio.onerror = onFail
+    audio.src = url
+    audio.load()
+  }, [])
+
   const speakViaApiTts = useCallback(
-    async (speakText: string, lang: SpeechLang) => {
+    async (speakText: string, lang: SpeechLang, attempt = 1) => {
       const ttsLang = lang === 'ar-SA' ? 'ar' : lang === 'en-US' ? 'en' : 'bn'
-      const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
+      const key = cacheKey(speakText, ttsLang)
       const myGen = genRef.current
 
       setIsLoading(true)
@@ -271,63 +398,39 @@ export function useSpeech() {
       })
 
       try {
-        const res = await fetch(apiUrl, { cache: 'force-cache' })
-        if (!res.ok) throw new Error(`TTS ${res.status}`)
-        const blob = await res.blob()
-        if (blob.size < 100) throw new Error('empty audio')
-        if (myGen !== genRef.current) return
-
-        if (blobUrlRef.current) {
-          try {
-            URL.revokeObjectURL(blobUrlRef.current)
-          } catch {
-            /* */
+        let url = ttsCache.get(key)
+        if (!url) {
+          const apiUrl = `/api/tts?text=${encodeURIComponent(speakText)}&lang=${ttsLang}`
+          const res = await fetch(apiUrl, { cache: 'force-cache' })
+          if (!res.ok) throw new Error(`TTS ${res.status}`)
+          const blob = await res.blob()
+          if (blob.size < 100) throw new Error('empty audio')
+          if (myGen !== genRef.current) return
+          url = URL.createObjectURL(blob)
+          ttsCache.set(key, url)
+          // Cap cache size
+          if (ttsCache.size > 80) {
+            const first = ttsCache.keys().next().value
+            if (first) {
+              const old = ttsCache.get(first)
+              ttsCache.delete(first)
+              if (old) try { URL.revokeObjectURL(old) } catch { /* */ }
+            }
           }
         }
-        const url = URL.createObjectURL(blob)
+        if (myGen !== genRef.current) return
         blobUrlRef.current = url
-
-        const audio = new Audio()
-        audioRef.current = audio
-        audio.preload = 'auto'
-
-        const onFail = () => {
-          if (myGen !== genRef.current) return
-          setIsSpeaking(false)
-          setIsLoading(false)
-          setStatus({
-            phase: 'error',
-            message: 'অডিও চালু হয়নি — 🔊 বাটনে চাপ দাও',
-          })
-          audioRef.current = null
-        }
-
-        audio.oncanplaythrough = () => {
-          if (myGen !== genRef.current) return
-          setIsLoading(false)
-          setStatus({
-            phase: 'playing',
-            message:
-              ttsLang === 'ar'
-                ? '▶️ আরবি'
-                : ttsLang === 'en'
-                  ? '▶️ English'
-                  : '▶️ বাংলা উচ্চারণ',
-          })
-          audio.play().catch(onFail)
-        }
-        audio.onended = () => {
-          if (myGen !== genRef.current) return
-          setIsSpeaking(false)
-          setIsLoading(false)
-          setStatus({ phase: 'idle' })
-          audioRef.current = null
-        }
-        audio.onerror = onFail
-        audio.src = url
-        audio.load()
+        playBlobUrl(url, ttsLang, myGen)
       } catch {
         if (myGen !== genRef.current) return
+        if (attempt < 2) {
+          // one automatic retry after short delay
+          setTimeout(() => {
+            if (myGen !== genRef.current) return
+            void speakViaApiTts(speakText, lang, attempt + 1)
+          }, 400)
+          return
+        }
         setIsSpeaking(false)
         setIsLoading(false)
         setStatus({
@@ -336,7 +439,7 @@ export function useSpeech() {
         })
       }
     },
-    [],
+    [playBlobUrl],
   )
 
   const speak = useCallback(
@@ -354,7 +457,6 @@ export function useSpeech() {
         return
       }
 
-      // Bangla & Arabic → Google TTS API (blob playback)
       void speakViaApiTts(speakText, lang)
     },
     [stop, speakViaWebSpeech, speakViaApiTts],
