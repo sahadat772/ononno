@@ -96,6 +96,7 @@ export function MatchingGame({
   function onLeft(left: string) {
     if (matched[left] || finished) return
     const pair = pairs.find((p) => p.left === left)
+    // Emoji left → speak the matched name; text left → speak the example word
     if (pair && isMostlyEmoji(left)) speak(pair.right, voiceLang)
     else speak(left, voiceLang)
     setLeftSel(left)
@@ -134,7 +135,7 @@ export function MatchingGame({
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full text-center">
       <p className="mb-1 text-xl font-black text-white">🔗 জোড়া মেলাও</p>
       <p className="mb-3 text-xs text-slate-400">
-        {leftIsIcon ? 'বামে ছবি → ডানে নাম' : 'বামে বর্ণ → ডানে শব্দ'}
+        {leftIsIcon ? 'বামে ছবি → ডানে নাম' : 'বামে study উদাহরণ → ডানে নাম'}
       </p>
       {wrongFlash && (
         <p className="mb-2 text-sm font-bold text-red-300">মিলেনি — আবার চেষ্টা করো</p>
@@ -152,7 +153,7 @@ export function MatchingGame({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onLeft(left)}
                 disabled={isMatched}
-                className={`flex h-14 items-center justify-center rounded-2xl border-2 text-2xl font-black transition ${
+                className={`flex min-h-14 items-center justify-center rounded-2xl border-2 px-1 text-base font-black leading-tight transition sm:text-lg ${
                   isMatched
                     ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-300'
                     : isWrong
@@ -177,7 +178,7 @@ export function MatchingGame({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onRight(right)}
                 disabled={isUsed || !leftSel}
-                className={`flex h-14 items-center justify-center rounded-2xl border-2 px-2 text-base font-bold transition ${
+                className={`flex min-h-14 items-center justify-center rounded-2xl border-2 px-2 text-base font-bold transition ${
                   isUsed
                     ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-300'
                     : leftSel
@@ -197,9 +198,7 @@ export function MatchingGame({
         </motion.p>
       )}
       {!leftSel && !finished && (
-        <p className="mt-3 text-xs text-slate-500">
-          {leftIsIcon ? 'প্রথমে বাম দিকের ছবিতে ট্যাপ করো' : 'প্রথমে বাম দিকের বর্ণে ট্যাপ করো'}
-        </p>
+        <p className="mt-3 text-xs text-slate-500">প্রথমে বাম দিকের উদাহরণে ট্যাপ করো</p>
       )}
     </motion.div>
   )
