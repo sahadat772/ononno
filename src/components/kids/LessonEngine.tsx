@@ -373,7 +373,11 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
     }
 
     if (!canDoLesson) {
-        return <LockOverlay backHref={safeBackHref} />
+        return (
+            <div className="flex min-h-dvh items-center justify-center bg-[#0a0a1a] p-4">
+                <LockOverlay type="daily_limit" />
+            </div>
+        )
     }
 
     return (
