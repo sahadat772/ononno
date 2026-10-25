@@ -75,7 +75,9 @@ export async function GET(req: NextRequest) {
   })
   if (rateError) return rateError
 
-  const { text: safeText, lang: safeLang } = parseResult.data
+  const { text: safeText, lang: rawLang } = parseResult.data
+  // Schema marks lang optional → always normalize to a definite string
+  const safeLang = (rawLang || lang || 'bn').toLowerCase()
   // Normalize: bn / bn-BD → bn, ar → ar, en → en
   const tl =
     safeLang === 'ar' || safeLang.startsWith('ar')
