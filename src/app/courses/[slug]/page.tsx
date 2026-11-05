@@ -1,16 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import {
-  BookOpen,
-  Check,
-  ChevronLeft,
-  Eye,
-  Lock,
-  Menu,
-  Search,
-  Users,
-} from 'lucide-react'
+import { BookOpen, ChevronLeft, Search, Users } from 'lucide-react'
 import SiteFooter from '@/components/shared/SiteFooter'
 import {
   getAllCourseSlugs,
@@ -51,7 +42,6 @@ export default async function CourseDetailPage({
 
   return (
     <main className="min-h-screen bg-white text-slate-800">
-      {/* Marketing header — matches home */}
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center gap-3 px-3 sm:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-2">
@@ -95,11 +85,8 @@ export default async function CourseDetailPage({
           <ChevronLeft className="h-4 w-4" /> সব কোর্স
         </Link>
 
-        {/* Title row + Buy */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-            {course.titleBn}
-          </h1>
+          <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{course.titleBn}</h1>
           <a
             href="/register"
             className="inline-flex shrink-0 items-center justify-center rounded-sm bg-green-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700"
@@ -108,7 +95,6 @@ export default async function CourseDetailPage({
           </a>
         </div>
 
-        {/* Hero: thumbnail + intro */}
         <div className="mb-10 grid gap-8 lg:grid-cols-[280px_1fr]">
           <div className="overflow-hidden rounded-sm border-2 border-violet-300 bg-white shadow-sm">
             <div className={`px-3 py-2 text-center text-sm font-bold text-white ${course.badgeColor}`}>
@@ -127,34 +113,23 @@ export default async function CourseDetailPage({
               {course.shortTitle}{' '}
               <span className="font-normal text-blue-600">({course.titleBn})</span>
             </h2>
-            <p className="mt-2 text-sm font-semibold text-slate-700">
-              Lesson : {course.lessonsCount}
-            </p>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
-              {course.summary}
-            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-700">Lesson : {course.lessonsCount}</p>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">{course.summary}</p>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
               অনন্য-এর এই কোর্সটি NCTB ও কিডস লার্নিং ফ্লো অনুসারে সাজানো। Published লেসন, কুইজ ও
               progress — যাতে শিক্ষার্থী নিরাপদে নিজের গতিতে শিখতে পারে।
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <a
-                href="/register"
-                className="rounded-sm bg-pink-500 px-4 py-2 text-sm font-bold text-white hover:bg-pink-600"
-              >
+              <a href="/register" className="rounded-sm bg-pink-500 px-4 py-2 text-sm font-bold text-white hover:bg-pink-600">
                 Register & Start
               </a>
-              <a
-                href="/login"
-                className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-              >
+              <a href="/login" className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">
                 Login
               </a>
             </div>
           </div>
         </div>
 
-        {/* Description + sidebars */}
         <div className="grid gap-8 lg:grid-cols-[1fr_300px]">
           <div className="space-y-8">
             <section className="rounded-sm border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -196,7 +171,6 @@ export default async function CourseDetailPage({
               </div>
             </section>
 
-            {/* Curriculum */}
             <section className="rounded-sm border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
@@ -211,7 +185,6 @@ export default async function CourseDetailPage({
             </section>
           </div>
 
-          {/* Right column */}
           <aside className="space-y-5">
             <div className="rounded-sm border border-slate-200 bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-center text-sm font-semibold text-blue-700">Course Prerequisite</h3>
@@ -256,9 +229,7 @@ export default async function CourseDetailPage({
 
             {related.length > 0 && (
               <div className="overflow-hidden rounded-sm border border-slate-200 shadow-sm">
-                <div className="bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">
-                  Related Courses
-                </div>
+                <div className="bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">Related Courses</div>
                 <ul className="divide-y divide-slate-100 bg-white">
                   {related.map((r) => (
                     <li key={r.slug}>
@@ -266,9 +237,7 @@ export default async function CourseDetailPage({
                         href={`/courses/${r.slug}`}
                         className="flex items-center gap-3 px-3 py-3 transition hover:bg-slate-50"
                       >
-                        <span className="grid size-12 shrink-0 place-items-center rounded bg-slate-100 text-2xl">
-                          {r.emoji}
-                        </span>
+                        <span className="grid size-12 shrink-0 place-items-center rounded bg-slate-100 text-2xl">{r.emoji}</span>
                         <span className="text-sm font-semibold text-slate-800">{r.titleBn}</span>
                       </Link>
                     </li>
