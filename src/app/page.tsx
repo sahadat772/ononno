@@ -5,16 +5,15 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
-  ArrowRight,
   BookOpen,
-  BrainCircuit,
-  Check,
+  ChevronDown,
   GraduationCap,
+  Languages,
   Menu,
-  PlayCircle,
+  Pencil,
   Search,
-  ShieldCheck,
-  Sparkles,
+  Settings2,
+  Smile,
   Users,
   X,
 } from 'lucide-react'
@@ -38,119 +37,149 @@ function AuthLink({
 }
 
 const stats = [
-  { icon: BookOpen, label: '১০০+ পাঠ', sub: 'NCTB ভিত্তিক লেসন' },
-  { icon: GraduationCap, label: 'বিশেষজ্ঞ নির্দেশনা', sub: 'নিজের গতিতে শেখো' },
-  { icon: Users, label: 'শেখা বাড়ছে', sub: 'প্রতিদিন নতুন শিক্ষার্থী' },
+  { icon: Settings2, title: '100+ online courses', sub: 'Explore a variety of fresh topics' },
+  { icon: GraduationCap, title: 'Expert instruction', sub: 'Learn on your schedule' },
+  { icon: Users, title: 'Growing students', sub: 'Growing Everyday' },
 ]
 
-const categories = [
-  { id: 'kids', icon: '🧒', title: 'কিডস জোন', sub: 'নার্সারি · কেজি', href: '/register' },
-  { id: 'primary', icon: '📚', title: 'প্রাইমারি', sub: '১ম – ৫ম শ্রেণি', href: '/register' },
-  { id: 'secondary', icon: '🏫', title: 'সেকেন্ডারি', sub: '৬ষ্ঠ – ১০ম শ্রেণি', href: '/register' },
-  { id: 'hsc', icon: '🎯', title: 'উচ্চ মাধ্যমিক', sub: 'একাদশ – দ্বাদশ', href: '/register' },
-  { id: 'gk', icon: '🌍', title: 'সাধারণ জ্ঞান', sub: 'মজার তথ্য · কুইজ', href: '/register' },
-  { id: 'lang', icon: '🗣️', title: 'ভাষা শেখা', sub: 'বাংলা · ইংরেজি', href: '/register' },
+const categoryTabs = [
+  'Primary School',
+  'Secondary School',
+  'Higher Secondary',
+  'Exam Preparation',
+  'Language Learning',
+  'Professional Learning',
 ]
 
 const classCards = [
-  { bn: 'প্রথম শ্রেণি', en: 'Class One', emoji: '1️⃣' },
-  { bn: 'দ্বিতীয় শ্রেণি', en: 'Class Two', emoji: '2️⃣' },
-  { bn: 'তৃতীয় শ্রেণি', en: 'Class Three', emoji: '3️⃣' },
-  { bn: 'চতুর্থ শ্রেণি', en: 'Class Four', emoji: '4️⃣' },
-  { bn: 'পঞ্চম শ্রেণি', en: 'Class Five', emoji: '5️⃣' },
-  { bn: 'ষষ্ঠ শ্রেণি', en: 'Class Six', emoji: '6️⃣' },
+  { bn: 'প্রথম শ্রেণি', en: 'Class One', color: 'from-orange-400 to-rose-400', emoji: '📖' },
+  { bn: 'দ্বিতীয় শ্রেণি', en: 'Class Two', color: 'from-amber-400 to-orange-500', emoji: '✏️' },
+  { bn: 'তৃতীয় শ্রেণি', en: 'Class Three', color: 'from-orange-400 to-pink-400', emoji: '🎒' },
+  { bn: 'চতুর্থ শ্রেণি', en: 'Class Four', color: 'from-rose-400 to-orange-400', emoji: '📚' },
+  { bn: 'পঞ্চম শ্রেণি', en: 'Class Five', color: 'from-orange-500 to-amber-400', emoji: '🏫' },
 ]
 
-const features = [
+const featureBlocks = [
   {
-    icon: PlayCircle,
-    title: 'নিজের গতিতে শেখো',
-    desc: 'এখন পড়াশোনা হবে ঘরেই — অনলাইন কিম্বা অফলাইনে, যখন খুশি।',
+    icon: Settings2,
+    title: 'Go at your own pace',
+    desc: 'এখন পড়াশোনা হবে সবখানে অনলাইন কিম্বা অফলাইনে',
   },
   {
-    icon: BrainCircuit,
-    title: 'স্মার্ট লেসন',
-    desc: 'প্রতিটি বিষয় ধাপে ধাপে — শোনা, বলা, মিলানো, কুইজ ও XP।',
+    icon: Pencil,
+    title: 'Learn from industry experts',
+    desc: 'সকলের জন্য হবে মানসম্পন্ন শিক্ষা',
   },
   {
-    icon: ShieldCheck,
-    title: 'নিরাপদ কনটেন্ট',
-    desc: 'শুধু published NCTB লেসন — AI তৈরি, শিক্ষক/অ্যাডমিন রিভিউ।',
+    icon: BookOpen,
+    title: 'Find courses on almost any topic',
+    desc: 'প্রতিটা সাবজেক্ট এর প্রথম থেকে শেষ পর্যন্ত প্রয়োজনীয় এনিমেশনসহ ছোট ছোট লেসনে শেখানো হয়েছে সবকিছু',
   },
+]
+
+const popularCourses = [
+  { title: 'কিডস জোন · সাধারণ জ্ঞান', slug: 'kids-gk', enrolled: '1,200+', badge: 'কিডস', badgeColor: 'bg-violet-500' },
+  { title: 'Class 1–5 · NCTB পাঠ', slug: 'primary', enrolled: '3,400+', badge: 'প্রাইমারি', badgeColor: 'bg-pink-500' },
+  { title: 'Class 6–10 · বিজ্ঞান ও গণিত', slug: 'secondary', enrolled: '4,100+', badge: 'সেকেন্ডারি', badgeColor: 'bg-emerald-600' },
+  { title: 'HSC · তথ্য ও যোগাযোগ প্রযুক্তি', slug: 'hsc', enrolled: '2,800+', badge: 'HSC', badgeColor: 'bg-indigo-600' },
+]
+
+const topCategories = [
+  { title: 'Primary School', icon: BookOpen },
+  { title: 'Secondary School', icon: GraduationCap },
+  { title: 'Higher Secondary', icon: Users },
+  { title: 'Exam Preparation', icon: Pencil },
+  { title: 'Language Learning', icon: Languages },
+  { title: 'Professional Learning', icon: Settings2 },
 ]
 
 const testimonials = [
   {
     name: 'ফারজানা আক্তার',
-    text: 'সারাদিন কাজের পরও ছেলের পড়া নিয়ে চিন্তা থাকত। অনন্য-এর লেসন দেখে এখন ঘরে বসেই শেখাতে পারি।',
+    text: 'সারাদিন কাজের পরও ছেলের পড়া নিয়ে চিন্তা থাকত। অনন্য-এর লেসন দেখে এখন ঘরে বসেই শেখাতে পারি। ফলাফলও ভালো করেছে।',
+  },
+  {
+    name: 'ডঃ জিল্লুর রহমান',
+    text: 'এটা যে শুধু শিক্ষার্থীদের কাজে আসছে তাই নয়, শিক্ষকদের প্রশিক্ষণেও ভূমিকা রাখছে।',
   },
   {
     name: 'নীলিমা হাসান',
     text: 'ভিডিও ও গেমের মতো স্টেপ থাকায় বাচ্চা নিজে নিজেই আগ্রহ নিয়ে শেখে। নতুন ক্লাসের জন্যও নিতে চাই।',
   },
-  {
-    name: 'ওবায়দুর রহমান',
-    text: 'ইংরেজি ও অঙ্কের ভয় কমেছে। অল্প সময়েই লেসন শেষ করে quiz দিতে পারে।',
-  },
 ]
 
 const fade = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 16 },
   whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, amount: 0.15 },
+  viewport: { once: true, amount: 0.12 },
 }
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-white text-slate-900">
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:h-[4.25rem] sm:px-6">
-          <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <Image src="/icons/logo-icon.png" alt="অনন্য" width={36} height={36} className="rounded-xl" />
-            <div className="min-w-0">
-              <p className="text-lg font-black leading-none tracking-tight">অনন্য</p>
-              <p className="hidden text-[10px] font-semibold text-emerald-600 sm:block">
-                ONONNO · Learn anywhere
+    <main className="min-h-screen overflow-x-hidden bg-white text-slate-800">
+      {/* ══════ HEADER (DSR-style) ══════ */}
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
+        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center gap-3 px-3 sm:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
+            <Image src="/icons/logo-icon.png" alt="অনন্য" width={40} height={40} className="rounded-lg" />
+            <div className="hidden min-[400px]:block">
+              <p className="text-base font-black leading-none tracking-tight text-slate-900">
+                অনন্য <span className="text-pink-500">ONONNO</span>
+              </p>
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                Learn anything, online or offline
               </p>
             </div>
           </Link>
 
-          <div className="hidden max-w-xs flex-1 items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 lg:flex">
-            <Search className="mr-2 h-4 w-4 text-slate-400" />
-            <span className="text-sm text-slate-400">কোর্স বা শ্রেণি খুঁজুন…</span>
+          <button
+            type="button"
+            className="ml-2 hidden items-center gap-1 rounded-md px-2 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-600 hover:bg-slate-50 lg:inline-flex"
+          >
+            <Menu className="h-4 w-4" /> Categories <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+
+          <div className="mx-auto hidden max-w-md flex-1 items-stretch overflow-hidden rounded-md border border-slate-200 lg:flex">
+            <input
+              readOnly
+              placeholder="Search for anything"
+              className="w-full px-3 py-2 text-sm outline-none placeholder:text-slate-400"
+            />
+            <span className="grid w-12 place-items-center bg-pink-500 text-white">
+              <Search className="h-4 w-4" />
+            </span>
           </div>
 
-          <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-600 md:flex">
-            <a href="#categories" className="transition hover:text-emerald-700">
-              ক্যাটাগরি
+          <nav className="ml-auto hidden items-center gap-4 text-xs font-bold uppercase tracking-wide text-slate-600 xl:flex">
+            <a href="#classes" className="hover:text-pink-600">
+              Package Courses
             </a>
-            <a href="#classes" className="transition hover:text-emerald-700">
-              শ্রেণি
+            <a href="#popular" className="hover:text-pink-600">
+              Courses
             </a>
-            <a href="#why" className="transition hover:text-emerald-700">
-              কেন অনন্য
+            <a href="#top-categories" className="hover:text-pink-600">
+              Teachers
             </a>
           </nav>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="ml-auto flex items-center gap-1.5 sm:ml-2 sm:gap-2 xl:ml-3">
             <AuthLink
               href="/login"
-              className="rounded-xl px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 active:scale-95 sm:px-4"
+              className="inline-flex items-center gap-1 rounded-md px-2.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              লগইন
+              <Users className="hidden h-4 w-4 sm:block" /> Login
             </AuthLink>
             <AuthLink
               href="/register"
-              className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500 active:scale-95 sm:px-4"
+              className="rounded-md bg-pink-500 px-3 py-2 text-sm font-bold text-white hover:bg-pink-600 sm:px-4"
             >
-              রেজিস্টার <ArrowRight className="hidden h-4 w-4 sm:block" />
+              Register
             </AuthLink>
             <button
               type="button"
-              className="ml-0.5 grid size-10 place-items-center rounded-xl border border-slate-200 bg-white md:hidden"
+              className="grid size-10 place-items-center rounded-md border border-slate-200 lg:hidden"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="Menu"
             >
@@ -160,167 +189,133 @@ export default function Home() {
         </div>
 
         {menuOpen && (
-          <div className="border-t border-slate-100 bg-white px-5 py-4 md:hidden">
+          <div className="border-t border-slate-100 bg-white px-4 py-4 lg:hidden">
             <div className="flex flex-col gap-3 text-sm font-semibold text-slate-700">
-              <a href="#categories" onClick={() => setMenuOpen(false)}>
-                ক্যাটাগরি
-              </a>
               <a href="#classes" onClick={() => setMenuOpen(false)}>
-                শ্রেণি
+                Package Courses
               </a>
-              <a href="#why" onClick={() => setMenuOpen(false)}>
-                কেন অনন্য
+              <a href="#popular" onClick={() => setMenuOpen(false)}>
+                Popular Courses
               </a>
-              <AuthLink href="/login" className="pt-2 font-bold">
-                লগইন
-              </AuthLink>
-              <AuthLink
-                href="/register"
-                className="rounded-xl bg-emerald-600 px-4 py-3 text-center font-bold text-white"
-              >
-                রেজিস্ট্রেশন
+              <a href="#top-categories" onClick={() => setMenuOpen(false)}>
+                Categories
+              </a>
+              <AuthLink href="/login">Login</AuthLink>
+              <AuthLink href="/register" className="rounded-md bg-pink-500 px-4 py-3 text-center text-white">
+                Register Today
               </AuthLink>
             </div>
           </div>
         )}
       </header>
 
-      {/* ── Hero (DSR-style full banner) ── */}
-      <section className="relative z-10 min-h-[min(72vh,560px)] overflow-hidden">
+      {/* ══════ HERO ══════ */}
+      <section className="relative min-h-[min(78vh,620px)] overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 scale-105 bg-cover bg-center"
           style={{
             backgroundImage:
-              'linear-gradient(105deg, rgba(6,78,59,0.88) 0%, rgba(15,23,42,0.75) 45%, rgba(6,78,59,0.55) 100%), url(https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1600&q=80)',
+              'linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.45)), url(https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1800&q=80)',
           }}
         />
-        <div className="relative mx-auto flex min-h-[min(72vh,560px)] max-w-6xl flex-col items-center justify-center px-5 py-16 text-center sm:px-8">
-          <motion.span
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-bold text-emerald-100 backdrop-blur"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            NCTB · AI Lesson · Kids Zone
-          </motion.span>
+        <div className="relative flex min-h-[min(78vh,620px)] flex-col items-center justify-center px-4 py-20 text-center">
           <motion.h1
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="max-w-2xl text-4xl font-black leading-tight text-white sm:text-5xl md:text-6xl"
+            className="text-4xl font-medium tracking-wide text-white sm:text-5xl md:text-6xl"
+            style={{ fontFamily: 'Georgia, "Noto Serif Bengali", serif' }}
           >
             স্কুল যাবে ঘরে
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mt-4 max-w-xl text-base text-emerald-50/95 sm:text-lg"
-          >
-            বাংলাদেশের শিক্ষার্থীদের জন্য ডিজিটাল ক্লাসরুম — নার্সারি থেকে দ্বাদশ, গেমসহ লেসন ও কুইজ।
-          </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
+            transition={{ delay: 0.12 }}
             className="mt-8 flex flex-wrap items-center justify-center gap-3"
           >
             <AuthLink
               href="/register"
-              className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-emerald-500 px-7 py-3 text-sm font-black text-white shadow-xl shadow-black/20 transition hover:bg-emerald-400 active:scale-[0.98]"
+              className="min-h-11 rounded-sm bg-pink-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-pink-600"
             >
-              আজই রেজিস্টার করো
+              Register Today
             </AuthLink>
-            <span className="hidden text-white/60 sm:inline">অথবা</span>
+            <span className="text-sm font-medium text-white/80">or</span>
             <AuthLink
               href="/login"
-              className="inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-white/80 bg-white/10 px-7 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+              className="min-h-11 rounded-sm border border-white/90 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
             >
-              লগ ইন
+              Log In
             </AuthLink>
           </motion.div>
         </div>
       </section>
 
-      {/* ── Stats bar ── */}
-      <section className="relative z-10 bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 text-white">
-        <div className="mx-auto grid max-w-6xl gap-6 px-5 py-8 sm:grid-cols-3 sm:px-8 sm:py-10">
+      {/* ══════ STATS BAR (magenta → coral) ══════ */}
+      <section className="bg-gradient-to-r from-[#9b1b6b] via-[#c2185b] to-[#e91e63] text-white">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 sm:py-12">
           {stats.map((s) => (
-            <div key={s.label} className="flex items-start gap-3 text-left sm:justify-center sm:text-center">
-              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/15 sm:mx-auto sm:mb-1">
-                <s.icon className="h-5 w-5" />
-              </div>
-              <div className="sm:w-full">
-                <p className="text-lg font-black sm:text-xl">{s.label}</p>
-                <p className="text-sm text-emerald-50/90">{s.sub}</p>
-              </div>
+            <div key={s.title} className="flex flex-col items-center text-center">
+              <s.icon className="mb-2 h-8 w-8 opacity-90" strokeWidth={1.5} />
+              <p className="text-lg font-semibold sm:text-xl">{s.title}</p>
+              <p className="mt-1 text-sm text-white/85">{s.sub}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Categories ── */}
-      <section id="categories" className="relative z-10 bg-[#f8fafc] py-14 sm:py-18">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <motion.div {...fade} className="text-center">
-            <h2 className="text-2xl font-black text-slate-900 sm:text-3xl">টপ ক্যাটাগরি</h2>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">তোমার স্তর বেছে নাও — এক ক্লিকে শুরু</p>
-          </motion.div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((c, i) => (
-              <motion.div key={c.id} {...fade} transition={{ delay: i * 0.04 }}>
-                <AuthLink
-                  href="/register"
-                  className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
-                >
-                  <span className="grid size-14 place-items-center rounded-2xl bg-emerald-50 text-3xl">
-                    {c.icon}
-                  </span>
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="font-black text-slate-900">{c.title}</p>
-                    <p className="text-sm text-slate-500">{c.sub}</p>
-                  </div>
-                  <ArrowRight className="h-5 w-5 shrink-0 text-emerald-600" />
-                </AuthLink>
-              </motion.div>
-            ))}
-          </div>
+      {/* ══════ CATEGORY TABS ══════ */}
+      <section className="border-b border-slate-100 bg-white">
+        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 py-3 sm:justify-center sm:px-6">
+          {categoryTabs.map((t) => (
+            <a
+              key={t}
+              href="#top-categories"
+              className="shrink-0 border-b-2 border-transparent px-3 py-2 text-center text-xs font-semibold text-blue-700 hover:border-blue-600 hover:text-blue-900 sm:text-sm"
+            >
+              {t.split(' ').map((w, i) => (
+                <span key={i} className="block leading-tight">
+                  {w}
+                </span>
+              ))}
+            </a>
+          ))}
         </div>
       </section>
 
-      {/* ── Class cards ── */}
-      <section id="classes" className="relative z-10 py-14 sm:py-18">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <motion.div {...fade} className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-            <div>
-              <h2 className="text-2xl font-black sm:text-3xl">শ্রেণি অনুযায়ী কোর্স</h2>
-              <p className="mt-2 text-sm text-slate-600">প্রাইমারি থেকে ধাপে ধাপে এগিয়ে যাও</p>
-            </div>
-            <AuthLink href="/register" className="text-sm font-bold text-emerald-700 hover:underline">
-              সব দেখো →
-            </AuthLink>
+      {/* ══════ CLASSES: photo + cards (DSR layout) ══════ */}
+      <section id="classes" className="bg-white py-12 sm:py-16">
+        <div className="mx-auto grid max-w-6xl items-start gap-8 px-4 sm:px-6 lg:grid-cols-2">
+          <motion.div {...fade} className="overflow-hidden rounded-sm shadow-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80"
+              alt="Students learning together"
+              className="h-full max-h-[420px] w-full object-cover"
+            />
           </motion.div>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {classCards.map((c, i) => (
               <motion.div
                 key={c.en}
                 {...fade}
-                transition={{ delay: i * 0.04 }}
-                className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-lg"
+                transition={{ delay: i * 0.05 }}
+                className="overflow-hidden rounded-sm border border-slate-200 bg-white shadow-sm"
               >
-                <div className="flex h-28 items-center justify-center bg-gradient-to-br from-emerald-50 to-cyan-50 text-5xl transition group-hover:from-emerald-100 group-hover:to-cyan-100">
-                  {c.emoji}
+                <div className={`bg-gradient-to-r ${c.color} px-2 py-1.5 text-center text-xs font-bold text-white sm:text-sm`}>
+                  {c.bn}
                 </div>
-                <div className="flex items-center justify-between gap-3 p-4">
-                  <div>
-                    <p className="font-black text-slate-900">{c.bn}</p>
-                    <p className="text-xs font-semibold text-slate-500">{c.en}</p>
-                  </div>
+                <div className="flex h-24 items-center justify-center bg-slate-50 text-4xl sm:h-28">{c.emoji}</div>
+                <div className="border-t border-slate-100 p-3">
+                  <p className="text-xs font-semibold text-slate-800 sm:text-sm">
+                    {c.bn}{' '}
+                    <span className="font-normal text-slate-500">( {c.en} )</span>
+                  </p>
                   <AuthLink
                     href="/register"
-                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-500"
+                    className="mt-2 inline-block rounded-sm bg-teal-400 px-4 py-1.5 text-xs font-bold text-white hover:bg-teal-500"
                   >
-                    দেখো
+                    View
                   </AuthLink>
                 </div>
               </motion.div>
@@ -329,94 +324,122 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Why / features ── */}
-      <section id="why" className="relative z-10 border-t border-slate-100 bg-[#f8fafc] py-14 sm:py-18">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <motion.div {...fade} className="text-center">
-            <h2 className="text-2xl font-black sm:text-3xl">কেন অনন্য বেছে নেবে?</h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600 sm:text-base">
-              মানসম্পন্ন শিক্ষা সবার জন্য — সহজ বাংলায়, খেলার মতো স্টেপে
-            </p>
-          </motion.div>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
+      {/* ══════ FEATURE BLOCKS (purple) ══════ */}
+      <section className="bg-[#f3f4f6] py-12 sm:py-14">
+        <div className="mx-auto grid max-w-6xl gap-4 px-4 sm:grid-cols-3 sm:px-6">
+          {featureBlocks.map((f, i) => (
+            <motion.div
+              key={f.title}
+              {...fade}
+              transition={{ delay: i * 0.06 }}
+              className="rounded-sm bg-[#5b2c6f] px-5 py-8 text-center text-white shadow-md"
+            >
+              <f.icon className="mx-auto mb-3 h-8 w-8 text-cyan-300" strokeWidth={1.5} />
+              <h3 className="text-lg font-semibold">{f.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-white/85">{f.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════ POPULAR COURSES ══════ */}
+      <section id="popular" className="bg-white py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <h2 className="mb-8 text-2xl font-semibold text-slate-800">Popular Courses</h2>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {popularCourses.map((c, i) => (
+              <motion.article
+                key={c.slug}
                 {...fade}
-                transition={{ delay: i * 0.06 }}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                transition={{ delay: i * 0.05 }}
+                className="overflow-hidden rounded-sm border border-slate-200 bg-white shadow-sm"
               >
-                <div className="grid size-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-                  <f.icon className="h-6 w-6" />
+                <div className={`px-2 py-1.5 text-center text-xs font-bold text-white ${c.badgeColor}`}>
+                  {c.badge}
                 </div>
-                <h3 className="mt-4 text-lg font-black">{f.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{f.desc}</p>
-              </motion.div>
+                <div className="flex h-36 items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-5xl">
+                  📘
+                </div>
+                <div className="p-3">
+                  <p className="line-clamp-2 text-sm font-semibold text-slate-800">{c.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">Enrolled : {c.enrolled}</p>
+                  <div className="mt-3 flex gap-2">
+                    <AuthLink
+                      href="/register"
+                      className="rounded-sm bg-pink-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-pink-600"
+                    >
+                      Buy This Course
+                    </AuthLink>
+                    <AuthLink
+                      href="/register"
+                      className="rounded-sm bg-teal-400 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-500"
+                    >
+                      VIEW
+                    </AuthLink>
+                  </div>
+                </div>
+              </motion.article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="relative z-10 py-14 sm:py-18">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <motion.div {...fade} className="text-center">
-            <h2 className="text-2xl font-black sm:text-3xl">অভিভাবকরা কী বলেন</h2>
-            <p className="mt-2 text-sm text-slate-600">বিশ্বাসযোগ্য শেখার অভিজ্ঞতা</p>
-          </motion.div>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+      {/* ══════ TOP CATEGORIES ══════ */}
+      <section id="top-categories" className="bg-white pb-12 sm:pb-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-slate-700">Top Categories</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {topCategories.map((c) => (
+              <AuthLink
+                key={c.title}
+                href="/register"
+                className="flex items-center gap-3 rounded-sm bg-pink-500 px-5 py-4 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-600"
+              >
+                <c.icon className="h-5 w-5 shrink-0 opacity-90" />
+                {c.title}
+              </AuthLink>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <AuthLink
+              href="/register"
+              className="flex items-center gap-3 rounded-sm bg-emerald-500 px-5 py-4 text-sm font-semibold text-white hover:bg-emerald-600"
+            >
+              <BookOpen className="h-5 w-5" /> Book Store
+            </AuthLink>
+            <AuthLink
+              href="/register"
+              className="flex items-center gap-3 rounded-sm bg-sky-400 px-5 py-4 text-sm font-semibold text-white hover:bg-sky-500"
+            >
+              <Users className="h-5 w-5" /> Online Teachers
+            </AuthLink>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════ PARENTS SAY ══════ */}
+      <section className="border-t border-slate-100 bg-[#fafafa] py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <h2 className="mb-8 text-2xl font-semibold text-slate-800">What Our Parents Say</h2>
+          <div className="grid gap-5 md:grid-cols-3">
             {testimonials.map((t, i) => (
               <motion.blockquote
                 key={t.name}
                 {...fade}
-                transition={{ delay: i * 0.06 }}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                transition={{ delay: i * 0.05 }}
+                className="rounded-sm border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <p className="text-sm leading-relaxed text-slate-600">“{t.text}”</p>
-                <footer className="mt-4 flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">
-                    {t.name.slice(0, 1)}
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="grid size-12 place-items-center rounded-full border-2 border-emerald-400 text-emerald-500">
+                    <Smile className="h-6 w-6" />
                   </span>
-                  <cite className="not-italic text-sm font-bold text-slate-900">{t.name}</cite>
-                </footer>
+                  <cite className="not-italic text-sm font-bold text-slate-800">{t.name}</cite>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600">{t.text}</p>
               </motion.blockquote>
             ))}
           </div>
         </div>
-      </section>
-
-      {/* ── Bottom CTA ── */}
-      <section className="relative z-10 px-5 pb-16 sm:px-8 sm:pb-20">
-        <motion.div
-          {...fade}
-          className="mx-auto max-w-4xl overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 px-6 py-12 text-center text-white shadow-2xl sm:px-12"
-        >
-          <h2 className="text-3xl font-black sm:text-4xl">আজই শেখা শুরু করো</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-emerald-50 sm:text-base">
-            ফ্রি অ্যাকাউন্ট খুলে কিডস জোন ও NCTB লেসন এক্সপ্লোর করো
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <AuthLink
-              href="/register"
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-black text-emerald-700 shadow-lg transition hover:-translate-y-0.5 active:scale-[0.98]"
-            >
-              রেজিস্ট্রেশন <ArrowRight className="h-4 w-4" />
-            </AuthLink>
-            <AuthLink
-              href="/login"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/20 active:scale-[0.98]"
-            >
-              লগইন
-            </AuthLink>
-          </div>
-          <ul className="mx-auto mt-8 flex max-w-md flex-col gap-2 text-sm text-emerald-50">
-            {['Published lesson only', 'Quiz · XP · Progress', 'Student & Parent roles'].map((x) => (
-              <li key={x} className="flex items-center justify-center gap-2">
-                <Check className="h-4 w-4 shrink-0" /> {x}
-              </li>
-            ))}
-          </ul>
-        </motion.div>
       </section>
 
       <SiteFooter />
