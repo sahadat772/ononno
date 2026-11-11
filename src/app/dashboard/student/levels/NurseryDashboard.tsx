@@ -18,7 +18,7 @@ const classNames: Record<string, string> = {
 }
 
 export default function NurseryDashboard({ profile, studentProfile }: Props) {
-  const [realStats, setRealStats] = useState({ stars: 0, lessons: 0, streak: 1 })
+  const [realStats, setRealStats] = useState({ stars: 0, lessons: 0, streak: 0 })
   const [currentTime, setCurrentTime] = useState('')
   const [greeting, setGreeting] = useState('')
   const [showReward, setShowReward] = useState(false)
@@ -49,6 +49,20 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
   useEffect(() => {
     async function loadStats() {
       try {
+        const res = await fetch('/api/student/daily-path', { cache: 'no-store' })
+        const d = await res.json()
+        if (res.ok && d) {
+          setRealStats({
+            stars: Number(d.total_xp) || 0,
+            lessons: Number(d.lessons_completed_today) || 0,
+            streak: Math.max(0, Number(d.streak_days) || 0),
+          })
+          return
+        }
+      } catch (e) {
+        console.error(e)
+      }
+      try {
         const supabase = createClient()
         const {
           data: { user },
@@ -56,14 +70,31 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
         if (!user) return
         const { data } = await supabase
           .from('learning_progress')
-          .select('status, xp_earned')
+          .select('status, xp_earned, completed_at, updated_at')
           .eq('user_id', user.id)
           .eq('status', 'completed')
         if (data) {
+          const daySet = new Set<string>()
+          for (const r of data) {
+            const dt = String(r.completed_at || r.updated_at || '').slice(0, 10)
+            if (dt) daySet.add(dt)
+          }
+          let streak = 0
+          const cursor = new Date()
+          for (let i = 0; i < 60; i++) {
+            const key = cursor.toISOString().slice(0, 10)
+            if (daySet.has(key)) {
+              streak++
+              cursor.setUTCDate(cursor.getUTCDate() - 1)
+            } else if (i === 0) {
+              cursor.setUTCDate(cursor.getUTCDate() - 1)
+              continue
+            } else break
+          }
           setRealStats({
             stars: data.reduce((s, r) => s + (Number(r.xp_earned) || 0), 0),
             lessons: data.length,
-            streak: Math.max(1, Math.min(data.length, 7)),
+            streak,
           })
         }
       } catch (e) {
@@ -160,8 +191,8 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
           </div>
           <div className="relative mt-4 grid grid-cols-3 gap-2">
             {[
-              { label: 'তারা', value: realStats.stars, icon: '⭐' },
-              { label: 'পাঠ', value: realStats.lessons, icon: '📖' },
+              { label: 'XP', value: realStats.stars, icon: '⭐' },
+              { label: 'আজ', value: realStats.lessons, icon: '📖' },
               { label: 'Streak', value: realStats.streak, icon: '🔥' },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-white/15 px-2 py-2.5 text-center backdrop-blur-sm">
@@ -208,7 +239,7 @@ export default function NurseryDashboard({ profile, studentProfile }: Props) {
       </div>
 
       <Link href="/dashboard/student/learning-path" className="mb-4 block">
-        <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-4 transition hover:bg-violet-500/15">
+        <div className="rounded-2xl border border-violet-500/30 bg-violet-500/15 p-4 transition hover:bg-violet-500/15">
           <p className="text-sm font-semibold text-violet-200">📅 আজকের Plan</p>
           <p className="text-xs text-slate-400">Learning path দেখে ধাপে ধাপে এগোও</p>
         </div>
