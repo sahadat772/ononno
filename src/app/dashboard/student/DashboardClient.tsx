@@ -13,6 +13,7 @@ import CompleteProfileBanner from '@/components/shared/CompleteProfileBanner'
 import SoftLaunchBanner from '@/components/student/SoftLaunchBanner'
 import ContinueLearningCard from '@/components/student/ContinueLearningCard'
 import ProgressTrackingCard from '@/components/student/ProgressTrackingCard'
+import DailyPathCard from '@/components/student/DailyPathCard'
 
 interface Props {
   profile: Record<string, string> | null
@@ -167,6 +168,7 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
         />
         <PushPermission variant="student" showWhenGranted />
         <SoftLaunchBanner />
+        <DailyPathCard />
         <ContinueLearningCard />
         <ProgressTrackingCard />
 
