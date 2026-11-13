@@ -137,7 +137,7 @@ export default async function ParentChildHubPage({
           </div>
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center">
             <p className="text-2xl font-black text-rose-300">{quizFails}</p>
-            <p className="text-[11px] text-slate-500">কুইজ <৬০%</p>
+            <p className="text-[11px] text-slate-500">কুইজ {'<'}৬০%</p>
           </div>
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
             <p className="text-2xl font-black text-amber-200">
