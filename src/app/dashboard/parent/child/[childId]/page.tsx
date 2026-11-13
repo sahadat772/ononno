@@ -95,6 +95,7 @@ export default async function ParentChildHubPage({
 
   const name = child?.full_name || 'সন্তান'
   const classLabel = student?.class_level?.replace(/_/g, ' ') || '—'
+  const firstName = name.split(' ')[0]
 
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white">
@@ -136,7 +137,7 @@ export default async function ParentChildHubPage({
           </div>
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center">
             <p className="text-2xl font-black text-rose-300">{quizFails}</p>
-            <p className="text-[11px] text-slate-500">কুইজ &lt;৬০%</p>
+            <p className="text-[11px] text-slate-500">কুইজ <৬০%</p>
           </div>
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
             <p className="text-2xl font-black text-amber-200">
@@ -149,8 +150,30 @@ export default async function ParentChildHubPage({
             <p className="text-[11px] text-slate-500">ট্র্যাকড</p>
           </div>
         </div>
+
+        <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-sky-200/80">
+            📋 রিপোর্ট কার্ড
+          </p>
+          <p className="mt-1 text-sm font-semibold text-sky-50">
+            {weekCompleted > 0
+              ? `${firstName} এই সপ্তাহে ${weekCompleted} পাঠ সম্পন্ন করেছে` +
+                (avgScore != null ? ` · গড় ${avgScore}%` : '') +
+                (streakDays > 0 ? ` · 🔥${streakDays} দিন` : '') +
+                '.'
+              : `${firstName} এই সপ্তাহে এখনো কোনো পাঠ শেষ করেনি।`}
+          </p>
+          <p className="mt-2 text-[11px] text-slate-400">
+            {weekCompleted === 0
+              ? 'প্রতিদিন ছোট লক্ষ্য দিন — Kids Zone বা Academic থেকে একটা লেসন।'
+              : avgScore != null && avgScore < 60
+                ? 'কিছু পাঠে স্কোর কম — আবার পড়তে উৎসাহ দিন।'
+                : 'প্রশংসা করুন এবং নিয়মিত অভ্যাস ধরে রাখতে সাহায্য করুন।'}
+          </p>
+        </div>
+
         <p className="text-center text-[11px] text-slate-500">
-          শুধু এই সন্তানের ক্লাস ({classLabel}) এর অগ্রগতি · Priority 1 overview
+          শুধু এই সন্তানের ক্লাস ({classLabel}) এর অগ্রগতি · M2 report
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
