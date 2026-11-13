@@ -465,91 +465,89 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                     onClick={() => void finishAndSave()}
                                     className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black text-white`}
                                 >
-                                    {saving ? 'সেভ…' : '✓ সম্পন্ন ও ফিরে যাও'}
+                                    {saving ? 'সেভ হচ্ছে…' : '✓ সম্পন্ন ও ফিরে যাও'}
                                 </button>
                             </div>
                         ) : currentEx?.type === 'intro' ? (
-                            <div className="text-center">
+                            <div className="py-4 text-center">
                                 <p className="mb-3 text-6xl">{icon}</p>
-                                <h2 className="mb-1 text-2xl font-black">{lesson.word}</h2>
-                                <p className="mb-4 text-sm text-slate-400">{lesson.wordEn}</p>
-                                {lesson.storyImage && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={lesson.storyImage} alt="" className="mx-auto mb-4 max-h-40 rounded-2xl object-contain" />
-                                )}
-                                <p className="mb-5 text-base leading-relaxed text-slate-200">{currentEx.content}</p>
-                                <button type="button" onClick={() => nextEx()} className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black`}>
+                                <h2 className="mb-2 text-2xl font-black">{currentEx.title}</h2>
+                                <p className="mb-6 text-slate-300">{currentEx.content}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => nextEx()}
+                                    className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black`}
+                                >
                                     শুরু করো →
                                 </button>
                             </div>
                         ) : currentEx?.type === 'listen-repeat' || currentEx?.type === 'pronounce' ? (
-                            <div className="text-center">
-                                <p className="mb-2 text-sm font-bold text-slate-400">{currentEx.title}</p>
-                                <p className="mb-4 text-4xl font-black">{currentEx.content}</p>
-                                <div className="mb-4 flex flex-col items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={toggleMic}
-                                        className={`grid size-20 place-items-center rounded-full border-4 text-3xl transition ${
-                                            isListening
-                                                ? 'animate-pulse border-rose-400 bg-rose-500/30'
-                                                : voiceResult === 'correct'
-                                                  ? 'border-emerald-400 bg-emerald-500/25'
-                                                  : voiceResult === 'wrong'
-                                                    ? 'border-red-400 bg-red-500/20'
-                                                    : 'border-violet-400/50 bg-violet-500/20'
-                                        }`}
-                                    >
-                                        {isListening ? '🎙️' : voiceResult === 'correct' ? '✅' : voiceResult === 'wrong' ? '❌' : '🎤'}
-                                    </button>
-                                    <p className="text-xs text-slate-400">
-                                        {isListening ? 'বলো…' : micSupported ? 'মাইক চাপো ও বলো' : 'মাইক সাপোর্ট নেই'}
-                                    </p>
-                                    {(transcript || interimTranscript) && (
-                                        <p className="text-sm text-sky-200">শুনেছি: {transcript || interimTranscript}</p>
-                                    )}
-                                    {micError && <p className="text-xs text-red-300">{micError}</p>}
-                                </div>
+                            <div className="py-2 text-center">
+                                <h2 className="mb-2 text-lg font-black">{currentEx.title}</h2>
+                                <p className="mb-4 text-3xl font-black text-amber-200">{currentEx.content}</p>
+                                <button
+                                    type="button"
+                                    onClick={toggleMic}
+                                    className={`mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 text-sm font-black ${
+                                        isListening
+                                            ? 'border-rose-400/50 bg-rose-500/20 text-rose-100'
+                                            : voiceResult === 'correct'
+                                              ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-100'
+                                              : voiceResult === 'wrong'
+                                                ? 'border-red-400/50 bg-red-500/20 text-red-100'
+                                                : 'border-violet-400/40 bg-violet-500/15 text-white'
+                                    }`}
+                                >
+                                    {isListening ? '🎤 শুনছি…' : voiceResult === 'correct' ? '✅ সঠিক!' : voiceResult === 'wrong' ? '❌ আবার বলো' : '🎤 বলে দেখাও'}
+                                </button>
+                                {(transcript || interimTranscript) && (
+                                    <p className="mb-2 text-xs text-slate-400">শুনেছি: {transcript || interimTranscript}</p>
+                                )}
+                                {micError && <p className="mb-2 text-xs text-red-300">{micError}</p>}
+                                {!micSupported && <p className="mb-2 text-xs text-amber-300">মাইক সাপোর্ট নেই — পরের ধাপে যাও</p>}
                                 <button type="button" onClick={() => nextEx()} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold text-slate-300">
-                                    স্কিপ →
+                                    পরের ধাপ →
                                 </button>
                             </div>
-                        ) : currentEx?.type === 'tap-correct' || currentEx?.type === 'quiz' || currentEx?.type === 'bubble-pop' || currentEx?.type === 'archery-target' ? (
-                            <div className="text-center">
-                                <p className="mb-3 text-sm font-bold text-slate-400">{currentEx.title}</p>
-                                <p className="mb-5 text-xl font-black">{currentEx.content}</p>
-                                <div className="grid gap-2.5">
-                                    {(currentEx.options || []).map((opt) => {
-                                        const isSel = selected === opt
-                                        const isCorrect = opt === currentEx.correctAnswer
-                                        let cls = 'border-white/15 bg-white/5 text-white'
-                                        if (isSel && isCorrect) cls = 'border-emerald-400/60 bg-emerald-500/25 text-emerald-100'
-                                        else if (isSel && !isCorrect) cls = 'border-red-400/50 bg-red-500/20 text-red-100'
-                                        else if (selected && isCorrect) cls = 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100'
-                                        return (
-                                            <button
-                                                key={opt}
-                                                type="button"
-                                                disabled={selected !== null}
-                                                onClick={() => handleSelect(opt)}
-                                                className={`min-h-12 rounded-2xl border-2 px-4 text-sm font-bold transition ${cls}`}
-                                            >
-                                                {opt}
-                                            </button>
-                                        )
-                                    })}
+                        ) : currentEx?.type === 'quiz' || currentEx?.type === 'tap-correct' || currentEx?.type === 'bubble-pop' || currentEx?.type === 'archery-target' ? (
+                            <div className="py-2 text-center">
+                                <h2 className="mb-3 text-lg font-black">{currentEx.title}</h2>
+                                <p className="mb-4 text-base text-slate-300">{currentEx.content}</p>
+                                <div className="grid gap-2">
+                                    {(currentEx.options || []).map((opt) => (
+                                        <button
+                                            key={opt}
+                                            type="button"
+                                            disabled={selected !== null}
+                                            onClick={() => handleSelect(opt)}
+                                            className={`min-h-12 rounded-2xl border-2 px-3 text-sm font-bold transition ${
+                                                selected === null
+                                                    ? 'border-white/20 bg-white/10 text-white'
+                                                    : opt === currentEx.correctAnswer
+                                                      ? 'border-emerald-400/50 bg-emerald-500/25 text-emerald-100'
+                                                      : selected === opt
+                                                        ? 'border-red-400/50 bg-red-500/20 text-red-100'
+                                                        : 'border-white/10 bg-white/5 text-slate-500'
+                                            }`}
+                                        >
+                                            {opt}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         ) : currentEx?.type === 'matching' ? (
                             <MatchingGame
-                                pairs={(currentEx.options || []).map((o, i) => {
-                                    const parts = o.split('|')
-                                    return { id: String(i), left: parts[0] || o, right: parts[1] || o }
-                                })}
-                                onComplete={() => {
-                                    setXp((x) => x + 10)
-                                    celebrate()
-                                    setTimeout(() => nextEx(), 900)
+                                currentEx={currentEx}
+                                lesson={lesson}
+                                speak={speak}
+                                onComplete={(ok) => {
+                                    if (ok) {
+                                        setXp((x) => x + 10)
+                                        celebrate()
+                                        setTimeout(() => nextEx(), 900)
+                                    } else {
+                                        setHearts((h) => Math.max(0, h - 1))
+                                    }
                                 }}
                             />
                         ) : currentEx?.type === 'word-builder' || currentEx?.type === 'letter-puzzle' ? (
@@ -560,35 +558,52 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 onSuccess={() => {
                                     setXp((x) => x + 10)
                                     celebrate()
-                                    setTimeout(() => nextEx(), 600)
+                                    setTimeout(() => nextEx(), 900)
                                 }}
                             />
                         ) : currentEx?.type === 'trace' ? (
-                            <div className="text-center">
-                                <p className="mb-2 text-sm font-bold text-slate-400">{currentEx.title}</p>
-                                <p className="mb-3 text-5xl font-black">{currentEx.content}</p>
-                                <canvas
-                                    ref={canvasRef}
-                                    width={300}
-                                    height={200}
-                                    className="mx-auto mb-3 touch-none rounded-2xl border-2 border-violet-400/40 bg-black/30"
-                                    onMouseDown={startDraw}
-                                    onMouseMove={draw}
-                                    onMouseUp={endDraw}
-                                    onMouseLeave={endDraw}
-                                    onTouchStart={startDraw}
-                                    onTouchMove={draw}
-                                    onTouchEnd={endDraw}
-                                />
+                            <div className="py-2 text-center">
+                                <h2 className="mb-2 text-lg font-black">{currentEx.title}</h2>
+                                <p className="mb-3 text-sm text-slate-400">{currentEx.content}</p>
+                                <div className="mb-3 overflow-hidden rounded-2xl border border-white/15 bg-black/30">
+                                    <canvas
+                                        ref={canvasRef}
+                                        width={320}
+                                        height={200}
+                                        className="mx-auto touch-none"
+                                        onMouseDown={startDraw}
+                                        onMouseMove={draw}
+                                        onMouseUp={endDraw}
+                                        onMouseLeave={endDraw}
+                                        onTouchStart={startDraw}
+                                        onTouchMove={draw}
+                                        onTouchEnd={endDraw}
+                                    />
+                                </div>
                                 <div className="flex gap-2">
-                                    <button type="button" onClick={clearCanvas} className="min-h-11 flex-1 rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">মুছো</button>
-                                    <button type="button" disabled={!hasDrawn} onClick={() => { setXp((x) => x + 10); celebrate(); setTimeout(() => nextEx(), 800) }} className={`min-h-11 flex-1 rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black disabled:opacity-40`}>ঠিক আছে</button>
+                                    <button type="button" onClick={clearCanvas} className="min-h-11 flex-1 rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">
+                                        মুছে ফেলো
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={!hasDrawn}
+                                        onClick={() => {
+                                            setXp((x) => x + 10)
+                                            celebrate()
+                                            setTimeout(() => nextEx(), 900)
+                                        }}
+                                        className={`min-h-11 flex-1 rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black disabled:opacity-40`}
+                                    >
+                                        ঠিক আছে →
+                                    </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center">
-                                <p className="mb-4 text-sm text-slate-400">{currentEx?.title}</p>
-                                <button type="button" onClick={() => nextEx()} className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black`}>এগিয়ে যাও →</button>
+                            <div className="py-6 text-center">
+                                <p className="mb-4 text-slate-400">এই ধাপ এখনো তৈরি হয়নি</p>
+                                <button type="button" onClick={() => nextEx()} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">
+                                    পরের ধাপ →
+                                </button>
                             </div>
                         )}
                     </motion.div>
