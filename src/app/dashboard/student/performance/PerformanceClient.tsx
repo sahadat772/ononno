@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { bandColor, type LessonPerformance } from '@/lib/quiz-performance'
 import ProgressTrackingCard from '@/components/student/ProgressTrackingCard'
+import ReportCardCard from '@/components/student/ReportCardCard'
 
 type Summary = {
   total: number
@@ -59,6 +60,7 @@ export default function PerformanceClient({ studentName }: { studentName: string
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        <ReportCardCard />
         <ProgressTrackingCard />
         <p className="text-sm text-white/60">
           80%+ শক্তিশালী · 50–79% মাঝারি · 50%-এর নিচে দুর্বল — আবার পড়ো।
