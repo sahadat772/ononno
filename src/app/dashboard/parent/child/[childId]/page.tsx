@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import ParentChildReportPanel from '@/components/parent/ParentChildReportPanel'
 
 export default async function ParentChildHubPage({
   params,
@@ -95,114 +96,124 @@ export default async function ParentChildHubPage({
 
   const name = child?.full_name || 'সন্তান'
   const classLabel = student?.class_level?.replace(/_/g, ' ') || '—'
-  const firstName = name.split(' ')[0]
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] text-white">
-      <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+    <div className="relative min-h-screen bg-[#0a0a1a] text-white">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_40%_at_50%_-10%,rgba(139,92,246,0.16),transparent)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(56,189,248,0.06),transparent_50%)]" />
+
+      <div className="relative mx-auto max-w-2xl space-y-5 px-4 py-8">
         <Link
           href="/dashboard/parent"
-          className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10"
         >
           ← Parent Hub
         </Link>
 
-        <div className="rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-[#12122a] to-fuchsia-500/10 p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-2xl font-black">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/20 via-[#12122a]/95 to-fuchsia-600/10 p-5 shadow-[0_0_40px_-16px_rgba(139,92,246,0.35)] sm:p-6">
+          <div className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-fuchsia-500/20 blur-3xl" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-2xl font-black shadow-lg shadow-violet-500/30">
               {name.charAt(0)}
             </div>
-            <div>
-              <h1 className="text-xl font-black">{name}</h1>
-              <p className="text-xs text-slate-400">{child?.email}</p>
-              <p className="mt-1 text-xs font-semibold text-violet-300">{classLabel}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-300/70">
+                Child Hub · সন্তান
+              </p>
+              <h1 className="truncate text-xl font-black sm:text-2xl">{name}</h1>
+              <p className="truncate text-xs text-slate-400">{child?.email}</p>
+              <p className="mt-1.5 inline-flex rounded-full border border-violet-400/30 bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-bold text-violet-200">
+                🏫 {classLabel}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
-            <p className="text-2xl font-black text-emerald-400">{completed}</p>
-            <p className="text-[11px] text-slate-500">সম্পন্ন পাঠ</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
-            <p className="text-2xl font-black text-sky-400">{weekCompleted}</p>
-            <p className="text-[11px] text-slate-500">এই সপ্তাহে</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
-            <p className="text-2xl font-black text-amber-400">
-              {avgScore != null ? `${avgScore}%` : '—'}
-            </p>
-            <p className="text-[11px] text-slate-500">গড় স্কোর</p>
-          </div>
-          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-center">
-            <p className="text-2xl font-black text-rose-300">{quizFails}</p>
-            <p className="text-[11px] text-slate-500">কুইজ {'<'}৬০%</p>
-          </div>
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-center">
-            <p className="text-2xl font-black text-amber-200">
-              {streakDays > 0 ? `🔥${streakDays}` : '0'}
-            </p>
-            <p className="text-[11px] text-slate-500">স্ট্রিক (দিন)</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4 text-center">
-            <p className="text-2xl font-black text-violet-300">{tracked}</p>
-            <p className="text-[11px] text-slate-500">ট্র্যাকড</p>
-          </div>
+        {/* Snapshot stats */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {[
+            {
+              value: String(completed),
+              label: 'সম্পন্ন পাঠ',
+              tone: 'text-emerald-400',
+              border: 'border-white/8',
+            },
+            {
+              value: String(weekCompleted),
+              label: 'এই সপ্তাহে',
+              tone: 'text-sky-400',
+              border: 'border-white/8',
+            },
+            {
+              value: avgScore != null ? `${avgScore}%` : '—',
+              label: 'গড় স্কোর',
+              tone: 'text-amber-400',
+              border: 'border-white/8',
+            },
+            {
+              value: String(quizFails),
+              label: 'কুইজ <৬০%',
+              tone: 'text-rose-300',
+              border: 'border-rose-500/20 bg-rose-500/10',
+            },
+            {
+              value: streakDays > 0 ? `🔥${streakDays}` : '0',
+              label: 'স্ট্রিক (দিন)',
+              tone: 'text-amber-200',
+              border: 'border-amber-500/20 bg-amber-500/10',
+            },
+            {
+              value: String(tracked),
+              label: 'ট্র্যাকড',
+              tone: 'text-violet-300',
+              border: 'border-white/8',
+            },
+          ].map((c) => (
+            <div
+              key={c.label}
+              className={`rounded-2xl border bg-white/[0.03] p-3.5 text-center backdrop-blur-sm ${c.border}`}
+            >
+              <p className={`text-2xl font-black ${c.tone}`}>{c.value}</p>
+              <p className="text-[11px] text-slate-500">{c.label}</p>
+            </div>
+          ))}
         </div>
 
-        <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-sky-200/80">
-            📋 রিপোর্ট কার্ড
-          </p>
-          <p className="mt-1 text-sm font-semibold text-sky-50">
-            {weekCompleted > 0
-              ? `${firstName} এই সপ্তাহে ${weekCompleted} পাঠ সম্পন্ন করেছে` +
-                (avgScore != null ? ` · গড় ${avgScore}%` : '') +
-                (streakDays > 0 ? ` · 🔥${streakDays} দিন` : '') +
-                '.'
-              : `${firstName} এই সপ্তাহে এখনো কোনো পাঠ শেষ করেনি।`}
-          </p>
-          <p className="mt-2 text-[11px] text-slate-400">
-            {weekCompleted === 0
-              ? 'প্রতিদিন ছোট লক্ষ্য দিন — Kids Zone বা Academic থেকে একটা লেসন।'
-              : avgScore != null && avgScore < 60
-                ? 'কিছু পাঠে স্কোর কম — আবার পড়তে উৎসাহ দিন।'
-                : 'প্রশংসা করুন এবং নিয়মিত অভ্যাস ধরে রাখতে সাহায্য করুন।'}
-          </p>
-        </div>
+        {/* Shikho-style guardian report */}
+        <ParentChildReportPanel childId={childId} fallbackName={name} />
 
         <p className="text-center text-[11px] text-slate-500">
-          শুধু এই সন্তানের ক্লাস ({classLabel}) এর অগ্রগতি · M2 report
+          শুধু এই সন্তানের ক্লাস ({classLabel}) এর অগ্রগতি · Guardian report
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href={`/dashboard/parent/child/${childId}/progress`}
-            className="rounded-2xl border border-violet-500/25 bg-violet-500/10 p-5 transition hover:bg-violet-500/15"
+            className="rounded-3xl border border-violet-500/25 bg-[#100a1a] p-5 transition hover:bg-violet-500/10"
           >
             <p className="text-2xl">📈</p>
-            <p className="mt-2 font-bold">অগ্রগতি বিস্তারিত</p>
+            <p className="mt-2 font-black">অগ্রগতি বিস্তারিত</p>
             <p className="mt-1 text-xs text-slate-400">পাঠ, স্কোর ও completion</p>
           </Link>
           <Link
             href={`/dashboard/parent/child/${childId}/sessions`}
-            className="rounded-2xl border border-sky-500/25 bg-sky-500/10 p-5 transition hover:bg-sky-500/15"
+            className="rounded-3xl border border-sky-500/25 bg-[#0a1220] p-5 transition hover:bg-sky-500/10"
           >
             <p className="text-2xl">⏱️</p>
-            <p className="mt-2 font-bold">লগইন সেশন</p>
+            <p className="mt-2 font-black">লগইন সেশন</p>
             <p className="mt-1 text-xs text-slate-400">সময় ও ব্যবহারের ধরন</p>
           </Link>
         </div>
 
         {sessions && sessions.length > 0 && (
-          <div className="rounded-2xl border border-white/10 bg-[#12122a] p-4">
-            <p className="mb-3 text-sm font-bold">সাম্প্রতিক সেশন</p>
+          <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
+            <p className="mb-3 text-sm font-black">সাম্প্রতিক সেশন</p>
             <ul className="space-y-2 text-sm text-slate-300">
               {sessions.map((s, i) => (
                 <li
                   key={i}
-                  className="flex justify-between border-b border-white/5 py-2 text-xs"
+                  className="flex justify-between border-b border-white/5 py-2 text-xs last:border-0"
                 >
                   <span>
                     {s.login_at
