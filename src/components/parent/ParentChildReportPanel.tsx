@@ -1,0 +1,258 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+
+type ReportPayload = {
+  period: string
+  child: {
+    id: string
+    name: string
+    email: string | null
+    class_level: string | null
+  }
+  summary: {
+    lessons_completed: number
+    lessons_all_time: number
+    average_score: number | null
+    grade: string | null
+    xp_earned: number
+    total_xp: number
+    level: number
+    streak_days: number
+    strong: number
+    medium: number
+    weak: number
+    active_days: number
+    session_count: number
+    session_minutes: number
+  }
+  daily: { date: string; lessons: number }[]
+  narrative: { headline: string; tip: string }
+}
+
+function gradeTone(grade: string | null) {
+  if (!grade) return 'from-slate-500/30 to-slate-700/20 border-white/15 text-slate-200'
+  const g = grade.toUpperCase()
+  if (g.startsWith('A'))
+    return 'from-emerald-500/35 to-teal-600/20 border-emerald-400/40 text-emerald-100'
+  if (g.startsWith('B'))
+    return 'from-sky-500/35 to-indigo-600/20 border-sky-400/40 text-sky-100'
+  if (g.startsWith('C'))
+    return 'from-amber-500/30 to-orange-600/20 border-amber-400/35 text-amber-100'
+  return 'from-rose-500/25 to-fuchsia-700/15 border-rose-400/30 text-rose-100'
+}
+
+export default function ParentChildReportPanel({
+  childId,
+  fallbackName,
+}: {
+  childId: string
+  fallbackName: string
+}) {
+  const [period, setPeriod] = useState<'week' | 'month'>('week')
+  const [data, setData] = useState<ReportPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetch(`/api/parent/child-report?childId=${encodeURIComponent(childId)}&period=${period}`, {
+      cache: 'no-store',
+    })
+      .then(async (r) => {
+        const j = await r.json()
+        if (!r.ok) throw new Error(j?.error || 'Failed')
+        return j as ReportPayload
+      })
+      .then((d) => {
+        if (!cancelled) setData(d)
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'লোড ব্যর্থ')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [childId, period])
+
+  if (loading) {
+    return (
+      <div className="h-56 animate-pulse rounded-3xl border border-sky-500/15 bg-gradient-to-br from-sky-500/10 to-transparent" />
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">
+        রিপোর্ট লোড হয়নি · {error || 'ডেটা নেই'}
+      </div>
+    )
+  }
+
+  const s = data.summary
+  const maxDaily = Math.max(1, ...data.daily.map((d) => d.lessons))
+  const name = data.child.name || fallbackName
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden rounded-3xl border border-sky-400/20 bg-[#0a1220] p-4 shadow-[0_0_40px_-14px_rgba(56,189,248,0.28)] sm:p-5"
+    >
+      <div className="pointer-events-none absolute -left-8 top-0 size-36 rounded-full bg-sky-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-10 -right-6 size-28 rounded-full bg-indigo-600/20 blur-3xl" />
+
+      <div className="relative">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-300/70">
+              Guardian Report · অভিভাবক রিপোর্ট
+            </p>
+            <h3 className="mt-1 text-xl font-black text-white sm:text-2xl">
+              {period === 'week' ? 'সাপ্তাহিক সারাংশ' : 'মাসিক সারাংশ'}
+            </h3>
+            <p className="mt-1 text-xs text-slate-400">
+              {name} · Level {s.level} · {s.total_xp} XP মোট
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div
+              className={`flex min-w-[3.25rem] flex-col items-center rounded-2xl border bg-gradient-to-br px-3 py-2 ${
+                gradeTone(s.grade)
+              }`}
+            >
+              <span className="text-[9px] font-bold uppercase opacity-70">Grade</span>
+              <span className="text-xl font-black leading-none">{s.grade || '—'}</span>
+            </div>
+            <div className="flex gap-0.5 rounded-xl border border-white/10 bg-black/30 p-1">
+              <button
+                type="button"
+                onClick={() => setPeriod('week')}
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
+                  period === 'week'
+                    ? 'bg-sky-500/35 text-sky-50'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                সপ্তাহ
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriod('month')}
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
+                  period === 'month'
+                    ? 'bg-sky-500/35 text-sky-50'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                মাস
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p className="mb-4 text-sm font-semibold leading-snug text-sky-50/95">
+          {data.narrative.headline}
+        </p>
+
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: 'পাঠ (পিরিয়ড)', value: String(s.lessons_completed), icon: '✅' },
+            {
+              label: 'গড় স্কোর',
+              value: s.average_score != null ? `${s.average_score}%` : '—',
+              icon: '🎯',
+            },
+            { label: 'Streak', value: String(s.streak_days), icon: '🔥' },
+            { label: 'XP (পিরিয়ড)', value: String(s.xp_earned), icon: '⚡' },
+          ].map((k) => (
+            <div
+              key={k.label}
+              className="rounded-2xl border border-white/8 bg-white/[0.04] p-3 text-center"
+            >
+              <div className="text-base">{k.icon}</div>
+              <p className="mt-0.5 text-lg font-black text-white">{k.value}</p>
+              <p className="text-[10px] text-slate-400">{k.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-4 rounded-2xl border border-white/8 bg-black/25 px-3 py-3">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-white/35">
+            দৈনিক অ্যাক্টিভিটি
+          </p>
+          <div className="flex h-14 items-end gap-1">
+            {data.daily.map((d) => {
+              const h = Math.max(10, Math.round((d.lessons / maxDaily) * 100))
+              return (
+                <div
+                  key={d.date}
+                  className="flex flex-1 flex-col items-center justify-end"
+                  title={`${d.date}: ${d.lessons}`}
+                >
+                  <div
+                    className={`w-full max-w-[18px] rounded-t-md ${
+                      d.lessons > 0
+                        ? 'bg-gradient-to-t from-sky-600 to-cyan-300 shadow-sm shadow-sky-500/30'
+                        : 'bg-white/8'
+                    }`}
+                    style={{ height: `${d.lessons > 0 ? h : 14}%` }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-1.5 flex justify-between text-[9px] text-slate-500">
+            <span>{data.daily[0]?.date?.slice(5) || ''}</span>
+            <span className="font-semibold text-sky-300/70">
+              {s.active_days}/{data.daily.length} দিন সক্রিয়
+            </span>
+            <span>{data.daily[data.daily.length - 1]?.date?.slice(5) || ''}</span>
+          </div>
+        </div>
+
+        <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
+          <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-200">
+            শক্তিশালী {s.strong}
+          </span>
+          <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-200">
+            মাঝারি {s.medium}
+          </span>
+          <span className="rounded-full border border-rose-500/25 bg-rose-500/10 px-2.5 py-1 font-semibold text-rose-200">
+            দুর্বল {s.weak}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-slate-300">
+            সেশন {s.session_count} · {s.session_minutes} মি.
+          </span>
+        </div>
+
+        <p className="mb-4 rounded-xl border border-sky-500/15 bg-sky-500/5 px-3 py-2 text-[11px] leading-relaxed text-slate-300">
+          💡 {data.narrative.tip}
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/dashboard/parent/child/${childId}/progress`}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 px-3 text-xs font-black text-white shadow-[0_8px_20px_-6px_rgba(56,189,248,0.4)]"
+          >
+            বিস্তারিত অগ্রগতি →
+          </Link>
+          <Link
+            href={`/dashboard/parent/child/${childId}/sessions`}
+            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-white/12 bg-white/5 px-3 text-xs font-bold text-slate-300"
+          >
+            সেশন
+          </Link>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
