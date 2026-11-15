@@ -30,34 +30,50 @@ const classNames: Record<string, string> = {
 }
 
 export default function GeneralDashboard({ profile, studentProfile }: Props) {
-  const [realStats, setRealStats] = useState({ lessons: 0, quizScore: 0 })
+  const [realStats, setRealStats] = useState({
+    lessons: 0,
+    quizScore: 0,
+    streak: 0,
+  })
 
   useEffect(() => {
     async function loadStats() {
       try {
-        const supabase = createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
+        const [progRes, pathRes] = await Promise.all([
+          (async () => {
+            const supabase = createClient()
+            const {
+              data: { user },
+            } = await supabase.auth.getUser()
+            if (!user) return null
+            const { data } = await supabase
+              .from('learning_progress')
+              .select('status, score')
+              .eq('user_id', user.id)
+            return data
+          })(),
+          fetch('/api/student/daily-path', { cache: 'no-store' })
+            .then((r) => r.json())
+            .catch(() => null),
+        ])
 
-        const { data } = await supabase
-          .from('learning_progress')
-          .select('status, score')
-          .eq('user_id', user.id)
-
-        if (data) {
-          const completedLessons = data.filter(
+        let lessons = 0
+        let quizScore = 0
+        if (progRes) {
+          lessons = progRes.filter(
             (r) => r.status === 'completed' || (r.score != null && Number(r.score) >= 0),
           ).length
-          const avgScore =
-            data.length > 0
+          quizScore =
+            progRes.length > 0
               ? Math.round(
-                  data.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / data.length,
+                  progRes.reduce((sum, r) => sum + (Number(r.score) || 0), 0) /
+                    progRes.length,
                 )
               : 0
-          setRealStats({ lessons: completedLessons, quizScore: avgScore })
         }
+        const streak =
+          pathRes && !pathRes.error ? Math.max(0, Number(pathRes.streak_days) || 0) : 0
+        setRealStats({ lessons, quizScore, streak })
       } catch (e) {
         console.error('Stats load failed:', e)
       }
@@ -118,8 +134,8 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
   ]
 
   return (
-    <div className="space-y-4 pb-2">
-      <AdWrapper position="top" className="mb-2" />
+    <div className="space-y-5 pb-2">
+      <AdWrapper position="top" className="mb-1" />
 
       {/* Stats strip */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
@@ -138,20 +154,20 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
           },
           {
             label: 'ইসলামিক',
-            value: '—',
+            value: 'হাব',
             icon: '🕌',
             color: 'text-teal-300',
           },
           {
             label: 'Streak',
-            value: '—',
+            value: `${realStats.streak}`,
             icon: '🔥',
             color: 'text-amber-300',
           },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="rounded-2xl border border-white/10 bg-[#12122a]/80 p-3 text-center"
+            className="rounded-2xl border border-white/8 bg-white/[0.04] p-3.5 text-center backdrop-blur-sm"
           >
             <div className="text-lg">{stat.icon}</div>
             <div className={`text-lg font-black ${stat.color}`}>{stat.value}</div>
@@ -167,18 +183,18 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
         {modules.map((module, i) => (
           <motion.div
             key={module.title}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08 }}
+            transition={{ delay: i * 0.06 }}
             whileHover={{ y: -3 }}
           >
             <Link href={module.href}>
               <div
-                className={`h-full cursor-pointer rounded-2xl border ${module.border} bg-white/[0.04] p-4 transition-all hover:bg-white/[0.07] md:p-5`}
+                className={`h-full cursor-pointer rounded-3xl border ${module.border} bg-[#0e0e1a] p-4 transition hover:bg-white/[0.04] md:p-5`}
               >
                 <div className="mb-3 flex items-start justify-between">
                   <div
-                    className={`flex size-12 items-center justify-center rounded-xl bg-gradient-to-br ${module.color} text-2xl shadow-md`}
+                    className={`flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br ${module.color} text-2xl shadow-md`}
                   >
                     {module.icon}
                   </div>
@@ -188,7 +204,9 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                     {module.badge}
                   </span>
                 </div>
-                <h3 className="mb-1 text-base font-bold text-white md:text-lg">{module.title}</h3>
+                <h3 className="mb-1 text-base font-black text-white md:text-lg">
+                  {module.title}
+                </h3>
                 <p className="mb-3 text-sm text-slate-400">{module.desc}</p>
                 <div className="space-y-1">
                   {module.items.map((item) => (
@@ -201,7 +219,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
                   ))}
                 </div>
                 <div
-                  className={`mt-3 text-sm font-semibold bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}
+                  className={`mt-3 text-sm font-bold bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}
                 >
                   শুরু করো →
                 </div>
@@ -212,7 +230,7 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
           🕌 Islamic shortcuts
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -243,13 +261,13 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
             },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.08]">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]">
                 <div
-                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-lg`}
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.color} text-lg`}
                 >
                   {item.icon}
                 </div>
-                <p className="text-sm font-semibold text-white">{item.label}</p>
+                <p className="text-sm font-bold text-white">{item.label}</p>
               </div>
             </Link>
           ))}
@@ -258,16 +276,16 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
 
       {isCareerAvailable && (
         <Link href="/dashboard/student/career">
-          <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 transition hover:bg-amber-500/15 md:p-5">
+          <div className="rounded-3xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 transition hover:bg-amber-500/15 md:p-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-2xl">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-2xl shadow-md shadow-amber-500/25">
                 🧭
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-white">ক্যারিয়ার পাথ AI</h3>
+                <h3 className="font-black text-white">ক্যারিয়ার পাথ AI</h3>
                 <p className="truncate text-sm text-slate-400">আগ্রহ অনুযায়ী ক্যারিয়ার গাইড</p>
               </div>
-              <span className="shrink-0 rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white">
+              <span className="shrink-0 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-2 text-sm font-bold text-white">
                 শুরু →
               </span>
             </div>
@@ -277,16 +295,16 @@ export default function GeneralDashboard({ profile, studentProfile }: Props) {
 
       {isTrainingAvailable && (
         <Link href="/dashboard/student/training">
-          <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 p-4 transition hover:bg-cyan-500/15 md:p-5">
+          <div className="rounded-3xl border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 p-4 transition hover:bg-cyan-500/15 md:p-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 text-2xl">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 text-2xl shadow-md shadow-cyan-500/25">
                 💡
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-white">Skill Training</h3>
+                <h3 className="font-black text-white">Skill Training</h3>
                 <p className="truncate text-sm text-slate-400">Tech · Business · Finance</p>
               </div>
-              <span className="shrink-0 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-semibold text-white">
+              <span className="shrink-0 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 px-3 py-2 text-sm font-bold text-white">
                 শুরু →
               </span>
             </div>
