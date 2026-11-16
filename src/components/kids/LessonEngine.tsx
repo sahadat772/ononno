@@ -44,6 +44,8 @@ const CELEBRATION = [
     { y: -320, x: -80 }, { y: -280, x: 120 },
     { y: -350, x: 40 }, { y: -260, x: -140 },
     { y: -300, x: 100 },
+    { y: -340, x: -40 }, { y: -290, x: 160 },
+    { y: -310, x: -120 },
 ]
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -249,6 +251,11 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
             const pct = totalSteps ? (xp / (totalSteps * 10)) * 100 : 0
             setStars(pct >= 85 ? 3 : pct >= 55 ? 2 : 1)
             setExIdx(totalSteps)
+            setShowCelebration(true)
+            setTimeout(() => setShowCelebration(false), 2200)
+            try {
+                speak(voiceLang === 'en-US' ? 'Lesson complete! Well done!' : 'লেসন শেষ! শাবাশ!', voiceLang === 'en-US' ? 'en-US' : 'bn-BD')
+            } catch { /* */ }
         }
     }
 
@@ -392,10 +399,10 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                             key={i}
                             initial={{ opacity: 1, y: 0, x: 0, scale: 1 }}
                             animate={{ opacity: 0, y: c.y, x: c.x, scale: 0.4 }}
-                            transition={{ duration: 1.4, ease: 'easeOut' }}
+                            transition={{ duration: 1.5, ease: 'easeOut' }}
                             className="absolute left-1/2 top-1/2 text-3xl"
                         >
-                            {['⭐', '🎉', '✨', '💫', '🌟'][i]}
+                            {['⭐', '🎉', '✨', '💫', '🌟', '🔥', '💚', '🏆'][i % 8]}
                         </motion.div>
                     ))}
                 </div>
@@ -416,10 +423,10 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                     </div>
                 </div>
 
-                <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="mb-4 h-2.5 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/5">
                     <div
-                        className={`h-full rounded-full bg-gradient-to-r ${lesson.color} transition-all`}
-                        style={{ width: `${progressPct}%` }}
+                        className={`h-full rounded-full bg-gradient-to-r ${lesson.color} transition-all duration-500`}
+                        style={{ width: `${isResult ? 100 : progressPct}%` }}
                     />
                 </div>
 
@@ -454,60 +461,107 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                         )}
 
                         {isResult ? (
-                            <div className="py-6 text-center">
-                                <p className="mb-2 text-5xl">{icon}</p>
-                                <h2 className="mb-1 text-2xl font-black">লেসন শেষ!</h2>
-                                <p className="mb-4 text-amber-300">{'⭐'.repeat(stars)} · {xp} XP</p>
-                                {saveError && <p className="mb-2 text-sm text-red-300">{saveError}</p>}
-                                <button
-                                    type="button"
-                                    disabled={saving}
-                                    onClick={() => void finishAndSave()}
-                                    className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black text-white`}
-                                >
-                                    {saving ? 'সেভ হচ্ছে…' : '✓ সম্পন্ন ও ফিরে যাও'}
-                                </button>
+                            <div className="relative overflow-hidden py-2 text-center">
+                                <div className="pointer-events-none absolute -left-10 -top-8 size-28 rounded-full bg-amber-400/20 blur-3xl" />
+                                <div className="pointer-events-none absolute -bottom-10 -right-8 size-32 rounded-full bg-violet-500/20 blur-3xl" />
+                                <div className="relative">
+                                    <motion.div
+                                        initial={{ scale: 0.5, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ type: 'spring', stiffness: 260, damping: 16 }}
+                                        className="mx-auto mb-3 grid size-20 place-items-center rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/25 via-orange-500/15 to-rose-500/20 text-5xl shadow-lg shadow-amber-500/20"
+                                    >
+                                        {icon}
+                                    </motion.div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-300/70">
+                                        Lesson complete · শাবাশ
+                                    </p>
+                                    <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">লেসন শেষ!</h2>
+                                    <p className="mt-1 text-sm text-slate-400">
+                                        {lesson.word || lesson.letter} · তুমি পেরেছো
+                                    </p>
+                                    <div className="mx-auto mt-4 flex max-w-xs items-center justify-center gap-1.5">
+                                        {[1, 2, 3].map((n) => (
+                                            <motion.span
+                                                key={n}
+                                                initial={{ scale: 0, rotate: -30 }}
+                                                animate={{ scale: 1, rotate: 0 }}
+                                                transition={{ delay: 0.15 + n * 0.12, type: 'spring', stiffness: 400 }}
+                                                className={`text-3xl ${n <= stars ? '' : 'opacity-25 grayscale'}`}
+                                            >
+                                                ⭐
+                                            </motion.span>
+                                        ))}
+                                    </div>
+                                    <div className="mt-5 grid grid-cols-3 gap-2">
+                                        <div className="rounded-2xl border border-white/10 bg-black/25 px-2 py-3">
+                                            <div className="text-base">⚡</div>
+                                            <p className="text-lg font-black text-amber-300">{xp}</p>
+                                            <p className="text-[10px] text-slate-500">XP</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-white/10 bg-black/25 px-2 py-3">
+                                            <div className="text-base">⭐</div>
+                                            <p className="text-lg font-black text-yellow-200">{stars}</p>
+                                            <p className="text-[10px] text-slate-500">Stars</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-white/10 bg-black/25 px-2 py-3">
+                                            <div className="text-base">❤️</div>
+                                            <p className="text-lg font-black text-rose-300">{hearts}</p>
+                                            <p className="text-[10px] text-slate-500">Hearts</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5 text-left">
+                                        <p className="text-[11px] font-bold text-emerald-200">
+                                            {stars >= 3
+                                                ? '🔥 পারফেক্ট! সবকিছু দারুণ হয়েছে'
+                                                : stars === 2
+                                                  ? '💪 ভালো করেছো — আর একটু চেষ্টায় ৩ স্টার'
+                                                  : '🌱 শুরু ভালো — আবার চেষ্টা করলে আরও XP'}
+                                        </p>
+                                        <p className="mt-0.5 text-[10px] text-slate-400">
+                                            স্কোর সেভ হলে Daily Path ও streak আপডেট হবে
+                                        </p>
+                                    </div>
+                                    {saveError && (
+                                        <p className="mt-3 text-sm font-semibold text-red-300">{saveError}</p>
+                                    )}
+                                    <button
+                                        type="button"
+                                        disabled={saving}
+                                        onClick={() => void finishAndSave()}
+                                        className={`mt-5 min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} px-4 text-sm font-black text-white shadow-lg transition active:scale-[0.98] disabled:opacity-60`}
+                                    >
+                                        {saving ? 'সেভ হচ্ছে…' : '✓ সম্পন্ন · সেভ ও ফিরে যাও'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push(safeBackHref)}
+                                        className="mt-2 min-h-11 w-full rounded-2xl border border-white/12 bg-white/5 text-xs font-bold text-slate-400"
+                                    >
+                                        পরে সেভ · শুধু ফিরে যাও
+                                    </button>
+                                </div>
                             </div>
                         ) : currentEx?.type === 'intro' ? (
                             <div className="py-4 text-center">
                                 <p className="mb-3 text-6xl">{icon}</p>
                                 <h2 className="mb-2 text-2xl font-black">{currentEx.title}</h2>
                                 <p className="mb-6 text-slate-300">{currentEx.content}</p>
-                                <button
-                                    type="button"
-                                    onClick={() => nextEx()}
-                                    className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black`}
-                                >
-                                    শুরু করো →
-                                </button>
+                                <button type="button" onClick={() => nextEx()} className={`min-h-12 w-full rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black`}>শুরু করো →</button>
                             </div>
                         ) : currentEx?.type === 'listen-repeat' || currentEx?.type === 'pronounce' ? (
                             <div className="py-2 text-center">
                                 <h2 className="mb-2 text-lg font-black">{currentEx.title}</h2>
                                 <p className="mb-4 text-3xl font-black text-amber-200">{currentEx.content}</p>
-                                <button
-                                    type="button"
-                                    onClick={toggleMic}
-                                    className={`mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 text-sm font-black ${
-                                        isListening
-                                            ? 'border-rose-400/50 bg-rose-500/20 text-rose-100'
-                                            : voiceResult === 'correct'
-                                              ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-100'
-                                              : voiceResult === 'wrong'
-                                                ? 'border-red-400/50 bg-red-500/20 text-red-100'
-                                                : 'border-violet-400/40 bg-violet-500/15 text-white'
-                                    }`}
-                                >
-                                    {isListening ? '🎤 শুনছি…' : voiceResult === 'correct' ? '✅ সঠিক!' : voiceResult === 'wrong' ? '❌ আবার বলো' : '🎤 বলে দেখাও'}
-                                </button>
-                                {(transcript || interimTranscript) && (
-                                    <p className="mb-2 text-xs text-slate-400">শুনেছি: {transcript || interimTranscript}</p>
-                                )}
+                                <button type="button" onClick={toggleMic} className={`mb-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 text-sm font-black ${
+                                    isListening ? 'border-rose-400/50 bg-rose-500/20 text-rose-100'
+                                    : voiceResult === 'correct' ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-100'
+                                    : voiceResult === 'wrong' ? 'border-red-400/50 bg-red-500/20 text-red-100'
+                                    : 'border-violet-400/40 bg-violet-500/15 text-white'}`}>{isListening ? '🎤 শুনছি…' : voiceResult === 'correct' ? '✅ সঠিক!' : voiceResult === 'wrong' ? '❌ আবার বলো' : '🎤 বলে দেখাও'}</button>
+                                {(transcript || interimTranscript) && <p className="mb-2 text-xs text-slate-400">শুনেছি: {transcript || interimTranscript}</p>}
                                 {micError && <p className="mb-2 text-xs text-red-300">{micError}</p>}
                                 {!micSupported && <p className="mb-2 text-xs text-amber-300">মাইক সাপোর্ট নেই — পরের ধাপে যাও</p>}
-                                <button type="button" onClick={() => nextEx()} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold text-slate-300">
-                                    পরের ধাপ →
-                                </button>
+                                <button type="button" onClick={() => nextEx()} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold text-slate-300">পরের ধাপ →</button>
                             </div>
                         ) : currentEx?.type === 'quiz' || currentEx?.type === 'tap-correct' || currentEx?.type === 'bubble-pop' || currentEx?.type === 'archery-target' ? (
                             <div className="py-2 text-center">
@@ -515,95 +569,37 @@ export default function LessonEngine({ lesson }: { lesson: LessonConfig }) {
                                 <p className="mb-4 text-base text-slate-300">{currentEx.content}</p>
                                 <div className="grid gap-2">
                                     {(currentEx.options || []).map((opt) => (
-                                        <button
-                                            key={opt}
-                                            type="button"
-                                            disabled={selected !== null}
-                                            onClick={() => handleSelect(opt)}
-                                            className={`min-h-12 rounded-2xl border-2 px-3 text-sm font-bold transition ${
-                                                selected === null
-                                                    ? 'border-white/20 bg-white/10 text-white'
-                                                    : opt === currentEx.correctAnswer
-                                                      ? 'border-emerald-400/50 bg-emerald-500/25 text-emerald-100'
-                                                      : selected === opt
-                                                        ? 'border-red-400/50 bg-red-500/20 text-red-100'
-                                                        : 'border-white/10 bg-white/5 text-slate-500'
-                                            }`}
-                                        >
-                                            {opt}
-                                        </button>
+                                        <button key={opt} type="button" disabled={selected !== null} onClick={() => handleSelect(opt)} className={`min-h-12 rounded-2xl border-2 px-3 text-sm font-bold transition ${
+                                            selected === null ? 'border-white/20 bg-white/10 text-white'
+                                            : opt === currentEx.correctAnswer ? 'border-emerald-400/50 bg-emerald-500/25 text-emerald-100'
+                                            : selected === opt ? 'border-red-400/50 bg-red-500/20 text-red-100'
+                                            : 'border-white/10 bg-white/5 text-slate-500'}`}>{opt}</button>
                                     ))}
                                 </div>
                             </div>
                         ) : currentEx?.type === 'matching' ? (
-                            <MatchingGame
-                                currentEx={currentEx}
-                                lesson={lesson}
-                                speak={speak}
-                                onComplete={(ok) => {
-                                    if (ok) {
-                                        setXp((x) => x + 10)
-                                        celebrate()
-                                        setTimeout(() => nextEx(), 900)
-                                    } else {
-                                        setHearts((h) => Math.max(0, h - 1))
-                                    }
-                                }}
-                            />
+                            <MatchingGame currentEx={currentEx} lesson={lesson} speak={speak} onComplete={(ok) => {
+                                if (ok) { setXp((x) => x + 10); celebrate(); setTimeout(() => nextEx(), 900) }
+                                else setHearts((h) => Math.max(0, h - 1))
+                            }} />
                         ) : currentEx?.type === 'word-builder' || currentEx?.type === 'letter-puzzle' ? (
-                            <WordBuilderGame
-                                currentEx={currentEx}
-                                lesson={lesson}
-                                speak={speak}
-                                onSuccess={() => {
-                                    setXp((x) => x + 10)
-                                    celebrate()
-                                    setTimeout(() => nextEx(), 900)
-                                }}
-                            />
+                            <WordBuilderGame currentEx={currentEx} lesson={lesson} speak={speak} onSuccess={() => { setXp((x) => x + 10); celebrate(); setTimeout(() => nextEx(), 900) }} />
                         ) : currentEx?.type === 'trace' ? (
                             <div className="py-2 text-center">
                                 <h2 className="mb-2 text-lg font-black">{currentEx.title}</h2>
                                 <p className="mb-3 text-sm text-slate-400">{currentEx.content}</p>
                                 <div className="mb-3 overflow-hidden rounded-2xl border border-white/15 bg-black/30">
-                                    <canvas
-                                        ref={canvasRef}
-                                        width={320}
-                                        height={200}
-                                        className="mx-auto touch-none"
-                                        onMouseDown={startDraw}
-                                        onMouseMove={draw}
-                                        onMouseUp={endDraw}
-                                        onMouseLeave={endDraw}
-                                        onTouchStart={startDraw}
-                                        onTouchMove={draw}
-                                        onTouchEnd={endDraw}
-                                    />
+                                    <canvas ref={canvasRef} width={320} height={200} className="mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
                                 </div>
                                 <div className="flex gap-2">
-                                    <button type="button" onClick={clearCanvas} className="min-h-11 flex-1 rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">
-                                        মুছে ফেলো
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={!hasDrawn}
-                                        onClick={() => {
-                                            setXp((x) => x + 10)
-                                            celebrate()
-                                            setTimeout(() => nextEx(), 900)
-                                        }}
-                                        className={`min-h-11 flex-1 rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black disabled:opacity-40`}
-                                    >
-                                        ঠিক আছে →
-                                    </button>
+                                    <button type="button" onClick={clearCanvas} className="min-h-11 flex-1 rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">মুছে ফেলো</button>
+                                    <button type="button" disabled={!hasDrawn} onClick={() => { setXp((x) => x + 10); celebrate(); setTimeout(() => nextEx(), 900) }} className={`min-h-11 flex-1 rounded-2xl bg-gradient-to-r ${lesson.color} text-sm font-black disabled:opacity-40`}>ঠিক আছে →</button>
                                 </div>
                             </div>
                         ) : (
                             <div className="py-6 text-center">
                                 <p className="mb-4 text-slate-400">এই ধাপ এখনো তৈরি হয়নি</p>
-                                <button type="button" onClick={() => nextEx()} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">
-                                    পরের ধাপ →
-                                </button>
+                                <button type="button" onClick={() => nextEx()} className="min-h-11 w-full rounded-2xl border border-white/15 bg-white/5 text-sm font-bold">পরের ধাপ →</button>
                             </div>
                         )}
                     </motion.div>
