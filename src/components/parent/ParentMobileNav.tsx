@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
 
 const tabs = [
   {
@@ -37,37 +38,47 @@ export default function ParentMobileNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-500/25 bg-[#0b0b1a]/98 shadow-[0_-8px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl md:hidden"
-      style={{ paddingBottom: 'max(0.45rem, env(safe-area-inset-bottom))' }}
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-sky-400/20 bg-[#0a0a18]/92 shadow-[0_-12px_40px_-12px_rgba(56,189,248,0.28)] backdrop-blur-2xl md:hidden"
+      style={{ paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))' }}
       aria-label="অভিভাবক মেইন নেভিগেশন"
       role="navigation"
     >
-      <ul className="mx-auto flex h-[3.75rem] max-w-lg list-none items-stretch justify-around px-1">
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" />
+      <ul className="relative mx-auto flex h-[4rem] max-w-lg list-none items-stretch justify-around px-1.5">
         {tabs.map((tab) => {
           const active = tab.match(pathname)
           return (
-            <li key={tab.href} className="flex min-w-0 flex-1">
+            <li key={tab.href} className="relative flex min-w-0 flex-1">
               <Link
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
                 aria-label={active ? `${tab.label} (বর্তমান পেজ)` : tab.label}
-                className={`flex min-h-[48px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b1a] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 ${
-                  active ? 'text-violet-100' : 'text-slate-400'
+                className={`relative flex min-h-[48px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 outline-none transition active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a18] ${
+                  active ? 'text-sky-50' : 'text-slate-500'
                 }`}
               >
-                <span
+                {active && (
+                  <motion.span
+                    layoutId="parent-nav-pill"
+                    className="absolute inset-x-1 top-1 bottom-1 -z-10 rounded-2xl bg-gradient-to-b from-sky-500/25 to-indigo-600/10 ring-1 ring-sky-400/25"
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                )}
+                <motion.span
                   aria-hidden="true"
+                  animate={active ? { scale: 1.08, y: -1 } : { scale: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 22 }}
                   className={`grid size-9 place-items-center rounded-xl text-base ${
                     active
-                      ? 'bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/40'
-                      : 'bg-white/5'
+                      ? 'bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-600/40'
+                      : 'bg-white/[0.06]'
                   }`}
                 >
                   {tab.icon}
-                </span>
+                </motion.span>
                 <span
                   className={`max-w-full truncate text-[10px] leading-none ${
-                    active ? 'font-bold text-violet-100' : 'font-semibold'
+                    active ? 'font-black text-sky-100' : 'font-semibold'
                   }`}
                 >
                   {tab.label}
