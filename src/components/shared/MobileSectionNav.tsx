@@ -19,12 +19,10 @@ export default function MobileSectionNav({
   const pathname = usePathname() || ''
   const activeCls =
     activeTone === 'emerald'
-      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300/40'
-      : 'bg-violet-600 text-white shadow-md shadow-violet-300/50'
+      ? 'border-emerald-400/40 bg-emerald-500/25 text-emerald-50 shadow-md shadow-emerald-500/20'
+      : 'border-violet-400/40 bg-violet-500/25 text-violet-50 shadow-md shadow-violet-500/20'
   const idleCls =
-    activeTone === 'emerald'
-      ? 'border border-emerald-200 bg-white text-slate-700'
-      : 'border border-violet-200 bg-white text-slate-700'
+    'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.07]'
 
   return (
     <nav
@@ -44,11 +42,11 @@ export default function MobileSectionNav({
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 aria-label={active ? `${item.label} (বর্তমান)` : item.label}
-                className={`flex min-h-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                className={`flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-2 text-[11px] font-bold outline-none transition active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a1a] ${
                   activeTone === 'emerald'
-                    ? 'focus-visible:ring-emerald-500'
-                    : 'focus-visible:ring-violet-500'
-                } focus-visible:ring-offset-white ${active ? activeCls : idleCls}`}
+                    ? 'focus-visible:ring-emerald-400'
+                    : 'focus-visible:ring-violet-400'
+                } ${active ? activeCls : idleCls}`}
               >
                 <span aria-hidden="true">{item.icon}</span>
                 {item.label}
