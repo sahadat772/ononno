@@ -15,6 +15,7 @@ import ContinueLearningCard from '@/components/student/ContinueLearningCard'
 import ProgressTrackingCard from '@/components/student/ProgressTrackingCard'
 import DailyPathCard from '@/components/student/DailyPathCard'
 import ReportCardCard from '@/components/student/ReportCardCard'
+import WeakAreaCard from '@/components/student/WeakAreaCard'
 
 interface Props {
   profile: Record<string, string> | null
@@ -124,7 +125,6 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
       </nav>
 
       <div className="relative z-10 mx-auto max-w-6xl px-3 pt-[calc(3.5rem+env(safe-area-inset-top)+0.75rem)] sm:px-4 md:pt-16">
-        {/* Hero — premium welcome */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -147,7 +147,7 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
               </span>
             </h1>
             <p className="mt-1.5 text-xs text-slate-400 sm:text-sm">
-              আজকের path ধরো — ছোট অভ্যাস, বড় ফল
+              Path → রিভিশন → streak — ছোট অভ্যাস, বড় ফল
             </p>
             <div className="mt-3.5 flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-violet-400/30 bg-violet-500/20 px-3 py-1.5 text-[11px] font-bold text-violet-100 sm:text-xs">
@@ -184,10 +184,11 @@ export default function DashboardClient({ profile, studentProfile }: Props) {
         <PushPermission variant="student" showWhenGranted />
         <SoftLaunchBanner />
 
-        {/* Core rhythm: Path → Report → Continue */}
+        {/* Core loop: Path → Report → Continue → Weak revision */}
         <DailyPathCard />
         <ReportCardCard />
         <ContinueLearningCard />
+        <WeakAreaCard compact />
         <ProgressTrackingCard />
 
         {announcements.length > 0 && (
