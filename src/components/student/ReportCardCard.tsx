@@ -97,7 +97,6 @@ export default function ReportCardCard() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Grade badge — Shikho-style hero metric */}
             <div
               className={`flex min-w-[3.25rem] flex-col items-center rounded-2xl border bg-gradient-to-br px-3 py-2 ${
                 gradeTone(s.grade)
@@ -194,7 +193,7 @@ export default function ReportCardCard() {
           </div>
         </div>
 
-        {(s.strong > 0 || s.weak > 0) && (
+        {(s.strong > 0 || s.weak > 0 || s.medium > 0) && (
           <div className="mb-3 flex flex-wrap gap-2 text-[11px]">
             <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-200">
               শক্তিশালী {s.strong}
@@ -202,9 +201,18 @@ export default function ReportCardCard() {
             <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-200">
               মাঝারি {s.medium}
             </span>
-            <span className="rounded-full border border-rose-500/25 bg-rose-500/10 px-2.5 py-1 font-semibold text-rose-200">
-              দুর্বল {s.weak}
-            </span>
+            {s.weak > 0 ? (
+              <Link
+                href="/dashboard/student/performance"
+                className="rounded-full border border-rose-500/35 bg-rose-500/15 px-2.5 py-1 font-semibold text-rose-100 transition hover:bg-rose-500/25"
+              >
+                দুর্বল {s.weak} · রিভিশন →
+              </Link>
+            ) : (
+              <span className="rounded-full border border-rose-500/25 bg-rose-500/10 px-2.5 py-1 font-semibold text-rose-200">
+                দুর্বল {s.weak}
+              </span>
+            )}
           </div>
         )}
 
