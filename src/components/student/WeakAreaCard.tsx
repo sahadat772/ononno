@@ -27,7 +27,7 @@ export default function WeakAreaCard({
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch('/api/student/weak-areas')
+        const res = await fetch('/api/student/weak-areas', { cache: 'no-store' })
         const data = await res.json()
         if (!res.ok) {
           setMessage(data.message || 'লোড ব্যর্থ')
@@ -48,15 +48,13 @@ export default function WeakAreaCard({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/40">
-        Weak areas খোঁজা হচ্ছে...
-      </div>
+      <div className="mb-5 h-28 animate-pulse rounded-3xl border border-rose-500/15 bg-gradient-to-br from-rose-500/10 to-transparent" />
     )
   }
 
   if (weak.length === 0 && medium.length === 0) {
     return (
-      <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-200/90">
+      <div className="mb-5 rounded-3xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-200/90">
         ✨ {message || 'সব quiz ভালো — weak area নেই!'}
       </div>
     )
@@ -64,70 +62,85 @@ export default function WeakAreaCard({
 
   const show = [...weak, ...(compact ? [] : medium.slice(0, 3))].slice(
     0,
-    compact ? 4 : 8,
+    compact ? 3 : 6,
   )
+  const top = weak[0] || medium[0]
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-red-500/30 bg-linear-to-br from-red-950/40 to-[#0a0a1a] p-4 md:p-5 space-y-3"
+      className="relative mb-5 overflow-hidden rounded-3xl border border-rose-500/25 bg-[#140a12] p-4 shadow-[0_0_36px_-14px_rgba(244,63,94,0.35)] sm:p-5"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="font-bold text-white text-base flex items-center gap-2">
-            🔄 আবার পড়ো
-          </h3>
-          <p className="text-xs text-white/50 mt-0.5">
-            Quiz score কম — revision করো (শুধু published lesson)
-          </p>
-        </div>
-        <div className="text-right text-xs shrink-0">
-          <p className="text-red-300 font-bold">{weak.length} weak</p>
-          {!compact && (
-            <p className="text-amber-300/80">{medium.length} medium</p>
-          )}
-        </div>
-      </div>
+      <div className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-rose-500/20 blur-3xl" />
 
-      <div className="space-y-2">
-        {show.map((item) => (
-          <div
-            key={item.lesson_id}
-            className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${
-              item.band === 'weak'
-                ? 'border-red-500/35 bg-red-500/10'
-                : 'border-amber-500/30 bg-amber-500/10'
-            }`}
+      <div className="relative space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-rose-300/70">
+              Learning Loop · M3
+            </p>
+            <h3 className="mt-0.5 text-lg font-black text-white">🔄 আবার পড়ো</h3>
+            <p className="mt-0.5 text-xs text-white/50">
+              দুর্বল টপিক রিভিশন — Daily Path-এও দেখাবে
+            </p>
+          </div>
+          <div className="text-right text-xs shrink-0">
+            <p className="font-black text-rose-300">{weak.length} weak</p>
+            {!compact && (
+              <p className="text-amber-300/80">{medium.length} medium</p>
+            )}
+          </div>
+        </div>
+
+        {top && (
+          <Link
+            href={top.href}
+            className="flex min-h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 text-sm font-black text-white shadow-lg shadow-rose-500/25"
           >
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-white truncate">
-                {item.title_bn || item.title || 'Lesson'}
-              </p>
-              <p className="text-[11px] text-white/50">
-                Score {item.score}% · {item.band_label}
-              </p>
-            </div>
-            <Link
-              href={item.href}
-              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold text-white ${
+            আজকের রিভিশন · {top.title_bn || top.title} →
+          </Link>
+        )}
+
+        <div className="space-y-2">
+          {show.map((item) => (
+            <div
+              key={item.lesson_id}
+              className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 ${
                 item.band === 'weak'
-                  ? 'bg-red-500 hover:bg-red-400'
-                  : 'bg-amber-500 hover:bg-amber-400'
+                  ? 'border-rose-500/35 bg-rose-500/10'
+                  : 'border-amber-500/30 bg-amber-500/10'
               }`}
             >
-              Revision Start
-            </Link>
-          </div>
-        ))}
-      </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">
+                  {item.title_bn || item.title || 'Lesson'}
+                </p>
+                <p className="text-[11px] text-white/50">
+                  Score {item.score}% · {item.band_label}
+                </p>
+              </div>
+              <Link
+                href={item.href}
+                className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold text-white ${
+                  item.band === 'weak'
+                    ? 'bg-rose-500 hover:bg-rose-400'
+                    : 'bg-amber-500 hover:bg-amber-400'
+                }`}
+              >
+                Revision
+              </Link>
+            </div>
+          ))}
+        </div>
 
-      <Link
-        href="/dashboard/student/learning-path"
-        className="block text-center text-xs text-violet-300 hover:text-violet-200 pt-1"
-      >
-        Study plan দিয়ে timed revision →
-      </Link>
+        <Link
+          href="/dashboard/student/learning-path"
+          className="block pt-0.5 text-center text-xs font-semibold text-violet-300 hover:text-violet-200"
+        >
+          Study plan দিয়ে timed revision →
+        </Link>
+      </div>
     </motion.div>
   )
 }
