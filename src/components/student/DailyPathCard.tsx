@@ -4,6 +4,15 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
+type Revision = {
+  lesson_id: string
+  title: string
+  title_bn: string | null
+  score: number
+  band: 'weak' | 'medium'
+  href: string
+}
+
 type DailyPathData = {
   streak_days: number
   goal_done_today: boolean
@@ -15,20 +24,16 @@ type DailyPathData = {
   next_label: string
   next_label_bn: string
   week_active?: boolean[]
+  revision?: Revision | null
+  weak_count?: number
+  medium_count?: number
 }
 
 function WeekDots({ active }: { active?: boolean[] }) {
   const labels = ['স', 'ম', 'ব', 'ব', 'ব', 'শ', 'শ']
-  const today = new Date().getDay() // 0 Sun
-  // Map Sun-first to Mon-first visual: Mon=1 ... Sun=0
+  const today = new Date().getDay()
   const order = [1, 2, 3, 4, 5, 6, 0]
-  const flags =
-    active && active.length === 7
-      ? active
-      : order.map((d) => {
-          // fallback: light up days from today backward by streak later in parent
-          return false
-        })
+  const flags = active && active.length === 7 ? active : order.map(() => false)
 
   return (
     <div className="flex justify-between gap-1">
@@ -89,27 +94,25 @@ export default function DailyPathCard() {
   const pct = Math.min(100, Math.round((done / goal) * 100))
   const complete = data.goal_done_today || done >= goal
   const streak = data.streak_days || 0
+  const revision = data.revision || null
+  const weakCount = data.weak_count || 0
 
-  // Approximate week dots from streak when API has no week_active
   const weekActive = (() => {
     if (data.week_active?.length === 7) return data.week_active
     const today = new Date().getDay()
     const order = [1, 2, 3, 4, 5, 6, 0]
     const flags = order.map(() => false)
     let left = Math.min(streak, 7)
-    // mark today if complete or streak>0, then walk back
     let cursor = today
     for (let step = 0; step < 7 && left > 0; step++) {
       const idx = order.indexOf(cursor)
       if (idx >= 0) {
-        if (step === 0 && !complete && streak === 0) {
-          // leave today empty
-        } else {
+        if (!(step === 0 && !complete && streak === 0)) {
           flags[idx] = true
           left--
         }
       }
-      cursor = (cursor + 6) % 7 // previous day
+      cursor = (cursor + 6) % 7
     }
     if (complete) {
       const idx = order.indexOf(today)
@@ -118,6 +121,16 @@ export default function DailyPathCard() {
     return flags
   })()
 
+  const primaryHref = revision && (complete || weakCount > 0)
+    ? revision.href
+    : data.next_href || '/dashboard/student/kids-zone'
+  const primaryLabel =
+    revision && (complete || weakCount > 0)
+      ? 'আজকের রিভিশন →'
+      : complete
+        ? 'আরও শিখো →'
+        : 'লেসন শুরু করো →'
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -125,7 +138,6 @@ export default function DailyPathCard() {
       transition={{ duration: 0.35 }}
       className="relative mb-5 overflow-hidden rounded-3xl border border-orange-400/25 bg-[#120a14] p-4 shadow-[0_0_40px_-12px_rgba(249,115,22,0.35)] sm:p-5"
     >
-      {/* ambient glow */}
       <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-orange-500/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-12 -left-8 size-32 rounded-full bg-violet-600/15 blur-3xl" />
 
@@ -136,17 +148,26 @@ export default function DailyPathCard() {
               Daily Path · অভ্যাস
             </p>
             <h3 className="mt-1 text-xl font-black leading-tight text-white sm:text-2xl">
-              {complete ? 'আজকের লক্ষ্য পূরণ!' : 'আজকের একটা পাঠ'}
+              {revision && complete
+                ? 'রিভিশন দিয়ে শক্ত করো'
+                : complete
+                  ? 'আজকের লক্ষ্য পূরণ!'
+                  : 'আজকের একটা পাঠ'}
             </h3>
             <p className="mt-1 text-xs text-slate-400">
               Level{' '}
               <span className="font-bold text-violet-300">{data.level}</span>
               {' · '}
               <span className="font-bold text-amber-300">{data.total_xp} XP</span>
+              {weakCount > 0 && (
+                <>
+                  {' · '}
+                  <span className="font-bold text-rose-300">{weakCount} weak</span>
+                </>
+              )}
             </p>
           </div>
 
-          {/* Streak hero — Duolingo-style loss aversion */}
           <motion.div
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
@@ -168,7 +189,6 @@ export default function DailyPathCard() {
           </motion.div>
         </div>
 
-        {/* Week rhythm dots */}
         <div className="mb-4 rounded-2xl border border-white/8 bg-black/25 px-3 py-3">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-white/35">
             এই সপ্তাহের ছন্দ
@@ -176,7 +196,6 @@ export default function DailyPathCard() {
           <WeekDots active={weekActive} />
         </div>
 
-        {/* Goal progress */}
         <div className="mb-4">
           <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold">
             <span className="text-white/70">
@@ -200,12 +219,33 @@ export default function DailyPathCard() {
           </div>
         </div>
 
+        {/* M3 revision priority strip */}
+        {revision && (
+          <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-rose-200/70">
+              আজকের রিভিশন · M3
+            </p>
+            <p className="mt-1 truncate text-sm font-black text-white">
+              {revision.title_bn || revision.title}
+            </p>
+            <p className="mt-0.5 text-[11px] text-rose-100/70">
+              Score {revision.score}% · আবার পড়ে শক্ত করো
+            </p>
+            <Link
+              href={revision.href}
+              className="mt-2.5 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-xs font-black text-white shadow-md shadow-rose-500/25"
+            >
+              রিভিশন শুরু →
+            </Link>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
           <Link
-            href={data.next_href || '/dashboard/student/kids-zone'}
+            href={primaryHref}
             className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 via-rose-500 to-fuchsia-500 px-4 text-sm font-black text-white shadow-[0_8px_24px_-6px_rgba(249,115,22,0.55)] transition active:scale-[0.98]"
           >
-            {complete ? 'আরও শিখো →' : 'লেসন শুরু করো →'}
+            {primaryLabel}
           </Link>
           <Link
             href="/dashboard/student/performance"
